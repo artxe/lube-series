@@ -1,0 +1,20 @@
+{
+	"permissions": {
+		"allow": [
+			"Bash(git diff:*)",
+			"Bash(git log:*)",
+			"Bash(git show:*)",
+			"Bash(git status:*)",
+			"Bash(node --cpu-prof:*)",
+			"Bash(node scripts/:*)",
+			"Bash(npx eslint:*)",
+			"Bash(npx tsc:*)",
+			"Bash(npx vitest:*)",
+			"Bash(pnpm dts:*)",
+			"Bash(pnpm lint:*)",
+			"Bash(pnpm pack:*)",
+			"Bash(pnpm pre:*)",
+			"Bash(pnpm test:*)"
+		]
+	}
+}

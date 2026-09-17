@@ -1,18 +1,31 @@
 {
 	"compilerOptions": {
-		"allowSyntheticDefaultImports": true,
+		"allowUnreachableCode": false,
+		"allowUnusedLabels": false,
 		"checkJs": true,
 		"exactOptionalPropertyTypes": true,
-		"lib": [ "ES2020", "DOM", "DOM.Iterable" ],
-		"module": "ESNext",
-		"moduleResolution": "bundler",
+		"isolatedModules": true,
+		"lib": [ "dom", "dom.iterable", "esnext" ],
+		"module": "nodenext",
+		"moduleDetection": "force",
 		"noEmit": true,
+		"noFallthroughCasesInSwitch": true,
+		"noImplicitOverride": true,
+		"noImplicitReturns": true,
 		"noPropertyAccessFromIndexSignature": true,
-		// "noUncheckedIndexedAccess": true,
+		"noUncheckedIndexedAccess": true,
+		"noUncheckedSideEffectImports": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
 		"skipLibCheck": true,
 		"strict": true,
-		"target": "ESNext"
+		"target": "esnext",
+		"types": [ "node" ]
 	},
-	"ts-node": { "esm": true },
-	"exclude": [ "coverage/", "packages/" ]
+	"include": [
+		"eslint.config.js",
+		"scripts",
+		"syntax",
+		"test"
+	]
 }

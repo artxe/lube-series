@@ -1,33 +1,33 @@
-import globals from "globals"
-import lube from "eslint-plugin-lube"
 import parser from "@typescript-eslint/parser"
-
+import lube from "eslint-plugin-lube"
+/** @type {import("eslint").Linter.Config[]} */
 export default [
 	{
 		ignores: [
-			"coverage/**/*",
-			"packages/*/types/**/*.d.ts"
+			"coverage/**",
+			"packages/*/types/**"
 		]
 	},
 	{
-		...lube.configs,
 		files: [
 			"**/*.js",
-			"**/*.svelte",
+			"**/*.json",
+			"**/*.mjs",
 			"**/*.ts"
 		],
 		languageOptions: {
 			ecmaVersion: "latest",
-			sourceType: "module",
 			parser,
-			globals: {
-				...globals.node,
-				RequestInit: true
-			}
-		}
+			sourceType: "module"
+		},
+		plugins: lube.configs.plugins,
+		rules: { ...lube.configs.rules }
 	},
 	{
-		files: [ "**/*.d.ts" ],
-		rules: { "no-unused-vars": "off" }
+		files: [
+			"packages/async-lube/src/**/*.js",
+			"test/async-lube/**/*.js"
+		],
+		rules: { "no-await-in-loop": "off" }
 	}
 ]

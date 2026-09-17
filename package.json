@@ -1,37 +1,39 @@
 {
-	"author": "artxe2",
+	"author": "artxe",
 	"bugs": {
-		"url": "https://github.com/Artxe2/lube-series/issues"
+		"url": "https://github.com/artxe/lube-series/issues"
 	},
 	"description": "Simple tools to lubricate JavaScript",
 	"devDependencies": {
-		"@eslint/eslintrc": "^3.3.1",
-		"@eslint/js": "^9.29.0",
-		"@types/node": "^24.0.3",
-		"@typescript-eslint/parser": "^8.35.0",
-		"@vitest/coverage-v8": "^3.2.4",
+		"@types/estree": "^1.0.9",
+		"@types/node": "^26.6.1",
+		"@typescript-eslint/parser": "^8.70.0",
+		"@typescript/native": "npm:typescript@^7.0.2",
+		"@vitest/coverage-v8": "^5.0.1",
 		"async-lube": "workspace:^",
 		"data-lube": "workspace:^",
-		"date-lube": "workspace:^",
-		"dom-eater": "workspace:^",
-		"eslint": "^9.29.0",
+		"datetime-lube": "workspace:^",
+		"eslint": "^10.10.0",
 		"eslint-plugin-lube": "workspace:^",
-		"globals": "^16.2.0",
 		"hangul-lube": "workspace:^",
-		"typescript": "^5.8.3",
-		"vitest": "^3.2.4"
+		"svelte": "^5.57.0",
+		"svelte-eslint-parser": "^1.8.1",
+		"typescript": "npm:@typescript/typescript6@^6.0.2",
+		"vitest": "^5.0.1"
+	},
+	"engines": {
+		"node": "^22.13.0 || ^24.0.0 || >=26.0.0"
 	},
 	"license": "MIT",
 	"name": "lube-series",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/Artxe2/lube-series"
+		"url": "https://github.com/artxe/lube-series"
 	},
 	"scripts": {
-		"cjs": "pnpm -r cjs",
 		"dts": "pnpm -r dts",
-		"lint": "eslint --cache --fix **/*.{js,json,ts}",
-		"pre": "pnpm test && pnpm lint && pnpm dts && pnpm cjs && tsc",
+		"lint": "eslint --cache --fix . && tsc",
+		"pre": "pnpm test && pnpm lint && pnpm dts",
 		"test": "vitest run --coverage"
 	},
 	"type": "module",
