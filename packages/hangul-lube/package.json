@@ -1,25 +1,32 @@
 {
-	"author": "artxe2",
+	"author": "artxe",
 	"bugs": {
-		"url": "https://github.com/Artxe2/lube-series/issues"
+		"url": "https://github.com/artxe/lube-series/issues"
 	},
 	"description": "Simplify Korean Consonant Search in JavaScript",
 	"devDependencies": {
-		"rollup": "^4.44.0",
-		"typescript": "^5.8.3"
+		"@typescript/native": "npm:typescript@^7.0.2"
 	},
+	"engines": { "node": ">=14" },
 	"exports": {
 		".": {
-			"import": "./src/index.js",
-			"require": "./hangul-lube.cjs",
-			"types": "./types/index.d.ts"
+			"types": "./types/index.d.ts",
+			"default": "./src/index.js"
 		}
 	},
+	"files": [ "CHANGELOG.md", "src", "types" ],
+	"homepage": "https://github.com/artxe/lube-series/tree/master/packages/hangul-lube#readme",
 	"keywords": [
+		"autocomplete",
+		"choseong",
 		"hangul",
-		"lube",
 		"hangul-lube",
-		"syntax sugar"
+		"korean",
+		"lube",
+		"regexp",
+		"search",
+		"syntax sugar",
+		"초성"
 	],
 	"license": "MIT",
 	"main": "src/index.js",
@@ -27,13 +34,17 @@
 	"repository": {
 		"directory": "packages/hangul-lube",
 		"type": "git",
-		"url": "https://github.com/Artxe2/lube-series"
+		"url": "https://github.com/artxe/lube-series"
 	},
 	"scripts": {
-		"cjs": "rollup src/index.js --file hangul-lube.cjs --format cjs",
 		"dts": "node ../../scripts/tsc_with_clean.js hangul-lube",
-		"test": "cd ../../test/hangul-lube/ && vitest run"
+		"lint": "pnpm -w lint",
+		"prepack": "pnpm dts",
+		"prepublishOnly": "pnpm -w lint && pnpm test",
+		"test": "pnpm -w exec vitest run --coverage test/hangul-lube"
 	},
+	"sideEffects": false,
+	"type": "module",
 	"types": "types/index.d.ts",
-	"version": "1.4.1"
+	"version": "2.0.0"
 }

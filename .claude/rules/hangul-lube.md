@@ -1,0 +1,15 @@
+---
+paths:
+  - packages/hangul-lube/**
+  - syntax/hangul-lube.ts
+  - test/hangul-lube/**
+---
+- Intent (owner): a search box finds the word while it is still being typed. A letter matches every text that shows it as an intermediate state of typing, and nothing more; a lone consonant is such a state itself, so it matches itself too.
+- `medial_growths` and `final_growths` in `src/get_letter_range.js` hold the number of jamo a letter of a syllable grows over, `src/letter_growths.js` the class a lone jamo grows into: a medial grows into the compound vowels starting with it (ㅗ into ㅘㅙㅚ, ㅜ into ㅝㅞㅟ, ㅡ into ㅢ), a final into the compound finals starting with it (ㄱ into ㄳ, ㄴ into ㄵㄶ, ㄹ into ㄺ through ㅀ, ㅂ into ㅄ). Every growth is one contiguous code point range except ㄱ, which skips ㄲ.
+- A lone compound consonant (`src/compound_consonant_letters.js`) also matches its two consonants, because an IME composes ㄱ and ㅅ typed in a row into ㄳ, and a vowel typed after it splits it into ㄱ시.
+- Only the last syllable of the query also matches with its final consonant moved to the next syllable (`각` finds `가게`), because typing a vowel moves it; a compound final moves only its second jamo (`값` finds `갑사`), and the moved consonant matches syllables only, as an IME never shows `가ㄱ`. Every earlier syllable is finished and matches only itself, with no growth (`바지` misses `반지`); a lone consonant matches the syllables it starts wherever it stands.
+- What needs the shift key never grows, as an initial or as a final: 까 and 갔 are typed without passing through 가 and 갓, so `ㄱ` misses 까 and `갓` misses 갔.
+- `pattern` translates each letter as it is; `searcher` is the forgiving one and drops white space and default ignorable code points (zero-width space, joiners, soft hyphen, BOM) from the text, because a search box is typed with spaces the data does not have.
+- The README and JSDoc examples hold syllables no one can proofread by eye (`[고-굏]`, `[갑-값]`). Generate them from the built package, never type them.
+- Deliberate non-features: no transliteration (text in another script is found through a Korean alias the caller stores next to it), no highlight API (the span is the `exec` result's index and match length) and no database adapter (`pattern` and `searcher(...).source` are the query's regular expression as they are, with `a-z` spelled out so the source does not depend on the `i` flag).
+- `searcher` never throws on what a user typed, so a query over `max_letters` (1000) in `src/searcher.js` gives `/(?!)/i` instead of an expression the engine rejects: each letter costs about 18 source characters and V8 stops compiling near a hundred thousand, which showed up as a `SyntaxError` from `.test()`, far from the call. `pattern` keeps no limit, since it is the exact one and a database engine has its own.

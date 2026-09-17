@@ -1,24 +1,30 @@
-import first_consonant_letters from "./first_consonant_letters.js"
 import get_letter_range from "./get_letter_range.js"
-
+import letters_of from "./letters_of.js"
 /**
- * Generates a regular expression pattern for Korean consonant search.
+ * Generates the regular expression source that finds Korean text while it is still being typed.
+ * A consonant matches itself and every syllable it starts, and the last syllable also matches every
+ * syllable it grows into with more keys, with its final consonant moved to the next syllable too;
+ * earlier syllables match only themselves. Special characters are escaped and white space is kept.
+ * An empty text gives `""`, which matches everything; `searcher` gives `null` instead.
  * @param {string} text
  * @returns {string}
- * @example pattern("ㄷㅎㅁㄱ") //=> "[다-딯][하-힣][마-밓][가-깋]"
+ * @example pattern("ㄱㅊㅉㄱ") //=> "[ㄱㄳ가-깋][ㅊ차-칳][ㅉ짜-찧][ㄱㄳ가-깋]"
  *
- * pattern("특수문자 test 1234!@#$") //=> "특[수-숳]문[자-잫] test 1234!@#$"
+ * pattern("된자") //=> "된[자-잫]"
+ *
+ * pattern("오리") //=> "오[리-맇]"
+ *
+ * pattern("공") //=> "(?:공|고[아-잏])"
+ *
+ * pattern("1+1") //=> "1\\+1"
+ *
+ * pattern("") //=> ""
  */
-const _default = text => {
-	let regex = ""
-	const len = text.length - 1
-	for (let i = 0; i < len; i++) {
-		const t = /** @type {string} */(text[i])/**/
-		regex += first_consonant_letters[t] ?? get_letter_range(t)
-	}
-	return regex + get_letter_range(
-		/** @type {string} */(text[len])/**/
+export default function(text) {
+	const letters = letters_of(text)
+	const last = letters.length - 1
+	return letters.map(
+		(letter, index) => get_letter_range(letter, () => "", index == last)
 	)
+		.join("")
 }
-
-export default _default
