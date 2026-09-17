@@ -1,0 +1,12 @@
+{
+	"compilerOptions": {
+		"declaration": true,
+		"declarationDir": "types",
+		"declarationMap": true,
+		"emitDeclarationOnly": true,
+		"noEmit": false,
+		"rootDir": "src"
+	},
+	"extends": "../../tsconfig.json",
+	"include": [ "src/**/*.js" ]
+}

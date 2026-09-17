@@ -1,0 +1,60 @@
+{
+	"author": "artxe",
+	"bugs": {
+		"url": "https://github.com/artxe/lube-series/issues"
+	},
+	"description": "Simplify Date Manipulation with Time Zones in JavaScript",
+	"devDependencies": {
+		"@typescript/native": "npm:typescript@^7.0.2"
+	},
+	"engines": { "node": ">=18" },
+	"exports": {
+		".": {
+			"types": "./types/index.d.ts",
+			"default": "./src/index.js"
+		}
+	},
+	"files": [
+		"CHANGELOG.md",
+		"public.d.ts",
+		"src",
+		"types"
+	],
+	"homepage": "https://github.com/artxe/lube-series/tree/master/packages/datetime-lube#readme",
+	"keywords": [
+		"date",
+		"datetime",
+		"datetime-lube",
+		"diff",
+		"dst",
+		"format",
+		"lube",
+		"parse",
+		"start of",
+		"syntax sugar",
+		"time zone",
+		"timezone"
+	],
+	"license": "MIT",
+	"main": "src/index.js",
+	"name": "datetime-lube",
+	"repository": {
+		"directory": "packages/datetime-lube",
+		"type": "git",
+		"url": "https://github.com/artxe/lube-series"
+	},
+	"scripts": {
+		"dts": "node ../../scripts/tsc_with_clean.js datetime-lube",
+		"lint": "pnpm -w lint",
+		"prepack": "pnpm dts",
+		"prepublishOnly": "pnpm -w lint && pnpm test",
+		"test": "pnpm -w exec vitest run --coverage test/datetime-lube"
+	},
+	"sideEffects": false,
+	"type": "module",
+	"types": "types/index.d.ts",
+	"typesVersions": {
+		"*": { "*": [ "types/index.d.ts" ] }
+	},
+	"version": "1.0.0"
+}

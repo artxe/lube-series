@@ -5,6 +5,7 @@
 	},
 	"description": "Simple tools to lubricate JavaScript",
 	"devDependencies": {
+		"@js-temporal/polyfill": "^0.5.1",
 		"@types/estree": "^1.0.9",
 		"@types/node": "^26.6.1",
 		"@typescript-eslint/parser": "^8.70.0",
