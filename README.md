@@ -8,7 +8,7 @@ npm i async-lube
 ```
 
 ### **[/data-lube](packages/data-lube/README.md)** · [changelog](packages/data-lube/CHANGELOG.md)
-Copy, compare, merge, update, diff and freeze nested data with plain JavaScript syntax, circular references included
+Copy, compare, merge, update, diff, patch and freeze nested data with plain JavaScript syntax, at any depth, with circular references, and with the built-in types and class instances, which keep their prototype
 ```bash
 npm i data-lube
 ```

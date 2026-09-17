@@ -1,150 +1,173 @@
+import dimensions from "./dimensions.js"
+import { deepCopy, deepFreeze } from "data-lube"
+import { runInNewContext } from "node:vm"
 import { assert, describe, it } from "vitest"
-
-import { deepFreeze } from "data-lube"
-
 describe(
-	"deep_freeze.test",
+	"deep_freeze",
 	() => {
-		const dimensions = [
-			{
-				"dimensions": [
-					{
-						"runtime": {
-							"common": { "client": 1, "server": "a" }
-						}
-					},
-					{
-						"device": {
-							"android": null,
-							"blackberry": null,
-							"iemobile": null,
-							"ipad": null,
-							"iphone": null,
-							"kindle": null,
-							"opera-mini": null,
-							"palm": null
-						}
-					},
-					{
-						"environment": {
-							"development": { "dev": null, "test": null },
-							"production": { "prod": null, "stage": null }
-						}
-					},
-					{
-						"lang": {
-							"ar": {
-								"ar-EG": null,
-								"ar-JO": null,
-								"ar-MA": null,
-								"ar-SA": null
-							},
-							"bn": { "bn-IN": null },
-							"ca": { "ca-ES": null },
-							"cs": { "cs-CZ": null },
-							"da": { "da-DK": null },
-							"de": { "de-AT": null, "de-DE": null },
-							"el": { "el-GR": null },
-							"en": {
-								"en-AU": null,
-								"en-BG": null,
-								"en-CA": null,
-								"en-GB": null,
-								"en-GY": null,
-								"en-HK": null,
-								"en-IE": null,
-								"en-IN": null,
-								"en-MY": null,
-								"en-NZ": null,
-								"en-PH": null,
-								"en-SG": null,
-								"en-US": null,
-								"en-ZA": null
-							},
-							"es": {
-								"es-AR": null,
-								"es-BO": null,
-								"es-CL": null,
-								"es-CO": null,
-								"es-EC": null,
-								"es-ES": null,
-								"es-MX": null,
-								"es-PE": null,
-								"es-PY": null,
-								"es-US": null,
-								"es-UY": null,
-								"es-VE": null
-							},
-							"fi": { "fi-FI": null },
-							"fr": {
-								"fr-BE": null,
-								"fr-CA": null,
-								"fr-FR": null,
-								"fr-GF": null
-							},
-							"hi": { "hi-IN": null },
-							"hu": { "hu-HU": null },
-							"id": { "id-ID": null },
-							"it": { "it-IT": null },
-							"ja": { "ja-JP": null },
-							"kn": { "kn-IN": null },
-							"ko": { "ko-KR": null },
-							"ml": { "ml-IN": null },
-							"mr": { "mr-IN": null },
-							"ms": { "ms-MY": null },
-							"nb": { "nb-NO": null },
-							"nl": {
-								"nl-BE": null,
-								"nl-NL": null,
-								"nl-SR": null
-							},
-							"pl": { "pl-PL": null },
-							"pt": { "pt-BR": null },
-							"ro": { "ro-RO": null },
-							"ru": { "ru-RU": null },
-							"sv": { "sv-SE": null },
-							"ta": { "ta-IN": null },
-							"te": { "te-IN": null },
-							"th": { "th-TH": null },
-							"tr": { "tr-TR": null },
-							"vi": { "vi-VN": null },
-							"zh": {
-								"zh-Hans": { "zh-Hans-CN": null },
-								"zh-Hant": {
-									"zh-Hant-HK": null,
-									"zh-Hant-TW": null
-								}
-							}
-						}
-					}
-				]
-			}
-		]
 		/**
-		 * @param {*} obj
+		 * @param {unknown} obj
+		 * @returns {boolean}
 		 */
-		function recursion(obj) {
+		function is_deep_frozen(obj) {
 			if (!Object.isFrozen(obj)) return false
-			for (const key in obj) {
-				const o = obj[key]
-				if (o && typeof o == "object" && !recursion(o)) return false
+			for (const key in /** @type {Readonly<Record<string, unknown>>} */(obj)/**/) {
+				const o = /** @type {Readonly<Record<string, unknown>>} */(obj)/**/[key]
+				if (o && typeof o == "object" && !ArrayBuffer.isView(o) && !is_deep_frozen(o)) return false
 			}
 			return true
 		}
-
 		it(
-			"check deep freeze",
+			"circular reference",
 			() => {
-				assert.isTrue(
-					recursion(deepFreeze(dimensions))
+				/** @type {{ child: { parent?: typeof origin } }} */
+				const origin = { child: {} }
+				origin.child.parent = origin
+				assert.equal(deepFreeze(origin), origin)
+				assert.isTrue(Object.isFrozen(origin))
+				assert.isTrue(Object.isFrozen(origin.child))
+				/** @type {Map<typeof item, Map<typeof item, unknown>>} */
+				const map = new Map()
+				/** @type {{ map: typeof map, set?: typeof set }} */
+				const item = { map }
+				map.set(item, map)
+				/** @type {Set<typeof item | Set<unknown>>} */
+				const set = new Set([ item ])
+				item.set = set
+				set.add(set)
+				deepFreeze(
+					{ [Symbol.iterator]: item, item, map }
+				)
+				assert.isTrue(Object.isFrozen(item))
+				assert.isTrue(Object.isFrozen(map))
+				assert.isTrue(Object.isFrozen(set))
+			}
+		)
+		it(
+			"deep freeze",
+			() => {
+				const frozen = deepFreeze(deepCopy(dimensions))
+				assert.isTrue(is_deep_frozen(frozen))
+				assert.throws(
+					() => {
+						// @ts-expect-error: read-only property
+						frozen[0].dimensions[0].runtime.common.client = 2
+					},
+					TypeError
 				)
 			}
 		)
-
 		it(
-			"check null",
+			"maps and sets",
 			() => {
-				assert.isTrue(recursion(deepFreeze(null)))
+				const key = { key: 1 }
+				const value = { value: 1 }
+				const item = { item: 1 }
+				const origin = {
+					map: new Map([ [ key, value ] ]),
+					set: new Set([ item ])
+				}
+				deepFreeze(origin)
+				assert.isTrue(Object.isFrozen(origin.map))
+				assert.isTrue(Object.isFrozen(key))
+				assert.isTrue(Object.isFrozen(value))
+				assert.isTrue(Object.isFrozen(item))
+				class Tagged extends Set {
+					/** @override */
+					get [Symbol.toStringTag]() {
+						return "Tagged"
+					}
+				}
+				class Fake {
+					value = { value: 1 }
+					get [Symbol.toStringTag]() {
+						return "Set"
+					}
+				}
+				const tagged_item = { item: 1 }
+				const fake = new Fake()
+				deepFreeze(
+					{
+						fake,
+						tagged: new Tagged([ tagged_item ])
+					}
+				)
+				assert.isTrue(Object.isFrozen(tagged_item))
+				assert.isTrue(Object.isFrozen(fake.value))
+				const foreign = runInNewContext("({ key: {}, value: {} })")
+				deepFreeze(
+					runInNewContext(
+						"(entry => new Map([ [ entry.key, entry.value ] ]))"
+					)(foreign)
+				)
+				assert.isTrue(Object.isFrozen(foreign.key))
+				assert.isTrue(Object.isFrozen(foreign.value))
+			}
+		)
+		it(
+			"primitives",
+			() => {
+				for (const value of [ null, void 0, 0, "a", true ]) {
+					assert.equal(deepFreeze(value), value)
+				}
+			}
+		)
+		it(
+			"shallow frozen object",
+			() => {
+				const origin = Object.freeze({ child: { value: 1 } })
+				deepFreeze(origin)
+				assert.isTrue(Object.isFrozen(origin.child))
+			}
+		)
+		it(
+			"shared and deep references",
+			() => {
+				/** @type {{ leaf?: Record<string, never>, left?: typeof tree, right?: typeof tree }} */
+				let tree = { leaf: {} }
+				for (let i = 0; i < 40; i++) tree = { left: tree, right: tree }
+				deepFreeze(tree)
+				assert.isTrue(
+					Object.isFrozen(
+						/** @type {{ left: { right: { leaf: Record<string, never> } } }} */(tree)/**/.left.right.leaf
+					)
+				)
+				/** @type {{ next?: typeof chain }} */
+				const bottom = {}
+				/** @type {{ [Symbol.iterator]?: typeof chain, next?: typeof chain }} */
+				let chain = bottom
+				for (let i = 0; i < 100; i++) chain = { [Symbol.iterator]: chain }
+				bottom.next = chain
+				deepFreeze(chain)
+				assert.isTrue(Object.isFrozen(bottom))
+			}
+		)
+		it(
+			"symbol and non-enumerable keys",
+			() => {
+				const hidden = { value: 1 }
+				const symbol = { value: 1 }
+				const origin = { [Symbol.iterator]: symbol }
+				Object.defineProperty(
+					origin,
+					"hidden",
+					{ value: hidden }
+				)
+				deepFreeze(origin)
+				assert.isTrue(Object.isFrozen(hidden))
+				assert.isTrue(Object.isFrozen(symbol))
+			}
+		)
+		it(
+			"typed array",
+			() => {
+				const origin = {
+					bytes: new Uint8Array([ 1 ]),
+					list: [ 1 ]
+				}
+				assert.doesNotThrow(() => deepFreeze(origin))
+				assert.isTrue(Object.isFrozen(origin.list))
+				assert.isFalse(Object.isFrozen(origin.bytes))
 			}
 		)
 	}

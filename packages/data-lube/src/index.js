@@ -1,3 +1,7 @@
 export { default as deepCopy } from "./deep_copy.js"
+export { default as deepDiff } from "./deep_diff.js"
 export { default as deepEqual } from "./deep_equal.js"
 export { default as deepFreeze } from "./deep_freeze.js"
+export { default as deepMerge } from "./deep_merge.js"
+export { default as deepPatch } from "./deep_patch.js"
+export { default as deepUpdate } from "./deep_update.js"
