@@ -1,40 +1,62 @@
 {
-	"author": "artxe2",
+	"author": "artxe",
 	"bugs": {
-		"url": "https://github.com/Artxe2/lube-series/issues"
+		"url": "https://github.com/artxe/lube-series/issues"
 	},
-	"description": "Full fixable rules for auto-formatting with ESLint only without Prettier",
+	"dependencies": {
+		"@stylistic/eslint-plugin": "^5.10.0"
+	},
+	"description": "Fixable ESLint rules that format code without Prettier",
 	"devDependencies": {
-		"@types/eslint": "^9.6.1",
-		"@types/estree": "^1.0.8",
-		"@typescript-eslint/parser": "^8.35.0",
-		"eslint": "^9.29.0",
-		"mocha": "^11.7.0",
-		"typescript": "^5.8.3"
+		"@types/estree": "^1.0.9",
+		"@typescript/native": "npm:typescript@^7.0.2",
+		"eslint": "^10.10.0"
 	},
+	"engines": {
+		"node": "^18.18.0 || ^20.9.0 || >=21.1.0"
+	},
+	"exports": {
+		".": {
+			"types": "./types/index.d.ts",
+			"default": "./src/index.js"
+		}
+	},
+	"files": [
+		"CHANGELOG.md",
+		"docs",
+		"src",
+		"types/index.*"
+	],
+	"homepage": "https://github.com/artxe/lube-series/tree/master/packages/eslint-plugin-lube#readme",
 	"keywords": [
+		"eslint",
 		"eslint-plugin",
-		"lube",
 		"eslint-plugin-lube",
+		"eslintplugin",
+		"formatting",
+		"jsdoc",
+		"lube",
 		"prettier",
-		"jsdoc"
+		"sort",
+		"svelte"
 	],
 	"license": "MIT",
-	"main": "index.js",
+	"main": "src/index.js",
 	"name": "eslint-plugin-lube",
-	"peerDependencies": {
-		"eslint": ">=9.0.0"
-	},
+	"peerDependencies": { "eslint": ">=9.0.0" },
 	"repository": {
 		"directory": "packages/eslint-plugin-lube",
 		"type": "git",
-		"url": "https://github.com/Artxe2/lube-series"
+		"url": "https://github.com/artxe/lube-series"
 	},
 	"scripts": {
 		"dts": "node ../../scripts/tsc_with_clean.js eslint-plugin-lube",
-		"test": "mocha"
+		"lint": "pnpm -w lint",
+		"prepack": "pnpm dts",
+		"prepublishOnly": "pnpm -w lint && pnpm test",
+		"test": "pnpm -w exec vitest run --coverage test/eslint-plugin-lube"
 	},
-	"type": "commonjs",
+	"type": "module",
 	"types": "types/index.d.ts",
-	"version": "0.5.1"
+	"version": "0.6.0"
 }

@@ -20,8 +20,8 @@ export default [
 			parser,
 			sourceType: "module"
 		},
-		plugins: lube.configs.plugins,
-		rules: { ...lube.configs.rules }
+		plugins: lube.configs.strict.plugins,
+		rules: { ...lube.configs.strict.rules }
 	},
 	{
 		files: [

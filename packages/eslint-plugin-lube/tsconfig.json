@@ -1,21 +1,12 @@
 {
 	"compilerOptions": {
-		"allowJs": true,
-		"allowSyntheticDefaultImports": true,
-		"checkJs": true,
 		"declaration": true,
 		"declarationDir": "types",
 		"declarationMap": true,
 		"emitDeclarationOnly": true,
-		"exactOptionalPropertyTypes": true,
-		"lib": [ "ES2020", "DOM", "DOM.Iterable" ],
-		"module": "CommonJS",
-		"noPropertyAccessFromIndexSignature": true,
-		// "noUncheckedIndexedAccess": true,
-		"outDir": "silences wrong TS error, we don't compile, we only typecheck",
-		"skipLibCheck": true,
-		"strict": true,
-		"target": "ESNext"
+		"noEmit": false,
+		"rootDir": "src"
 	},
-	"include": [ "**/*.js" ],
+	"extends": "../../tsconfig.json",
+	"include": [ "src/**/*.js" ]
 }
