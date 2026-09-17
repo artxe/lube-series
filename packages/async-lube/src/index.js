@@ -1,4 +1,25 @@
-export { default as client } from "./client.js"
-export { default as dag } from "./dag.js"
-export { default as decorator } from "./decorator.js"
-export { default as parallel } from "./parallel.js"
+export {
+	CancelError,
+	FlowError,
+	HttpError,
+	NetworkError,
+	SocketError,
+	TimeoutError,
+	is_cancel as isCancel
+} from "./errors.js"
+export { default as http } from "./http/index.js"
+export { default as flow } from "./flow/index.js"
+export { offload } from "./offload.js"
+export { attempt } from "./attempt.js"
+export { limiter } from "./limiter.js"
+export {
+	buffer,
+	channel,
+	debounce,
+	every,
+	latest,
+	merge,
+	share,
+	throttle,
+	until
+} from "./stream.js"

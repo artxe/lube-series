@@ -8,3 +8,4 @@
 - Comments: only JSDoc type tags, casts and `// eslint-` or `// @ts-` directives, no prose, in src, tests, scripts and configs. Exception: exported functions whose JSDoc becomes `types/*.d.ts`, and handwritten `public.d.ts`, keep user-facing docs (what it does, how to call it, `@example`), never implementation notes.
 - Record user-facing changes in `packages/<name>/CHANGELOG.md` under `## Unreleased`, or in the top version section while that version is not on npm yet (`npm view <name> version`); entries describe the resulting behavior, not the history.
 - Finish a change with the `verify` skill; measure hot paths with the `benchmark` skill.
+- The sibling repository `../dom-eater` is maintained with this one: after changing `eslint-plugin-lube`, `eslint.config.js` or the root `tsconfig.json`, update and verify it too (it consumes the plugin and keeps its own stricter rules).

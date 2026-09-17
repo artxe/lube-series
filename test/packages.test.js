@@ -1,5 +1,9 @@
 import { execFileSync } from "node:child_process"
-import { existsSync, readFileSync } from "node:fs"
+import {
+	existsSync,
+	readFileSync,
+	readdirSync
+} from "node:fs"
 import { dirname, join, posix } from "node:path"
 import { fileURLToPath } from "node:url"
 import { assert, describe, it } from "vitest"
@@ -68,6 +72,20 @@ describe(
 						"LICENSE",
 						"README.md"
 					]) assert.include(files, doc)
+					if (existsSync(join(dir, "docs"))) {
+						assert.include(
+							/** @type {string[]} */(manifest["files"])/**/,
+							"docs"
+						)
+						for (const doc of readdirSync(join(dir, "docs"))) assert.include(files, `docs/${doc}`)
+					}
+					const readme = readFileSync(join(dir, "README.md"), "utf8")
+					for (const [ , doc ] of readme.matchAll(
+						new RegExp(
+							`https://github\\.com/artxe/lube-series/blob/master/packages/${name}/(docs/[^)#]+)`,
+							"g"
+						)
+					)) assert.include(files, doc)
 					for (const file of files) {
 						assert.notMatch(
 							file,

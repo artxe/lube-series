@@ -10,6 +10,8 @@
 		"@types/node": "^26.6.1",
 		"@typescript-eslint/parser": "^8.70.0",
 		"@typescript/native": "npm:typescript@^7.0.2",
+		"@vitest/browser": "^5.0.1",
+		"@vitest/browser-playwright": "^5.0.1",
 		"@vitest/coverage-v8": "^5.0.1",
 		"async-lube": "workspace:^",
 		"data-lube": "workspace:^",
@@ -17,6 +19,7 @@
 		"eslint": "^10.10.0",
 		"eslint-plugin-lube": "workspace:^",
 		"hangul-lube": "workspace:^",
+		"playwright": "^1.63.0",
 		"svelte": "^5.57.0",
 		"svelte-eslint-parser": "^1.8.1",
 		"typescript": "npm:@typescript/typescript6@^6.0.2",
@@ -27,15 +30,15 @@
 	},
 	"license": "MIT",
 	"name": "lube-series",
+	"private": true,
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/artxe/lube-series"
 	},
 	"scripts": {
 		"dts": "pnpm -r dts",
-		"lint": "eslint --cache --fix . && tsc",
-		"pre": "pnpm test && pnpm lint && pnpm dts",
-		"test": "vitest run --coverage"
+		"lint": "eslint --cache --fix . && tsc && tsc --noEmit --strict --skipLibCheck false --ignoreConfig packages/async-lube/public.d.ts packages/data-lube/public.d.ts packages/datetime-lube/public.d.ts",
+		"test": "vitest run --coverage && vitest run --config vitest.browser.config.js"
 	},
 	"type": "module",
 	"version": "0.0.0"

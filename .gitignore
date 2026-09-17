@@ -1,5 +1,6 @@
 .claude/settings.local.json
 .eslintcache
+.vitest
 coverage
 node_modules
 packages/*/types

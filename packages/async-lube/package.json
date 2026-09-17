@@ -1,29 +1,59 @@
 {
-	"author": "artxe2",
+	"author": "artxe",
 	"bugs": {
-		"url": "https://github.com/Artxe2/lube-series/issues"
+		"url": "https://github.com/artxe/lube-series/issues"
 	},
-	"description": "Simplify Asynchronous Operations in JavaScript",
+	"description": "Syntax sugar for fetch requests, streams, async flows and durable runs",
 	"devDependencies": {
-		"rollup": "^4.44.0",
-		"typescript": "^5.8.3"
+		"@typescript/native": "npm:typescript@^7.0.2"
 	},
+	"engines": { "node": ">=18" },
 	"exports": {
 		".": {
-			"import": "./src/index.js",
-			"require": "./async-lube.cjs",
-			"types": "./types/index.d.ts"
+			"types": "./types/index.d.ts",
+			"default": "./src/index.js"
+		},
+		"./durable": {
+			"types": "./types/durable/index.d.ts",
+			"default": "./src/durable/index.js"
 		}
 	},
+	"files": [
+		"CHANGELOG.md",
+		"docs",
+		"public.d.ts",
+		"src",
+		"types/attempt.*",
+		"types/durable/index.*",
+		"types/durable/state.*",
+		"types/durable/store.*",
+		"types/errors.*",
+		"types/flow/index.*",
+		"types/http/index.*",
+		"types/index.*",
+		"types/limiter.*",
+		"types/offload.*",
+		"types/stream.*"
+	],
+	"homepage": "https://github.com/artxe/lube-series/tree/master/packages/async-lube#readme",
 	"keywords": [
+		"abort",
 		"async",
-		"lube",
+		"async iterator",
 		"async-lube",
-		"dag",
-		"decorator",
-		"parallel",
-		"promise",
-		"syntax sugar"
+		"channel",
+		"durable",
+		"fetch",
+		"flow",
+		"http",
+		"lube",
+		"rate limit",
+		"retry",
+		"server-sent events",
+		"stream",
+		"websocket",
+		"worker",
+		"workflow"
 	],
 	"license": "MIT",
 	"main": "src/index.js",
@@ -31,13 +61,23 @@
 	"repository": {
 		"directory": "packages/async-lube",
 		"type": "git",
-		"url": "https://github.com/Artxe2/lube-series"
+		"url": "https://github.com/artxe/lube-series"
 	},
 	"scripts": {
-		"cjs": "rollup src/index.js --file async-lube.cjs --format cjs",
-		"dts": "node ../../scripts/tsc_with_clean.js async-lube && node ../../scripts/async-lube_fix_types.js",
-		"test": "cd ../../test/async-lube/ && vitest run"
+		"dts": "node ../../scripts/tsc_with_clean.js async-lube",
+		"lint": "pnpm -w lint",
+		"prepack": "pnpm dts",
+		"prepublishOnly": "pnpm -w lint && pnpm test",
+		"test": "pnpm -w exec vitest run --coverage test/async-lube && pnpm -w exec vitest run --config vitest.browser.config.js"
 	},
+	"sideEffects": false,
+	"type": "module",
 	"types": "types/index.d.ts",
-	"version": "1.6.0"
+	"typesVersions": {
+		"*": {
+			"*": [ "types/index.d.ts" ],
+			"durable": [ "types/durable/index.d.ts" ]
+		}
+	},
+	"version": "2.0.0"
 }
