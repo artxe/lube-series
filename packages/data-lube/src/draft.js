@@ -283,7 +283,8 @@ function snapshot(values) {
 		const state = state_of(item)
 		if (!state) return raw_node(item, ctx)
 		if (state.scope.graph) return state_node(state)
-		const base = /** @type {Prototype} */(source_of(item))/**/
+		/** @type {Prototype} */
+		const base = source_of(item)
 		const inner = state_of(base)
 		return inner?.scope.graph
 			? state_node(inner)

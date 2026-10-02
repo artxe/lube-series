@@ -35,7 +35,8 @@ describe(
 			"accepts a Date of another realm",
 			async () => {
 				const { runInNewContext } = await import("node:vm")
-				const date = /** @type {Date} */(runInNewContext("new Date(86400000)"))/**/
+				/** @type {Date} */
+				const date = runInNewContext("new Date(86400000)")
 				assert.equal(
 					add(date, "1D", "UTC").getTime(),
 					172800000

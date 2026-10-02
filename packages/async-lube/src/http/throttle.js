@@ -28,11 +28,12 @@ export async function throttle(c, key, ms, cancel, signal) {
 		}
 	}
 	current.next = Date.now() + ms
-	const sweeper = /** @type {{ unref?: () => void }} */(/** @type {unknown} */(setTimeout(
+	/** @type {{ unref?: () => void }} */
+	const sweeper = setTimeout(
 		() => {
 			if (!current.cancel && Date.now() >= current.next && c.shared.throttles.get(key) == current) c.shared.throttles.delete(key)
 		},
 		clamp_delay(ms)
-	)))/**/
+	)
 	sweeper.unref?.()
 }

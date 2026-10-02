@@ -110,7 +110,8 @@ describe(
 						this.inner = inner
 					}
 				}
-				const foreign = /** @type {(value: unknown) => unknown[]} */(runInNewContext("value => [ value, 1 ]"))/**/
+				/** @type {(value: unknown) => unknown[]} */
+				const foreign = runInNewContext("value => [ value, 1 ]")
 				/** @type {((value: unknown) => unknown)[]} */
 				const wrappers = [
 					value => new Map([ [ "k", value ] ]),
@@ -699,13 +700,15 @@ describe(
 						}
 					]
 				)
-				const foreign = /** @type {unknown[]} */(runInNewContext(
+				/** @type {unknown[]} */
+				const foreign = runInNewContext(
 					"const list = []; list[10000] = 1; list[2] = 'a'; list"
-				))/**/
+				)
 				const foreign_copy = deepCopy(foreign)
 				assert.equal(foreign_copy[2], "a")
 				assert.isFalse(3 in foreign_copy)
-				const frozen = /** @type {unknown[]} */([])/**/
+				/** @type {unknown[]} */
+				const frozen = []
 				const user = { n: 1 }
 				const updated = deepUpdate(
 					{

@@ -3446,7 +3446,8 @@ describe(
 				const region = /** @type {import("async-lube").Flow<number>} */(flow())/**/.add(left, { name: "left" })
 					.add(right, { name: "right" })
 					.add(combine, left, right)
-				const value = /** @type {import("async-lube").Input<number>} */(flow.input("value"))/**/
+				/** @type {import("async-lube").Input<number>} */
+				const value = flow.input("value")
 				/** @type {number[]} */
 				const collected = []
 				function collect(/** @type {number} */ x) {
@@ -5979,7 +5980,8 @@ describe(
 					}
 				)
 				live.fail(failure)
-				const late_error = /** @type {FlowError} */(await late_failure)/**/
+				/** @type {FlowError} */
+				const late_error = await late_failure
 				assert.equal(late_error.cause, failure)
 				assert.deepEqual(
 					watched.nodes,

@@ -110,7 +110,8 @@ export async function enter(d, key, input, mode) {
 function execute(d, key, saved) {
 	/** @type {(reason: typeof LOST | typeof SUSPENDED | { cancel: unknown }) => void} */
 	let interrupt = noop
-	const interrupted = /** @type {Promise<typeof LOST | typeof SUSPENDED | { cancel: unknown }>} */(new Promise(resolve => interrupt = resolve))/**/
+	/** @type {Promise<typeof LOST | typeof SUSPENDED | { cancel: unknown }>} */
+	const interrupted = new Promise(resolve => interrupt = resolve)
 	/** @type {() => void} */
 	let leave = noop
 	/** @type {Promise<void>} */

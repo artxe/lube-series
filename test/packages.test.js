@@ -47,7 +47,8 @@ function packed_files(dir) {
 			stdio: [ "ignore", "pipe", "ignore" ]
 		}
 	)
-	const [ result ] = /** @type {{ files: { path: string }[] }[]} */(JSON.parse(output))/**/
+	/** @type {{ files: { path: string }[] }[]} */
+	const [ result ] = JSON.parse(output)
 	return /** @type {{ files: { path: string }[] }} */(result)/**/.files.map(file => file.path)
 }
 describe(
@@ -58,12 +59,13 @@ describe(
 				name,
 				() => {
 					const dir = join(packages_dir, name)
-					const manifest = /** @type {Record<string, unknown>} */(JSON.parse(
+					/** @type {Record<string, unknown>} */
+					const manifest = JSON.parse(
 						readFileSync(
 							join(dir, "package.json"),
 							"utf8"
 						)
-					))/**/
+					)
 					const files = packed_files(dir)
 					const packed = new Set(files)
 					assert.isArray(manifest["files"])

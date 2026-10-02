@@ -42,7 +42,7 @@ export default {
 		const fixable_name_regex = /^[_$]?[_$]?(?:[\dA-Za-z]+(?:_[\dA-Za-z]+)*\$?\$?)?$/
 		/** @type {Set<string>} */
 		const blocked = new Set()
-		const is_svelte = !!(/** @type {{ isSvelte?: boolean } | undefined} */(source.parserServices)/**/)?.isSvelte
+		const is_svelte = !!source.parserServices?.isSvelte
 		/** @type {Map<string, import("../../private.js").NamingIdentifier[]>} */
 		const store_usages = new Map()
 		/** @type {Set<import("../../private.js").NamingIdentifier>} */
@@ -198,7 +198,8 @@ export default {
 			const child = node.parent.type == "AssignmentPattern" && node.parent.left == node || node.parent.type == "RestElement"
 				? node.parent
 				: node
-			const func = /** @type {import("../../private.js").AstNode & { params?: import("../../private.js").AstNode[] }} */(child.parent)/**/
+			/** @type {import("../../private.js").AstNode & { params?: import("../../private.js").AstNode[] }} */
+			const func = child.parent
 			return function_types.has(func.type) && func.params?.includes(child) ? func : void 0
 		}
 		/**
@@ -302,7 +303,8 @@ export default {
 					? /** @type {import("../../private.js").AstNode} */(decorators[decorators.length - 1])/**/.range[1]
 					: target.range[0]
 			)
-			const range = /** @type {[number, number]} */([ start, start + name.length ])/**/
+			/** @type {[number, number]} */
+			const range = [ start, start + name.length ]
 			if (svelte_shorthands.has(target)) return {
 				range: /** @type {[number, number]} */(parent.range)/**/,
 				text: name + "={" + fixed_name + "}"
@@ -628,7 +630,8 @@ export default {
 					defer(node)
 					break
 				default: {
-					const type = /** @type {string} */(parent.type)/**/
+					/** @type {string} */
+					const type = parent.type
 					const svelte_parent = /** @type {{ expression?: unknown, kind?: string, value?: unknown }} */(/** @type {unknown} */(parent))/**/
 					if (type == "SvelteShorthandAttribute") {
 						if (svelte_parent.value == node) {
@@ -647,7 +650,8 @@ export default {
 			/** @param {import("../../private.js").AstNode & import("estree").Identifier} node */
 			JSXIdentifier(node) {
 				const name = node.name
-				const parent = /** @type {{ object?: unknown, type: string }} */(/** @type {unknown} */(node.parent))/**/
+				/** @type {{ object?: unknown, type: string }} */
+				const parent = node.parent
 				if (parent.type == "JSXMemberExpression" && parent.object == node) {
 					if (allow_regex.test(name)) return
 					jsx_objects.add(node)

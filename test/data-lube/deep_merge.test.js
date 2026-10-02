@@ -76,7 +76,8 @@ describe(
 					for (let i = 0; i < 40; i++) tip = { left: tip, right: tip }
 					return tip
 				}
-				let merged_diamond = /** @type {ReturnType<typeof diamond>} */(deepMerge(diamond("a"), diamond("b")))/**/
+				/** @type {ReturnType<typeof diamond>} */
+				let merged_diamond = deepMerge(diamond("a"), diamond("b"))
 				for (let i = 0; i < 40; i++) merged_diamond = /** @type {ReturnType<typeof diamond>} */(merged_diamond.right)/**/
 				assert.deepEqual(merged_diamond, { a: 1, b: 1 })
 				const long = deepMerge(left, right)

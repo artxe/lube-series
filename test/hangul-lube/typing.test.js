@@ -283,7 +283,8 @@ function reference_matches(query, text) {
 						) && jamo(letters[position + 1])?.[0] == (pair ? pair[1] : final)) next.push(position + 2)
 					}
 				} else if (split_consonants[letter]) {
-					const pair = /** @type {string} */(split_consonants[letter])/**/
+					/** @type {string} */
+					const pair = split_consonants[letter]
 					if (current == letter) next.push(position + 1)
 					if (starts_with(
 						current,

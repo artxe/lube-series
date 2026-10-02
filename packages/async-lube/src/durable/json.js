@@ -51,7 +51,8 @@ function json_problem_at(value, path, parents) {
 		parents.pop()
 		return
 	}
-	const prototype = /** @type {{ constructor?: unknown } | null} */(Object.getPrototypeOf(value))/**/
+	/** @type {{ constructor?: unknown } | null} */
+	const prototype = Object.getPrototypeOf(value)
 	if (prototype && Object.getPrototypeOf(prototype)) {
 		const { constructor } = prototype
 		return `an instance of ${typeof constructor == "function" && constructor.name || "a class"}`

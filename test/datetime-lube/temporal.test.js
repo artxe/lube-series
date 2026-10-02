@@ -10,7 +10,8 @@ import {
 } from "datetime-lube"
 import { createRequire } from "node:module"
 import { assert, describe, it } from "vitest"
-const { Temporal } = /** @type {{ Temporal: typeof globalThis.Temporal }} */(createRequire(import.meta.url)("@js-temporal/polyfill"))/**/
+/** @type {{ Temporal: typeof globalThis.Temporal }} */
+const { Temporal } = createRequire(import.meta.url)("@js-temporal/polyfill")
 const zones = [
 	"America/Chicago",
 	"America/New_York",

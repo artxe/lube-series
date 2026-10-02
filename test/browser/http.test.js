@@ -36,11 +36,12 @@ describe(
 		it(
 			"closes a live ndjson stream when the loop is left",
 			async () => {
-				const lines = /** @type {AsyncIterable<unknown>} */(await create().get(
+				/** @type {AsyncIterable<unknown>} */
+				const lines = await create().get(
 					"/ndjson-live",
 					{ key: "browser-ndjson" },
 					{ as: "ndjson" }
-				))/**/
+				)
 				/** @type {unknown[]} */
 				const seen = []
 				for await (const line of lines) {

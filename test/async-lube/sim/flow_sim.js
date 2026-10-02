@@ -210,12 +210,13 @@ export async function simulate_flow(seed, mode, unhandled) {
 			return token
 		}
 	}
-	let definition = /** @type {SimFlow} */(/** @type {unknown} */(flow(
+	/** @type {SimFlow} */
+	let definition = flow(
 		{
 			concurrency: random.pick([ Infinity, Infinity, 1, 2 ]),
 			maxSteps: 500
 		}
-	)))/**/
+	)
 	for (const spec of specs) {
 		/** @type {Ref} */
 		let ref

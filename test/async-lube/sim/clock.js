@@ -100,7 +100,8 @@ export async function flush(rounds) {
  * @returns {void}
  */
 export function install() {
-	const target = /** @type {Record<string, unknown>} */(/** @type {unknown} */(globalThis))/**/
+	/** @type {Record<string, unknown>} */
+	const target = globalThis
 	target["clearInterval"] = clear
 	target["clearTimeout"] = clear
 	target["setInterval"] = (

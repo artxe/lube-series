@@ -150,7 +150,8 @@ function create_channel(options = {}) {
 		send: value => source.write(value)
 	}
 }
-export const channel = /** @type {import("../public.js").ChannelFunction} */(create_channel)/**/
+/** @type {import("../public.js").ChannelFunction} */
+export const channel = create_channel
 /**
  * @param {number} ms
  */
@@ -575,7 +576,8 @@ function switch_latest(source, start) {
 		}
 	}
 }
-export const latest = /** @type {import("../public.js").LatestFunction} */(switch_latest)/**/
+/** @type {import("../public.js").LatestFunction} */
+export const latest = switch_latest
 /**
  * @template T
  * @param {...AsyncIterable<T>} sources

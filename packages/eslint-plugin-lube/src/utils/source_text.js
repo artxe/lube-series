@@ -42,7 +42,8 @@ function create_source_text(source_code) {
 	/** @type {[number, number][]} */
 	const multiline_literals = []
 	for (const token of source_code.ast.tokens) {
-		const type = /** @type {string} */(token.type)/**/
+		/** @type {string} */
+		const type = token.type
 		if ((type == "String" || type == "Template" || type == "JSXText" && quote_regex.test(token.value)) && line_break_regex.test(token.value)) {
 			multiline_literals.push(
 				/** @type {[number, number]} */(token.range)/**/
@@ -303,7 +304,8 @@ function create_source_text(source_code) {
 					&& child == parent.right
 					&& parent.range[0] < line_start
 				) {
-					const operator = /** @type {string} */(parent.operator)/**/
+					/** @type {string} */
+					const operator = parent.operator
 					const operator_start = /** @type {import("eslint").AST.Token} */(source_code.getTokenBefore(
 						/** @type {import("estree").Node} */(parent.right)/**/,
 						{

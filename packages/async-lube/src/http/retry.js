@@ -46,7 +46,8 @@ export function check_reconnect(reconnect, kind) {
 		kind,
 		"reconnect."
 	)
-	const { count, delay } = /** @type {import("../../public.js").ReconnectOptions} */(reconnect)/**/
+	/** @type {import("../../public.js").ReconnectOptions} */
+	const { count, delay } = reconnect
 	if (count != null && !is_count(count)) throw TypeError(
 		`The reconnect count of ${kind}() must be a non-negative integer or Infinity`
 	)

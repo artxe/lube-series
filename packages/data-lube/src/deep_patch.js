@@ -139,7 +139,8 @@ function check(change, index) {
 	if (typeof change != "object" || change === null) throw new TypeError(
 		`deepPatch change ${index} is not an object`
 	)
-	const { op, path } = /** @type {{ op?: unknown, path?: unknown }} */(change)/**/
+	/** @type {{ op?: unknown, path?: unknown }} */
+	const { op, path } = change
 	if (op != "add" && op != "remove" && op != "replace") throw new TypeError(
 		`deepPatch change ${index} has an unknown op: ${String(op)}`
 	)
@@ -193,7 +194,8 @@ function describe(segment) {
 		/** @type {Prototype | null} */
 		const proto = getPrototypeOf(segment)
 		if (proto === null || proto === Object.prototype) return "{…}"
-		const name = /** @type {unknown} */(getOwnPropertyDescriptor(proto, "constructor")?.value)/**/
+		/** @type {unknown} */
+		const name = getOwnPropertyDescriptor(proto, "constructor")?.value
 		return typeof name == "function" && typeof name.name == "string" && name.name
 			? name.name.slice(0, 30)
 			: "object"

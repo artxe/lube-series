@@ -48,7 +48,7 @@ export function memory() {
 		},
 		get(key) {
 			const row = rows.get(key)
-			return row && /** @type {SavedRun} */(JSON.parse(row.data))/**/
+			return row && JSON.parse(row.data)
 		},
 		put(key, saved, expected) {
 			if (rows.get(key)?.version !== expected) return false

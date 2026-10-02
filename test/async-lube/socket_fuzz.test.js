@@ -427,9 +427,8 @@ describe(
 				const loop = (async () => {
 					try {
 						for await (const event of events) {
-							const data = as == "json"
-								? /** @type {{ id: number }} */(/** @type {unknown} */(event.data))/**/
-								: /** @type {{ id: number }} */(JSON.parse(String(event.data)))/**/
+							/** @type {{ id: number }} */
+							const data = as == "json" ? event.data : JSON.parse(String(event.data))
 							seen.push(data.id)
 							if (String(data.id) != event.id) problems.push(
 								`event id ${event.id} with data ${data.id}`

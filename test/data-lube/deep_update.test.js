@@ -645,7 +645,8 @@ describe(
 			"drafts read by the other functions keep sparse arrays and subclasses",
 			() => {
 				class List extends Array {}
-				const sparse = /** @type {unknown[]} */([])/**/
+				/** @type {unknown[]} */
+				const sparse = []
 				sparse[9000] = { n: 1 }
 				const list = new List()
 				list.push({ n: 1 })
@@ -655,7 +656,8 @@ describe(
 					draft => {
 						const item = /** @type {{ n: number }} */(draft.sparse[9000])/**/
 						item.n = 2
-						const first = /** @type {{ n: number }} */(draft.list[0])/**/
+						/** @type {{ n: number }} */
+						const first = draft.list[0]
 						first.n = 2
 						const copy = deepCopy(draft)
 						assert.isFalse(has_proxy(copy))
@@ -2014,15 +2016,13 @@ describe(
 				const next = deepUpdate(
 					{ map },
 					draft => {
-						const item = /** @type {{ v: number }} */(draft.map.get("a"))/**/
+						/** @type {{ v: number }} */
+						const item = draft.map.get("a")
 						item.v = 2
 					}
 				)
 				assert.equal(next.map.writes, 0)
-				assert.equal(
-					/** @type {{ v: number }} */(next.map.get("a"))/**/.v,
-					2
-				)
+				assert.equal(next.map.get("a").v, 2)
 				const hidden = { a: 1 }
 				Object.defineProperty(
 					hidden,
@@ -2033,7 +2033,8 @@ describe(
 						writable: true
 					}
 				)
-				const proto = /** @type {{ polluted?: number }} */(Object.prototype)/**/
+				/** @type {{ polluted?: number }} */
+				const proto = Object.prototype
 				proto.polluted = 1
 				try {
 					const kept = deepUpdate(
@@ -2250,7 +2251,8 @@ describe(
 					original,
 					draft => {
 						draft.set("z", 1)
-						const item = /** @type {{ n: number }} */(draft.get("a"))/**/
+						/** @type {{ n: number }} */
+						const item = draft.get("a")
 						item.n = 1
 					}
 				)
@@ -2342,7 +2344,7 @@ describe(
 				const unioned = deepUpdate(
 					{ set: new Set([ { id: 1 } ]) },
 					draft => {
-						for (const item of draft.set.union(new Set())) /** @type {{ id: number, seen?: boolean }} */(item)/**/.seen = true
+						for (const item of draft.set.union(new Set())) item.seen = true
 					}
 				)
 				assert.deepEqual(
@@ -2885,7 +2887,8 @@ describe(
 				assert.equal(thawed.c?.two, thawed.c?.one)
 				assert.equal(thawed.c?.two?.v, 2)
 				assert.equal(inner.v, 1)
-				const self = /** @type {{ n: number, self?: unknown }} */({ n: 1 })/**/
+				/** @type {{ n: number, self?: unknown }} */
+				const self = { n: 1 }
 				self.self = self
 				const cycled = deepUpdate(
 					self,

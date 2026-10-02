@@ -165,6 +165,7 @@ function sleep(ms) {
 async function within(promise, ms) {
 	/** @type {ReturnType<typeof setTimeout> | undefined} */
 	let timer
+	/** @type {T | "deadline"} */
 	const result = await Promise.race(
 		[
 			promise,
@@ -176,7 +177,7 @@ async function within(promise, ms) {
 		]
 	)
 	clearTimeout(timer)
-	return /** @type {T | "deadline"} */(result)/**/
+	return result
 }
 describe(
 	"http fuzz",

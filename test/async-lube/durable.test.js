@@ -913,7 +913,8 @@ describe.each(
 						for (let index = 0; index < 3; index++) list.push(
 							/** @type {number} */(await wait("n"))/**/
 						)
-						const bid = /** @type {{ amount: number }} */(await wait("bid"))/**/
+						/** @type {{ amount: number }} */
+						const bid = await wait("bid")
 						bid.amount *= 2
 						await pause("later", 50)
 						return {
@@ -1176,9 +1177,7 @@ describe.each(
 					log.slice(0, failures.length)
 				)
 				assert.deepEqual(
-					log.slice(0, failures.length).map(
-						line => /** @type {unknown[]} */(JSON.parse(line))/**/[0]
-					),
+					log.slice(0, failures.length).map(line => JSON.parse(line)[0]),
 					[
 						"CancelError",
 						"TimeoutError",

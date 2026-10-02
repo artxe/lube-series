@@ -1,8 +1,10 @@
 import { Linter } from "eslint"
 import lube from "eslint-plugin-lube"
 import { assert, describe, it } from "vitest"
-const recommended_rules = /** @type {import("eslint").Linter.RulesRecord} */(lube.configs.recommended.rules)/**/
-const strict_rules = /** @type {import("eslint").Linter.RulesRecord} */(lube.configs.strict.rules)/**/
+/** @type {import("eslint").Linter.RulesRecord} */
+const recommended_rules = lube.configs.recommended.rules
+/** @type {import("eslint").Linter.RulesRecord} */
+const strict_rules = lube.configs.strict.rules
 const lube_rules = /** @type {Record<string, import("eslint").Rule.RuleModule>} */(lube.rules)/**/
 /**
  * @param {string} name
@@ -11,7 +13,8 @@ const lube_rules = /** @type {Record<string, import("eslint").Rule.RuleModule>} 
 function rule_of(name) {
 	const [ prefix, rule ] = name.split("/")
 	if (rule === undefined) return undefined
-	const plugins = /** @type {Record<string, import("eslint").ESLint.Plugin>} */(lube.configs.strict.plugins)/**/
+	/** @type {Record<string, import("eslint").ESLint.Plugin>} */
+	const plugins = lube.configs.strict.plugins
 	return plugins[/** @type {string} */(prefix)/**/]?.rules?.[rule]
 }
 describe(

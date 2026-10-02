@@ -539,7 +539,8 @@ describe(
 							}
 						)
 						assert.strictEqual(run.status, 0, run.stderr)
-						const results = /** @type {string[]} */(JSON.parse(run.stdout))/**/
+						/** @type {string[]} */
+						const results = JSON.parse(run.stdout)
 						for (const [ index, seed ] of changed.entries()) {
 							const [ original, fixed, crlf ] = results.slice(index * 3, index * 3 + 3)
 							assert.strictEqual(fixed, original, `seed ${seed}`)

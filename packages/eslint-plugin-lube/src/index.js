@@ -15,7 +15,8 @@ import { skip_unchanged_fixes } from "./utils/skip_unchanged_fixes.js"
 import { split_declarations } from "./utils/split_declarations.js"
 import stylistic_plugin from "@stylistic/eslint-plugin"
 import { readFileSync } from "node:fs"
-const stylistic = /** @type {import("eslint").ESLint.Plugin} */(stylistic_plugin)/**/
+/** @type {import("eslint").ESLint.Plugin} */
+const stylistic = stylistic_plugin
 /** @type {{ version: string }} */
 const manifest = JSON.parse(
 	readFileSync(

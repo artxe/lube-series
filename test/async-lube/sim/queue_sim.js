@@ -119,7 +119,8 @@ export async function simulate_queue(seed, unhandled) {
 	if (failure == "optional") options["optional"] = true
 	if (failure == "retry" && mode != "sub-queue") options["retry"] = { count: 5, delay: 1 }
 	if (limit) options["limit"] = limit
-	let definition = /** @type {SimFlow} */(/** @type {unknown} */(flow({ concurrency })))/**/
+	/** @type {SimFlow} */
+	let definition = flow({ concurrency })
 	/** @type {Ref} */
 	let handle
 	if (mode == "sub-queue") {

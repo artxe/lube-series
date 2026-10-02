@@ -1439,7 +1439,8 @@ function resolve(value, scope) {
 			return value
 		}
 	}
-	const target = /** @type {Draftable} */(frozen
+	/** @type {Draftable} */
+	const target = frozen
 		? kind == "Array"
 			? setPrototypeOf(
 				copy_items(
@@ -1472,7 +1473,7 @@ function resolve(value, scope) {
 						: create(getPrototypeOf(value)),
 				value
 			)
-		: value)/**/
+		: value
 	seen.set(
 		/** @type {Draftable} */(value)/**/,
 		target
@@ -1793,9 +1794,7 @@ function size_of(state) {
 	const source = /** @type {Map<unknown, unknown> | Set<unknown>} */(/** @type {unknown} */(state.copy ?? state.base))/**/
 	return state.nested && !state.copy
 		? source.size
-		: /** @type {number} */((state.kind == "Map"
-			? map_size
-			: set_size).call(source))/**/
+		: (state.kind == "Map" ? map_size : set_size).call(source)
 }
 /**
  * @param {DraftState} state

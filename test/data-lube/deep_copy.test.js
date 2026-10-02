@@ -98,7 +98,8 @@ describe(
 		it(
 			"buffers that hold their views",
 			() => {
-				const buffer = /** @type {ArrayBuffer & { view?: unknown }} */(new ArrayBuffer(4))/**/
+				/** @type {ArrayBuffer & { view?: unknown }} */
+				const buffer = new ArrayBuffer(4)
 				const bytes = new Uint8Array(buffer)
 				buffer.view = bytes
 				const clone = deepCopy(bytes)
@@ -106,7 +107,8 @@ describe(
 					/** @type {ArrayBuffer & { view?: unknown }} */(clone.buffer)/**/.view,
 					clone
 				)
-				const other = /** @type {ArrayBuffer & { view?: unknown }} */(new ArrayBuffer(4))/**/
+				/** @type {ArrayBuffer & { view?: unknown }} */
+				const other = new ArrayBuffer(4)
 				const view = new DataView(other)
 				other.view = view
 				const view_clone = deepCopy(view)
