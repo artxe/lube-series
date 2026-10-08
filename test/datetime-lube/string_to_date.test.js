@@ -493,8 +493,11 @@ describe(
 						Date.UTC(2024, 2, 10, 2, 30)
 					)
 				} finally {
-					if (tz === undefined) delete process.env["TZ"]
-					else process.env["TZ"] = tz
+					if (tz === undefined) {
+						delete process.env["TZ"]
+					} else {
+						process.env["TZ"] = tz
+					}
 				}
 			}
 		)

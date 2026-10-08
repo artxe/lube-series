@@ -10,7 +10,8 @@ import {
 } from "datetime-lube"
 import { createRequire } from "node:module"
 import { assert, describe, it } from "vitest"
-const { Temporal } = /** @type {{ Temporal: typeof globalThis.Temporal }} */(createRequire(import.meta.url)("@js-temporal/polyfill"))/**/
+/** @type {{ Temporal: typeof globalThis.Temporal }} */
+const { Temporal } = createRequire(import.meta.url)("@js-temporal/polyfill")
 const zones = [
 	"America/Chicago",
 	"America/New_York",
@@ -73,14 +74,26 @@ function create_random(seed) {
  * @returns {number}
  */
 function expected_diff(a, b, unit, zone) {
-	if (unit == "sss") return b - a
-	if (unit == "s") return Math.trunc((b - a) / 1000)
-	if (unit == "m") return Math.trunc((b - a) / 60000)
-	if (unit == "H") return Math.trunc((b - a) / 3600000)
+	if (unit == "sss") {
+		return b - a
+	}
+	if (unit == "s") {
+		return Math.trunc((b - a) / 1000)
+	}
+	if (unit == "m") {
+		return Math.trunc((b - a) / 60000)
+	}
+	if (unit == "H") {
+		return Math.trunc((b - a) / 3600000)
+	}
 	const days = zoned(a, zone).toPlainDate()
 		.until(zoned(b, zone).toPlainDate()).days
-	if (unit == "D") return days
-	if (unit == "W") return Math.trunc(days / 7)
+	if (unit == "D") {
+		return days
+	}
+	if (unit == "W") {
+		return Math.trunc(days / 7)
+	}
 	const months = months_between(a, b, zone)
 	return unit == "M" ? months : Math.trunc(months / 12)
 }
@@ -106,11 +119,15 @@ function months_between(a, b, zone) {
 	const guess = (to.year - from.year) * 12 + to.month - from.month
 	if (b >= a) {
 		let months = Math.max(0, guess + 1)
-		while (months > 0 && from.add({ months }).epochMilliseconds > b) months--
+		while (months > 0 && from.add({ months }).epochMilliseconds > b) {
+			months--
+		}
 		return months
 	}
 	let months = Math.min(0, guess - 1)
-	while (months < 0 && from.add({ months }).epochMilliseconds < b) months++
+	while (months < 0 && from.add({ months }).epochMilliseconds < b) {
+		months++
+	}
 	return months
 }
 /**
@@ -326,8 +343,12 @@ function expected_end(ms, unit, zone) {
 		for (;;) {
 			const ceiling = time.epochMilliseconds - clock_offset(time, length) + length - 1
 			const transition = time.getTimeZoneTransition("next")
-			if (!transition || transition.epochMilliseconds > ceiling) return ceiling
-			if (transition.offsetNanoseconds < time.offsetNanoseconds || clock_key(transition, unit) != clock_key(time, unit)) return transition.epochMilliseconds - 1
+			if (!transition || transition.epochMilliseconds > ceiling) {
+				return ceiling
+			}
+			if (transition.offsetNanoseconds < time.offsetNanoseconds || clock_key(transition, unit) != clock_key(time, unit)) {
+				return transition.epochMilliseconds - 1
+			}
 			time = transition
 		}
 	}
@@ -363,19 +384,29 @@ function expected_start(ms, unit, zone) {
 		for (;;) {
 			const floor = time.epochMilliseconds - clock_offset(time, length)
 			const transition = zoned(time.epochMilliseconds + 1, zone).getTimeZoneTransition("previous")
-			if (!transition || transition.epochMilliseconds <= floor) return floor
+			if (!transition || transition.epochMilliseconds <= floor) {
+				return floor
+			}
 			const before = zoned(
 				transition.epochMilliseconds - 1,
 				zone
 			)
-			if (transition.offsetNanoseconds < before.offsetNanoseconds || clock_key(before, unit) != clock_key(time, unit)) return transition.epochMilliseconds
+			if (transition.offsetNanoseconds < before.offsetNanoseconds || clock_key(before, unit) != clock_key(time, unit)) {
+				return transition.epochMilliseconds
+			}
 			time = before
 		}
 	}
 	let day = zoned(ms, zone).toPlainDate()
-	if (unit == "W") day = day.subtract({ days: day.dayOfWeek - 1 })
-	if (unit == "M") day = day.with({ day: 1 })
-	if (unit == "Y") day = day.with({ day: 1, month: 1 })
+	if (unit == "W") {
+		day = day.subtract({ days: day.dayOfWeek - 1 })
+	}
+	if (unit == "M") {
+		day = day.with({ day: 1 })
+	}
+	if (unit == "Y") {
+		day = day.with({ day: 1, month: 1 })
+	}
 	return day.toZonedDateTime({ timeZone: zone }).epochMilliseconds
 }
 /**
@@ -394,7 +425,9 @@ describe(
 			"agrees with @js-temporal/polyfill",
 			() => {
 				const local = new Intl.DateTimeFormat().resolvedOptions().timeZone
-				for (const seed of seeds) check(seed, local)
+				for (const seed of seeds) {
+					check(seed, local)
+				}
 			},
 			60000 + seeds.length * 10
 		)

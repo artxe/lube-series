@@ -158,7 +158,9 @@ describe(
 		 */
 		function assume(pairs, a, b) {
 			let set = pairs.get(a)
-			if (!set) pairs.set(a, set = new Set())
+			if (!set) {
+				pairs.set(a, set = new Set())
+			}
 			set.add(b)
 		}
 		/**
@@ -168,7 +170,9 @@ describe(
 		 */
 		function at(root, path) {
 			let v = root
-			for (const s of path) v = step(v, s)
+			for (const s of path) {
+				v = step(v, s)
+			}
 			return v
 		}
 		/**
@@ -186,32 +190,40 @@ describe(
 			const e2 = at(reference, op.path2)
 			try {
 				if (op.mode == "equal") {
-					if (!deepEqual(d1, e1)) fail(
-						ctx,
-						"draft-equal",
-						`deepEqual(draft, reference) is false: ${show(e1)}`
-					)
-					if (deepEqual(d1, d2) != ref_equal(e1, e2)) fail(
-						ctx,
-						"draft-equal-pair",
-						`deepEqual(a, b) is ${deepEqual(d1, d2)}: a=${show(e1)} b=${show(e2)}`
-					)
+					if (!deepEqual(d1, e1)) {
+						fail(
+							ctx,
+							"draft-equal",
+							`deepEqual(draft, reference) is false: ${show(e1)}`
+						)
+					}
+					if (deepEqual(d1, d2) != ref_equal(e1, e2)) {
+						fail(
+							ctx,
+							"draft-equal-pair",
+							`deepEqual(a, b) is ${deepEqual(d1, d2)}: a=${show(e1)} b=${show(e2)}`
+						)
+					}
 				} else if (op.mode == "copy") {
 					const identity = has_proxy(d1)
 						? is_instance
 						: () => false
 					const copy = deepCopy(d1)
 					const res = iso(copy, e1, identity)
-					if (res.fail) fail(
-						ctx,
-						"draft-copy",
-						`deepCopy(draft) differs: ${res.fail}; copy=${show(copy)} expected=${show(e1)}`
-					)
-					if (has_proxy(copy)) fail(
-						ctx,
-						"draft-copy-proxy",
-						"deepCopy(draft) holds a proxy"
-					)
+					if (res.fail) {
+						fail(
+							ctx,
+							"draft-copy",
+							`deepCopy(draft) differs: ${res.fail}; copy=${show(copy)} expected=${show(e1)}`
+						)
+					}
+					if (has_proxy(copy)) {
+						fail(
+							ctx,
+							"draft-copy-proxy",
+							"deepCopy(draft) holds a proxy"
+						)
+					}
 					snapshots.push(
 						{
 							copy,
@@ -221,26 +233,32 @@ describe(
 					)
 				} else if (op.mode == "diff") {
 					const own = deepDiff(d1, e1)
-					if (own.length) fail(
-						ctx,
-						"draft-diff-self",
-						`deepDiff(draft, reference) is not empty: ${show(own)}`
-					)
+					if (own.length) {
+						fail(
+							ctx,
+							"draft-diff-self",
+							`deepDiff(draft, reference) is not empty: ${show(own)}`
+						)
+					}
 					const a = deepDiff(d1, d2)
 					const b = deepDiff(e1, e2)
-					if (!ref_equal(a, b)) fail(
-						ctx,
-						"draft-diff",
-						`deepDiff(a, b) differs: ${show(a)} vs ${show(b)}`
-					)
+					if (!ref_equal(a, b)) {
+						fail(
+							ctx,
+							"draft-diff",
+							`deepDiff(a, b) differs: ${show(a)} vs ${show(b)}`
+						)
+					}
 				} else {
 					const merged = deepMerge(d1, d2)
 					const expected = deepMerge(e1, e2)
-					if (!deepEqual(merged, expected) || !ref_equal(deepCopy(merged), expected)) fail(
-						ctx,
-						"draft-merge",
-						`deepMerge(a, b) differs: ${show(deepCopy(merged))} vs ${show(expected)}`
-					)
+					if (!deepEqual(merged, expected) || !ref_equal(deepCopy(merged), expected)) {
+						fail(
+							ctx,
+							"draft-merge",
+							`deepMerge(a, b) differs: ${show(deepCopy(merged))} vs ${show(expected)}`
+						)
+					}
 				}
 			} catch (error) {
 				fail(
@@ -257,7 +275,9 @@ describe(
 		function clone_pairs(pairs) {
 			/** @type {Map<unknown, Set<unknown>>} */
 			const out = new Map()
-			for (const [ k, v ] of pairs) out.set(k, new Set(v))
+			for (const [ k, v ] of pairs) {
+				out.set(k, new Set(v))
+			}
 			return out
 		}
 		/**
@@ -304,10 +324,12 @@ describe(
 			const kind = kind_of(target)
 			if (kind == "obj") {
 				const keys = Object.keys(fields(target))
-				if (keys.length && r.chance(0.25)) return {
-					k: r.pick(keys),
-					kind: "o-delete",
-					path
+				if (keys.length && r.chance(0.25)) {
+					return {
+						k: r.pick(keys),
+						kind: "o-delete",
+						path
+					}
 				}
 				return {
 					k: r.chance(0.6) && keys.length
@@ -332,16 +354,20 @@ describe(
 						[ "length", 1 ]
 					]
 				)
-				if (which == "set") return {
-					i: r.int(length + 1),
-					kind: "a-set",
-					path,
-					v: gen_val(r, root)
+				if (which == "set") {
+					return {
+						i: r.int(length + 1),
+						kind: "a-set",
+						path,
+						v: gen_val(r, root)
+					}
 				}
-				if (which == "push" || which == "unshift") return {
-					args: [ gen_val(r, root) ],
-					kind: which,
-					path
+				if (which == "push" || which == "unshift") {
+					return {
+						args: [ gen_val(r, root) ],
+						kind: which,
+						path
+					}
 				}
 				if ((which == "splice" || which == "hole") && length) {
 					return {
@@ -352,21 +378,29 @@ describe(
 						path
 					}
 				}
-				if (which == "length") return {
-					kind: "length",
-					n: r.int(length + 2),
-					path
+				if (which == "length") {
+					return {
+						kind: "length",
+						n: r.int(length + 2),
+						path
+					}
 				}
-				if (which == "reverse") return { kind: "reverse", path }
+				if (which == "reverse") {
+					return { kind: "reverse", path }
+				}
 				return { kind: "pop", path }
 			}
 			if (kind == "map") {
 				const keys = [ ...as_map(target).keys() ]
-				if (r.chance(0.05)) return { kind: "clear", path }
-				if (keys.length && r.chance(0.25)) return {
-					k: r.pick(keys),
-					kind: "m-delete",
-					path
+				if (r.chance(0.05)) {
+					return { kind: "clear", path }
+				}
+				if (keys.length && r.chance(0.25)) {
+					return {
+						k: r.pick(keys),
+						kind: "m-delete",
+						path
+					}
 				}
 				return {
 					k: r.chance(0.5) && keys.length
@@ -378,7 +412,9 @@ describe(
 				}
 			}
 			const size = as_set(target).size
-			if (r.chance(0.05)) return { kind: "clear", path }
+			if (r.chance(0.05)) {
+				return { kind: "clear", path }
+			}
 			if (size && r.chance(0.35)) {
 				return {
 					kind: "s-delete",
@@ -426,36 +462,50 @@ describe(
 						]
 					])/**/
 				)
-			if (t == "prim") return { t, v: r.pick(primitives) }
-			if (t == "date") return { at: r.int(3) * 1000, t }
-			if (t == "part") return { name: `new${r.int(9)}`, t }
-			if (t == "ref") return { path: r.int(refs), t }
+			if (t == "prim") {
+				return { t, v: r.pick(primitives) }
+			}
+			if (t == "date") {
+				return { at: r.int(3) * 1000, t }
+			}
+			if (t == "part") {
+				return { name: `new${r.int(9)}`, t }
+			}
+			if (t == "ref") {
+				return { path: r.int(refs), t }
+			}
 			const n = r.int(3)
 			if (t == "obj") {
 				/** @type {[ string, Spec ][]} */
 				const entries = []
-				for (let i = 0; i < n; i++) entries.push(
-					[
-						r.pick(obj_keys),
-						gen_spec(r, depth + 1, refs)
-					]
-				)
+				for (let i = 0; i < n; i++) {
+					entries.push(
+						[
+							r.pick(obj_keys),
+							gen_spec(r, depth + 1, refs)
+						]
+					)
+				}
 				return { entries, t }
 			}
 			if (t == "map") {
 				/** @type {[ unknown, Spec ][]} */
 				const entries = []
-				for (let i = 0; i < n; i++) entries.push(
-					[
-						r.pick(map_keys),
-						gen_spec(r, depth + 1, refs)
-					]
-				)
+				for (let i = 0; i < n; i++) {
+					entries.push(
+						[
+							r.pick(map_keys),
+							gen_spec(r, depth + 1, refs)
+						]
+					)
+				}
 				return { entries, t }
 			}
 			/** @type {Spec[]} */
 			const items = []
-			for (let i = 0; i < n; i++) items.push(gen_spec(r, depth + 1, refs))
+			for (let i = 0; i < n; i++) {
+				items.push(gen_spec(r, depth + 1, refs))
+			}
 			return { items, t }
 		}
 		/**
@@ -472,15 +522,21 @@ describe(
 					[ "merge", 1 ]
 				])/**/
 			)
-			if (t == "prim") return { t, v: r.pick(primitives) }
-			if (t == "ref") return {
-				path: pick_path(r, root, "any"),
-				t
+			if (t == "prim") {
+				return { t, v: r.pick(primitives) }
 			}
-			if (t == "merge") return {
-				path: pick_path(r, root, "any"),
-				spec: gen_spec(r, 0, 0),
-				t
+			if (t == "ref") {
+				return {
+					path: pick_path(r, root, "any"),
+					t
+				}
+			}
+			if (t == "merge") {
+				return {
+					path: pick_path(r, root, "any"),
+					spec: gen_spec(r, 0, 0),
+					t
+				}
 			}
 			const count = r.int(3)
 			const spec = gen_spec(r, 0, count)
@@ -551,22 +607,36 @@ describe(
 			 * @returns {unknown}
 			 */
 			function child(from) {
-				if (r.chance(0.35)) return r.pick(primitives)
+				if (r.chance(0.35)) {
+					return r.pick(primitives)
+				}
 				/** @type {number[]} */
 				const candidates = []
 				for (let j = 0; j < n; j++) {
-					if (j == 0 && !opt.cycles) continue
-					if (j == from) {
-						if (opt.cycles && r.chance(0.2)) candidates.push(j)
+					if (j == 0 && !opt.cycles) {
 						continue
 					}
-					if (!opt.shared && used.has(j)) continue
-					if (!opt.cycles && j < from) continue
+					if (j == from) {
+						if (opt.cycles && r.chance(0.2)) {
+							candidates.push(j)
+						}
+						continue
+					}
+					if (!opt.shared && used.has(j)) {
+						continue
+					}
+					if (!opt.cycles && j < from) {
+						continue
+					}
 					candidates.push(j)
 				}
-				if (!candidates.length) return r.pick(primitives)
+				if (!candidates.length) {
+					return r.pick(primitives)
+				}
 				const j = r.pick(candidates)
-				if (!opt.shared && !opt.cycles) used.add(j)
+				if (!opt.shared && !opt.cycles) {
+					used.add(j)
+				}
 				return /** @type {{ value: unknown }} */(shells[j])/**/.value
 			}
 			for (let i = 0; i < n; i++) {
@@ -575,7 +645,9 @@ describe(
 					? 1
 					: 0)
 				if (kind == "obj") {
-					for (let c = 0; c < count; c++) fields(value)[r.pick(obj_keys)] = child(i)
+					for (let c = 0; c < count; c++) {
+						fields(value)[r.pick(obj_keys)] = child(i)
+					}
 				} else if (kind == "arr") {
 					const array = as_array(value)
 					for (let c = 0; c < count; c++) {
@@ -586,9 +658,13 @@ describe(
 						}
 					}
 				} else if (kind == "map") {
-					for (let c = 0; c < count; c++) as_map(value).set(r.pick(map_keys), child(i))
+					for (let c = 0; c < count; c++) {
+						as_map(value).set(r.pick(map_keys), child(i))
+					}
 				} else if (kind == "set") {
-					for (let c = 0; c < count; c++) as_set(value).add(child(i))
+					for (let c = 0; c < count; c++) {
+						as_set(value).add(child(i))
+					}
 				} else if (kind == "part") {
 					/** @type {Part} */(value)/**/.ref = child(i)
 				}
@@ -598,11 +674,15 @@ describe(
 				deepFreeze(root)
 			} else if (opt.freeze == "partial") {
 				for (const shell of shells) {
-					if (r.chance(0.3)) deepFreeze(shell.value)
+					if (r.chance(0.3)) {
+						deepFreeze(shell.value)
+					}
 				}
 			} else if (opt.freeze == "shallow") {
 				for (const shell of shells) {
-					if (r.chance(0.4) && shell.kind != "part") Object.freeze(shell.value)
+					if (r.chance(0.4) && shell.kind != "part") {
+						Object.freeze(shell.value)
+					}
 				}
 			}
 			return root
@@ -616,9 +696,13 @@ describe(
 			const stack = [ root ]
 			while (stack.length) {
 				const v = stack.pop()
-				if (typeof v != "object" || v === null || seen.has(v)) continue
+				if (typeof v != "object" || v === null || seen.has(v)) {
+					continue
+				}
 				seen.add(v)
-				if (types.isProxy(v)) return true
+				if (types.isProxy(v)) {
+					return true
+				}
 				if (v instanceof Map) {
 					stack.push(...v.keys(), ...v.values())
 				} else if (v instanceof Set) {
@@ -656,7 +740,9 @@ describe(
 		 * @returns {boolean}
 		 */
 		function is_plain(v) {
-			if (typeof v != "object" || v === null) return false
+			if (typeof v != "object" || v === null) {
+				return false
+			}
 			const proto = Object.getPrototypeOf(v)
 			return proto === Object.prototype || proto === null
 		}
@@ -677,61 +763,79 @@ describe(
 				const [ r, e, path ] = /** @type {[ unknown, unknown, string ]} */(stack.pop())/**/
 				const kind = kind_of(e)
 				if (kind == "prim") {
-					if (!same_prim(r, e)) return {
-						fail: `${path}: ${show(r)} vs ${show(e)}`,
-						pairs: r2e
+					if (!same_prim(r, e)) {
+						return {
+							fail: `${path}: ${show(r)} vs ${show(e)}`,
+							pairs: r2e
+						}
 					}
 					continue
 				}
 				if (identity(e)) {
-					if (r !== e) return {
-						fail: `${path}: identity of ${kind} not kept`,
-						pairs: r2e
+					if (r !== e) {
+						return {
+							fail: `${path}: identity of ${kind} not kept`,
+							pairs: r2e
+						}
 					}
 					continue
 				}
 				if (e2r.has(e) || r2e.has(r)) {
-					if (e2r.get(e) !== r || r2e.get(r) !== e) return {
-						fail: `${path}: sharing differs`,
-						pairs: r2e
+					if (e2r.get(e) !== r || r2e.get(r) !== e) {
+						return {
+							fail: `${path}: sharing differs`,
+							pairs: r2e
+						}
 					}
 					continue
 				}
-				if (kind_of(r) != kind) return {
-					fail: `${path}: kind ${kind_of(r)} vs ${kind}`,
-					pairs: r2e
+				if (kind_of(r) != kind) {
+					return {
+						fail: `${path}: kind ${kind_of(r)} vs ${kind}`,
+						pairs: r2e
+					}
 				}
-				if (Object.getPrototypeOf(r) !== Object.getPrototypeOf(e)) return {
-					fail: `${path}: prototype differs`,
-					pairs: r2e
+				if (Object.getPrototypeOf(r) !== Object.getPrototypeOf(e)) {
+					return {
+						fail: `${path}: prototype differs`,
+						pairs: r2e
+					}
 				}
 				r2e.set(r, e)
 				e2r.set(e, r)
 				if (kind == "obj" || kind == "part" || kind == "tag") {
 					const left = Object.keys(fields(r))
 					const right = Object.keys(fields(e))
-					if (left.join("|") != right.join("|")) return {
-						fail: `${path}: keys [${left.join()}] vs [${right.join()}]`,
-						pairs: r2e
+					if (left.join("|") != right.join("|")) {
+						return {
+							fail: `${path}: keys [${left.join()}] vs [${right.join()}]`,
+							pairs: r2e
+						}
 					}
-					for (const k of right) stack.push(
-						[
-							fields(r)[k],
-							fields(e)[k],
-							`${path}.${k}`
-						]
-					)
+					for (const k of right) {
+						stack.push(
+							[
+								fields(r)[k],
+								fields(e)[k],
+								`${path}.${k}`
+							]
+						)
+					}
 				} else if (kind == "arr") {
 					const left = as_array(r)
 					const right = as_array(e)
-					if (left.length != right.length) return {
-						fail: `${path}: length ${left.length} vs ${right.length}`,
-						pairs: r2e
+					if (left.length != right.length) {
+						return {
+							fail: `${path}: length ${left.length} vs ${right.length}`,
+							pairs: r2e
+						}
 					}
 					for (let i = 0; i < right.length; i++) {
-						if (i in left != i in right) return {
-							fail: `${path}[${i}]: hole`,
-							pairs: r2e
+						if (i in left != i in right) {
+							return {
+								fail: `${path}[${i}]: hole`,
+								pairs: r2e
+							}
 						}
 						stack.push(
 							[ left[i], right[i], `${path}[${i}]` ]
@@ -740,17 +844,21 @@ describe(
 				} else if (kind == "map") {
 					const left = [ ...as_map(r) ]
 					const right = [ ...as_map(e) ]
-					if (left.length != right.length) return {
-						fail: `${path}: map size ${left.length} vs ${right.length}`,
-						pairs: r2e
+					if (left.length != right.length) {
+						return {
+							fail: `${path}: map size ${left.length} vs ${right.length}`,
+							pairs: r2e
+						}
 					}
 					for (let i = 0; i < right.length; i++) {
 						const [ rk, rv ] = /** @type {[ unknown, unknown ]} */(left[i])/**/
 						const [ ek, ev ] = /** @type {[ unknown, unknown ]} */(right[i])/**/
 						if (kind_of(ek) == "prim") {
-							if (!same_prim(rk, ek)) return {
-								fail: `${path}: map key #${i} ${show(rk)} vs ${show(ek)}`,
-								pairs: r2e
+							if (!same_prim(rk, ek)) {
+								return {
+									fail: `${path}: map key #${i} ${show(rk)} vs ${show(ek)}`,
+									pairs: r2e
+								}
 							}
 						} else {
 							stack.push([ rk, ek, `${path}.key#${i}` ])
@@ -762,24 +870,30 @@ describe(
 				} else if (kind == "set") {
 					const left = [ ...as_set(r) ]
 					const right = [ ...as_set(e) ]
-					if (left.length != right.length) return {
-						fail: `${path}: set size ${left.length} vs ${right.length}`,
-						pairs: r2e
+					if (left.length != right.length) {
+						return {
+							fail: `${path}: set size ${left.length} vs ${right.length}`,
+							pairs: r2e
+						}
 					}
-					for (let i = 0; i < right.length; i++) stack.push(
-						[
-							left[i],
-							right[i],
-							`${path}.member#${i}`
-						]
-					)
+					for (let i = 0; i < right.length; i++) {
+						stack.push(
+							[
+								left[i],
+								right[i],
+								`${path}.member#${i}`
+							]
+						)
+					}
 				} else if (kind == "date") {
 					if (!same_prim(
 						/** @type {Date} */(r)/**/.getTime(),
 						/** @type {Date} */(e)/**/.getTime()
-					)) return {
-						fail: `${path}: date`,
-						pairs: r2e
+					)) {
+						return {
+							fail: `${path}: date`,
+							pairs: r2e
+						}
 					}
 				} else {
 					return {
@@ -797,11 +911,17 @@ describe(
 		 * @returns {boolean}
 		 */
 		function keys_equal(a, b, pairs) {
-			if (Array.isArray(a)) return true
+			if (Array.isArray(a)) {
+				return true
+			}
 			const left = Object.keys(a)
-			if (left.length != Object.keys(b).length) return false
+			if (left.length != Object.keys(b).length) {
+				return false
+			}
 			for (const k of left) {
-				if (!Object.prototype.hasOwnProperty.call(b, k) || !ref_equal(fields(a)[k], fields(b)[k], pairs)) return false
+				if (!Object.prototype.hasOwnProperty.call(b, k) || !ref_equal(fields(a)[k], fields(b)[k], pairs)) {
+					return false
+				}
 			}
 			return true
 		}
@@ -810,14 +930,30 @@ describe(
 		 * @returns {Kind}
 		 */
 		function kind_of(value) {
-			if (typeof value == "function") return "fn"
-			if (typeof value != "object" || value === null) return "prim"
-			if (Array.isArray(value)) return "arr"
-			if (value instanceof Map) return "map"
-			if (value instanceof Set) return "set"
-			if (value instanceof Date) return "date"
-			if (value instanceof Part) return "part"
-			if (value instanceof Tag) return "tag"
+			if (typeof value == "function") {
+				return "fn"
+			}
+			if (typeof value != "object" || value === null) {
+				return "prim"
+			}
+			if (Array.isArray(value)) {
+				return "arr"
+			}
+			if (value instanceof Map) {
+				return "map"
+			}
+			if (value instanceof Set) {
+				return "set"
+			}
+			if (value instanceof Date) {
+				return "date"
+			}
+			if (value instanceof Part) {
+				return "part"
+			}
+			if (value instanceof Tag) {
+				return "tag"
+			}
 			return "obj"
 		}
 		/**
@@ -834,11 +970,15 @@ describe(
 			 * @returns {[ unknown, unknown ]}
 			 */
 			function go(s) {
-				if (s.t == "prim") return [ s.v, s.v ]
-				if (s.t == "ref") return [
-					ref_side(s.path),
-					draft_side(s.path)
-				]
+				if (s.t == "prim") {
+					return [ s.v, s.v ]
+				}
+				if (s.t == "ref") {
+					return [
+						ref_side(s.path),
+						draft_side(s.path)
+					]
+				}
 				if (s.t == "date") {
 					const date = new Date(s.at)
 					pairs.push([ date, date ])
@@ -906,7 +1046,9 @@ describe(
 		 */
 		function merge_pairs(pairs, trial) {
 			for (const [ x, s ] of trial) {
-				for (const y of s) assume(pairs, x, y)
+				for (const y of s) {
+					assume(pairs, x, y)
+				}
 			}
 		}
 		/**
@@ -979,7 +1121,9 @@ describe(
 				if (cfg.returns == "mutate+return" && spec.t == "ref") {
 					while (!refs[0]?.length && slots(ref.root).some(
 						([ , x ]) => typeof x == "object" && x !== null
-					) && r.chance(0.95)) refs = [ pick_path(r, ref.root, "any") ]
+					) && r.chance(0.95)) {
+						refs = [ pick_path(r, ref.root, "any") ]
+					}
 				}
 				returned_new = true
 				ctx.trace.push(
@@ -990,7 +1134,9 @@ describe(
 					ref,
 					{ fresh: [], root: draft }
 				)
-				if (b === draft) returned_draft_root = true
+				if (b === draft) {
+					returned_draft_root = true
+				}
 				ref.root = a
 				return b
 			}
@@ -1002,8 +1148,12 @@ describe(
 			 * @returns {unknown}
 			 */
 			function finish(draft) {
-				if (cfg.returns == "draft") return draft
-				if (cfg.returns == "new" || cfg.returns == "mutate+return") return make_return(draft)
+				if (cfg.returns == "draft") {
+					return draft
+				}
+				if (cfg.returns == "new" || cfg.returns == "mutate+return") {
+					return make_return(draft)
+				}
 				return undefined
 			}
 			/**
@@ -1034,7 +1184,6 @@ describe(
 						input,
 						async draft => {
 							for (let i = 0; i < count; i++) {
-								// eslint-disable-next-line no-await-in-loop
 								await null
 								step_once(draft)
 							}
@@ -1046,7 +1195,9 @@ describe(
 					: deepUpdate(
 						input,
 						draft => {
-							for (let i = 0; i < count; i++) step_once(draft)
+							for (let i = 0; i < count; i++) {
+								step_once(draft)
+							}
 							return finish(draft)
 						},
 						options
@@ -1056,18 +1207,22 @@ describe(
 			}
 			if (cfg.returns == "mutate+return" && changed) {
 				const message = snap.check()
-				if (message) fail(ctx, "input-changed", message)
+				if (message) {
+					fail(ctx, "input-changed", message)
+				}
 				const to_orig = to_orig_of(rc)
 				const mutated = [ ...rc.clone_to_orig ].some(
 					([ c, o ]) => !shallow_same(c, o, to_orig)
 				)
-				if (mutated && !returned_draft_root && !(error instanceof TypeError)) fail(
-					ctx,
-					"mutate+return",
-					`expected a TypeError, got ${error
-						? String(error)
-						: show(result)}`
-				)
+				if (mutated && !returned_draft_root && !(error instanceof TypeError)) {
+					fail(
+						ctx,
+						"mutate+return",
+						`expected a TypeError, got ${error
+							? String(error)
+							: show(result)}`
+					)
+				}
 				return
 			}
 			if (error) {
@@ -1080,21 +1235,29 @@ describe(
 				return
 			}
 			const message = snap.check()
-			if (message) fail(ctx, "input-changed", message)
-			if (has_proxy(result)) fail(
-				ctx,
-				"proxy-leak",
-				"the result holds a draft"
-			)
-			for (const s of snapshots) {
-				const res = iso(s.copy, s.expect, s.identity)
-				if (res.fail) fail(
+			if (message) {
+				fail(ctx, "input-changed", message)
+			}
+			if (has_proxy(result)) {
+				fail(
 					ctx,
-					"snapshot-changed",
-					`a snapshot taken inside the recipe changed: ${res.fail}`
+					"proxy-leak",
+					"the result holds a draft"
 				)
 			}
-			if (!strict) return
+			for (const s of snapshots) {
+				const res = iso(s.copy, s.expect, s.identity)
+				if (res.fail) {
+					fail(
+						ctx,
+						"snapshot-changed",
+						`a snapshot taken inside the recipe changed: ${res.fail}`
+					)
+				}
+			}
+			if (!strict) {
+				return
+			}
 			const res = iso(result, ref.root, is_identity)
 			if (res.fail) {
 				fail(
@@ -1104,11 +1267,13 @@ describe(
 				)
 				return
 			}
-			if (!deepEqual(result, ref.root)) fail(
-				ctx,
-				"deepEqual-vs-iso",
-				"deepEqual(result, reference) is false while isomorphic"
-			)
+			if (!deepEqual(result, ref.root)) {
+				fail(
+					ctx,
+					"deepEqual-vs-iso",
+					"deepEqual(result, reference) is false while isomorphic"
+				)
+			}
 			const fresh = new Map(ref.fresh)
 			const to_orig = to_orig_of(rc)
 			const nodes = [ ...res.pairs.values() ]
@@ -1118,7 +1283,9 @@ describe(
 					e,
 					rc.clone_to_orig.get(e),
 					to_orig
-				)) dirty.add(e)
+				)) {
+					dirty.add(e)
+				}
 			}
 			/**
 			 * @param {Set<unknown>} from
@@ -1144,17 +1311,23 @@ describe(
 			)
 			for (const [ rr, e ] of res.pairs) {
 				const orig = rc.clone_to_orig.get(e)
-				if (orig === undefined) continue
-				if (must_copy.has(e) && rr === orig) fail(
-					ctx,
-					"not-copied",
-					`a changed object kept its original: ${show(e)}`
-				)
-				if (!maybe.has(e) && rr !== orig) fail(
-					ctx,
-					"not-shared",
-					`an unchanged object was copied: ${show(e)}`
-				)
+				if (orig === undefined) {
+					continue
+				}
+				if (must_copy.has(e) && rr === orig) {
+					fail(
+						ctx,
+						"not-copied",
+						`a changed object kept its original: ${show(e)}`
+					)
+				}
+				if (!maybe.has(e) && rr !== orig) {
+					fail(
+						ctx,
+						"not-shared",
+						`an unchanged object was copied: ${show(e)}`
+					)
+				}
 			}
 			/**
 			 * @param {unknown} x
@@ -1167,13 +1340,21 @@ describe(
 			const starts = []
 			for (const [ rr, e ] of res.pairs) {
 				const orig = rc.clone_to_orig.get(e)
-				if (orig === undefined || rr === orig || !Object.isFrozen(orig)) continue
-				for (const [ , x ] of slots(e)) starts.push(x)
+				if (orig === undefined || rr === orig || !Object.isFrozen(orig)) {
+					continue
+				}
+				for (const [ , x ] of slots(e)) {
+					starts.push(x)
+				}
 			}
-			if (returned_new && Object.isFrozen(input)) starts.push(ref.root)
+			if (returned_new && Object.isFrozen(input)) {
+				starts.push(ref.root)
+			}
 			const region = new Set()
 			for (let x = starts.pop(); x !== undefined || starts.length; x = starts.pop()) {
-				if (typeof x != "object" || x === null || region.has(x) || original(x)) continue
+				if (typeof x != "object" || x === null || region.has(x) || original(x)) {
+					continue
+				}
 				region.add(x)
 				if (x instanceof Part) {
 					starts.push(x.ref)
@@ -1187,35 +1368,45 @@ describe(
 				const orig = rc.clone_to_orig.get(e)
 				const frozen = Object.isFrozen(rr)
 				if (fresh.has(e)) {
-					if (region.has(e) && !frozen) fail(
-						ctx,
-						"added-not-frozen",
-						`an object added under a frozen parent is not frozen: ${show(rr)}`
-					)
-					if (!region.has(e) && frozen) fail(
-						ctx,
-						"added-frozen",
-						`an object added under unfrozen parents got frozen: ${show(rr)}`
-					)
+					if (region.has(e) && !frozen) {
+						fail(
+							ctx,
+							"added-not-frozen",
+							`an object added under a frozen parent is not frozen: ${show(rr)}`
+						)
+					}
+					if (!region.has(e) && frozen) {
+						fail(
+							ctx,
+							"added-frozen",
+							`an object added under unfrozen parents got frozen: ${show(rr)}`
+						)
+					}
 					continue
 				}
-				if (orig === undefined || rr === orig) continue
-				if (Object.isFrozen(orig) != frozen) fail(
-					ctx,
-					"copy-frozen",
-					`a copy of ${Object.isFrozen(orig)
-						? "a frozen"
-						: "an unfrozen"} original is ${frozen
-						? "frozen"
-						: "not frozen"}: ${show(rr)}`
-				)
+				if (orig === undefined || rr === orig) {
+					continue
+				}
+				if (Object.isFrozen(orig) != frozen) {
+					fail(
+						ctx,
+						"copy-frozen",
+						`a copy of ${Object.isFrozen(orig)
+							? "a frozen"
+							: "an unfrozen"} original is ${frozen
+							? "frozen"
+							: "not frozen"}: ${show(rr)}`
+					)
+				}
 			}
 			for (const x of region) {
-				if (is_identity(x) && !Object.isFrozen(x)) fail(
-					ctx,
-					"added-not-frozen",
-					`an added ${kind_of(x)} under a frozen parent is not frozen`
-				)
+				if (is_identity(x) && !Object.isFrozen(x)) {
+					fail(
+						ctx,
+						"added-not-frozen",
+						`an added ${kind_of(x)} under a frozen parent is not frozen`
+					)
+				}
 			}
 			if (cfg.chain && !chained && result !== input) {
 				ctx.trace.push(
@@ -1311,7 +1502,9 @@ describe(
 				const drafted = options.filter(
 					([ , x ]) => is_drafted_kind(kind_of(x))
 				)
-				if (!options.length || r.chance(0.3)) break
+				if (!options.length || r.chance(0.3)) {
+					break
+				}
 				const [ seg, x ] = r.pick(
 					r.chance(0.8) && drafted.length
 						? drafted
@@ -1319,7 +1512,9 @@ describe(
 				)
 				path.push(seg)
 				v = x
-				if (!is_drafted_kind(kind_of(v))) break
+				if (!is_drafted_kind(kind_of(v))) {
+					break
+				}
 			}
 			return path
 		}
@@ -1352,7 +1547,9 @@ describe(
 			 * @returns {T}
 			 */
 			function pick(items) {
-				if (!items.length) throw new Error("empty pick")
+				if (!items.length) {
+					throw new Error("empty pick")
+				}
 				return /** @type {T} */(items[int(items.length)])/**/
 			}
 			/**
@@ -1362,11 +1559,15 @@ describe(
 			 */
 			function weighted(items) {
 				let total = 0
-				for (const [ , w ] of items) total += w
+				for (const [ , w ] of items) {
+					total += w
+				}
 				let r = next() * total
 				for (const [ v, w ] of items) {
 					r -= w
-					if (r < 0) return v
+					if (r < 0) {
+						return v
+					}
 				}
 				return /** @type {readonly [ T, number ]} */(items[items.length - 1])/**/[0]
 			}
@@ -1401,15 +1602,21 @@ describe(
 			 */
 			function walk(v) {
 				const kind = kind_of(v)
-				if (!is_drafted_kind(kind)) return v
-				if (orig_to_clone.has(v)) return orig_to_clone.get(v)
+				if (!is_drafted_kind(kind)) {
+					return v
+				}
+				if (orig_to_clone.has(v)) {
+					return orig_to_clone.get(v)
+				}
 				if (kind == "obj") {
 					/** @type {Record<string, unknown>} */
 					const c = Object.getPrototypeOf(v) === null
 						? Object.create(null)
 						: {}
 					pair(c, v)
-					for (const k of Object.keys(fields(v))) c[k] = walk(fields(v)[k])
+					for (const k of Object.keys(fields(v))) {
+						c[k] = walk(fields(v)[k])
+					}
 					return c
 				}
 				if (kind == "arr") {
@@ -1418,19 +1625,25 @@ describe(
 					const c = new Array(a.length)
 					pair(c, v)
 					for (let i = 0; i < a.length; i++) {
-						if (i in a) c[i] = walk(a[i])
+						if (i in a) {
+							c[i] = walk(a[i])
+						}
 					}
 					return c
 				}
 				if (kind == "map") {
 					const c = new Map()
 					pair(c, v)
-					for (const [ k, x ] of as_map(v)) c.set(k, walk(x))
+					for (const [ k, x ] of as_map(v)) {
+						c.set(k, walk(x))
+					}
 					return c
 				}
 				const c = new Set()
 				pair(c, v)
-				for (const x of as_set(v)) c.add(walk(x))
+				for (const x of as_set(v)) {
+					c.add(walk(x))
+				}
 				return c
 			}
 			return { clone_to_orig, root: walk(root) }
@@ -1442,36 +1655,56 @@ describe(
 		 * @returns {boolean}
 		 */
 		function ref_equal(a, b, pairs = new Map()) {
-			if (same_prim(a, b)) return true
-			if (typeof a != "object" || a === null || typeof b != "object" || b === null) return false
-			if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) return false
-			if (pairs.get(a)?.has(b)) return true
+			if (same_prim(a, b)) {
+				return true
+			}
+			if (typeof a != "object" || a === null || typeof b != "object" || b === null) {
+				return false
+			}
+			if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) {
+				return false
+			}
+			if (pairs.get(a)?.has(b)) {
+				return true
+			}
 			assume(pairs, a, b)
-			if (a instanceof Date) return same_prim(
-				a.getTime(),
-				/** @type {Date} */(b)/**/.getTime()
-			) && keys_equal(a, b, pairs)
+			if (a instanceof Date) {
+				return same_prim(
+					a.getTime(),
+					/** @type {Date} */(b)/**/.getTime()
+				) && keys_equal(a, b, pairs)
+			}
 			if (Array.isArray(a)) {
 				const other = as_array(b)
-				if (a.length != other.length) return false
+				if (a.length != other.length) {
+					return false
+				}
 				for (let i = 0; i < a.length; i++) {
-					if (i in a != i in other || !ref_equal(a[i], other[i], pairs)) return false
+					if (i in a != i in other || !ref_equal(a[i], other[i], pairs)) {
+						return false
+					}
 				}
 				return true
 			}
 			if (a instanceof Map) {
 				const other = as_map(b)
-				if (a.size != other.size) return false
+				if (a.size != other.size) {
+					return false
+				}
 				const used = new Set()
 				for (const [ k, v ] of a) {
 					if (typeof k != "object" || k === null) {
-						if (!other.has(k) || !ref_equal(v, other.get(k), pairs)) return false
+						if (!other.has(k) || !ref_equal(v, other.get(k), pairs)) {
+							return false
+						}
 						used.add(k)
 						continue
 					}
 					let found = false
 					for (const [ k2, v2 ] of other) {
-						if (used.has(k2) || typeof k2 != "object" || k2 === null) continue
+						if (used.has(k2) || typeof k2 != "object" || k2 === null) {
+							continue
+						}
 						const trial = clone_pairs(pairs)
 						if (ref_equal(k, k2, trial) && ref_equal(v, v2, trial)) {
 							merge_pairs(pairs, trial)
@@ -1480,23 +1713,31 @@ describe(
 							break
 						}
 					}
-					if (!found) return false
+					if (!found) {
+						return false
+					}
 				}
 				return keys_equal(a, b, pairs)
 			}
 			if (a instanceof Set) {
 				const other = as_set(b)
-				if (a.size != other.size) return false
+				if (a.size != other.size) {
+					return false
+				}
 				const used = new Set()
 				for (const v of a) {
 					if (typeof v != "object" || v === null || other.has(v)) {
-						if (!other.has(v)) return false
+						if (!other.has(v)) {
+							return false
+						}
 						used.add(v)
 						continue
 					}
 					let found = false
 					for (const v2 of other) {
-						if (used.has(v2) || typeof v2 != "object" || v2 === null) continue
+						if (used.has(v2) || typeof v2 != "object" || v2 === null) {
+							continue
+						}
 						const trial = clone_pairs(pairs)
 						if (ref_equal(v, v2, trial)) {
 							merge_pairs(pairs, trial)
@@ -1505,7 +1746,9 @@ describe(
 							break
 						}
 					}
-					if (!found) return false
+					if (!found) {
+						return false
+					}
 				}
 				return keys_equal(a, b, pairs)
 			}
@@ -1518,7 +1761,9 @@ describe(
 		 * @returns {unknown}
 		 */
 		function ref_merge_into(a, b, fresh) {
-			if (!is_plain(a) || !is_plain(b) || a === b) return b
+			if (!is_plain(a) || !is_plain(b) || a === b) {
+				return b
+			}
 			const left = fields(a)
 			const right = fields(b)
 			/** @type {Record<string, unknown>} */
@@ -1526,7 +1771,9 @@ describe(
 				? Object.create(null)
 				: {}
 			fresh.push([ out, undefined ])
-			for (const k of Object.keys(left)) define(out, k, left[k])
+			for (const k of Object.keys(left)) {
+				define(out, k, left[k])
+			}
 			for (const k of Object.keys(right)) {
 				define(
 					out,
@@ -1544,16 +1791,20 @@ describe(
 		 * @returns {void}
 		 */
 		function report(failures, cases) {
-			if (!failures.length) return
+			if (!failures.length) {
+				return
+			}
 			/** @type {Map<string, Failure[]>} */
 			const groups = new Map()
-			for (const failure of failures) groups.set(
-				failure.kind,
-				[
-					...groups.get(failure.kind) ?? [],
-					failure
-				]
-			)
+			for (const failure of failures) {
+				groups.set(
+					failure.kind,
+					[
+						...groups.get(failure.kind) ?? [],
+						failure
+					]
+				)
+			}
 			const lines = [
 				`${failures.length} failures in ${cases} cases`
 			]
@@ -1574,11 +1825,15 @@ describe(
 		 * @returns {[ unknown, unknown ]}
 		 */
 		function resolve_val(x, ref, draft) {
-			if (x.t == "prim") return [ x.v, x.v ]
-			if (x.t == "ref") return [
-				at(ref.root, x.path),
-				at(draft.root, x.path)
-			]
+			if (x.t == "prim") {
+				return [ x.v, x.v ]
+			}
+			if (x.t == "ref") {
+				return [
+					at(ref.root, x.path),
+					at(draft.root, x.path)
+				]
+			}
 			if (x.t == "merge") {
 				const patch = materialize(
 					x.spec,
@@ -1640,7 +1895,9 @@ describe(
 		function shallow_same(clone, orig, to_orig) {
 			const left = slots(clone)
 			const right = slots(orig)
-			if (kind_of(clone) == "arr" && as_array(clone).length != as_array(orig).length) return false
+			if (kind_of(clone) == "arr" && as_array(clone).length != as_array(orig).length) {
+				return false
+			}
 			return left.length == right.length && left.every(
 				([ seg, x ], i) => {
 					const [ other, y ] = /** @type {[ Seg, unknown ]} */(right[i])/**/
@@ -1657,21 +1914,37 @@ describe(
 		function show(value, depth = 0, seen = new Set()) {
 			const kind = kind_of(value)
 			if (kind == "prim") {
-				if (typeof value == "string") return JSON.stringify(value)
-				if (Object.is(value, -0)) return "-0"
+				if (typeof value == "string") {
+					return JSON.stringify(value)
+				}
+				if (Object.is(value, -0)) {
+					return "-0"
+				}
 				return String(value)
 			}
-			if (seen.has(value)) return "<cycle>"
-			if (depth > 5) return "..."
+			if (seen.has(value)) {
+				return "<cycle>"
+			}
+			if (depth > 5) {
+				return "..."
+			}
 			seen.add(value)
 			try {
 				const frozen = Object.isFrozen(value)
 					? "#"
 					: ""
-				if (kind == "date") return `${frozen}Date(${/** @type {Date} */(value)/**/.getTime()})`
-				if (kind == "fn") return "fn"
-				if (kind == "part") return `${frozen}Part(${/** @type {Part} */(value)/**/.name},${show(/** @type {Part} */(value)/**/.ref, depth + 1, seen)})`
-				if (kind == "tag") return `${frozen}Tag(${/** @type {Tag} */(value)/**/.label})`
+				if (kind == "date") {
+					return `${frozen}Date(${/** @type {Date} */(value)/**/.getTime()})`
+				}
+				if (kind == "fn") {
+					return "fn"
+				}
+				if (kind == "part") {
+					return `${frozen}Part(${/** @type {Part} */(value)/**/.name},${show(/** @type {Part} */(value)/**/.ref, depth + 1, seen)})`
+				}
+				if (kind == "tag") {
+					return `${frozen}Tag(${/** @type {Tag} */(value)/**/.label})`
+				}
 				if (kind == "arr") {
 					const array = as_array(value)
 					/** @type {string[]} */
@@ -1685,8 +1958,12 @@ describe(
 					}
 					return `${frozen}[${items.join(", ")}]`
 				}
-				if (kind == "map") return `${frozen}Map{${[ ...as_map(value) ].map(([ k, v ]) => `${show(k, depth + 1, seen)}=>${show(v, depth + 1, seen)}`).join(", ")}}`
-				if (kind == "set") return `${frozen}Set{${[ ...as_set(value) ].map(v => show(v, depth + 1, seen)).join(", ")}}`
+				if (kind == "map") {
+					return `${frozen}Map{${[ ...as_map(value) ].map(([ k, v ]) => `${show(k, depth + 1, seen)}=>${show(v, depth + 1, seen)}`).join(", ")}}`
+				}
+				if (kind == "set") {
+					return `${frozen}Set{${[ ...as_set(value) ].map(v => show(v, depth + 1, seen)).join(", ")}}`
+				}
 				return `${frozen}{${Object.keys(fields(value)).map(k => `${k}: ${show(fields(value)[k], depth + 1, seen)}`)
 					.join(", ")}}`
 			} finally {
@@ -1699,13 +1976,27 @@ describe(
 		 * @returns {string}
 		 */
 		function show_spec(s, refs) {
-			if (s.t == "prim") return show(s.v)
-			if (s.t == "ref") return refs[s.path] ?? "?"
-			if (s.t == "date") return `new Date(${s.at})`
-			if (s.t == "part") return `new Part(${JSON.stringify(s.name)})`
-			if (s.t == "obj") return `{ ${s.entries.map(([ k, c ]) => `${k}: ${show_spec(c, refs)}`).join(", ")} }`
-			if (s.t == "map") return `new Map([${s.entries.map(([ k, c ]) => `[${show(k)}, ${show_spec(c, refs)}]`).join(", ")}])`
-			if (s.t == "arr") return `[${s.items.map(c => show_spec(c, refs)).join(", ")}]`
+			if (s.t == "prim") {
+				return show(s.v)
+			}
+			if (s.t == "ref") {
+				return refs[s.path] ?? "?"
+			}
+			if (s.t == "date") {
+				return `new Date(${s.at})`
+			}
+			if (s.t == "part") {
+				return `new Part(${JSON.stringify(s.name)})`
+			}
+			if (s.t == "obj") {
+				return `{ ${s.entries.map(([ k, c ]) => `${k}: ${show_spec(c, refs)}`).join(", ")} }`
+			}
+			if (s.t == "map") {
+				return `new Map([${s.entries.map(([ k, c ]) => `[${show(k)}, ${show_spec(c, refs)}]`).join(", ")}])`
+			}
+			if (s.t == "arr") {
+				return `[${s.items.map(c => show_spec(c, refs)).join(", ")}]`
+			}
 			return `new Set([${s.items.map(c => show_spec(c, refs)).join(", ")}])`
 		}
 		/**
@@ -1714,22 +2005,30 @@ describe(
 		 */
 		function slots(v) {
 			const kind = kind_of(v)
-			if (kind == "obj") return Object.keys(fields(v)).map(
-				k => [ { k, t: "o" }, fields(v)[k] ]
-			)
+			if (kind == "obj") {
+				return Object.keys(fields(v)).map(
+					k => [ { k, t: "o" }, fields(v)[k] ]
+				)
+			}
 			if (kind == "arr") {
 				/** @type {[ Seg, unknown ][]} */
 				const out = []
 				const a = as_array(v)
 				for (let i = 0; i < a.length; i++) {
-					if (i in a) out.push([ { i, t: "a" }, a[i] ])
+					if (i in a) {
+						out.push([ { i, t: "a" }, a[i] ])
+					}
 				}
 				return out
 			}
-			if (kind == "map") return [ ...as_map(v) ].map(
-				([ k, x ]) => [ { k, t: "m" }, x ]
-			)
-			if (kind == "set") return [ ...as_set(v) ].map((x, n) => [ { n, t: "s" }, x ])
+			if (kind == "map") {
+				return [ ...as_map(v) ].map(
+					([ k, x ]) => [ { k, t: "m" }, x ]
+				)
+			}
+			if (kind == "set") {
+				return [ ...as_set(v) ].map((x, n) => [ { n, t: "s" }, x ])
+			}
 			return []
 		}
 		/**
@@ -1744,7 +2043,9 @@ describe(
 			const stack = [ root ]
 			while (stack.length) {
 				const v = stack.pop()
-				if (typeof v != "object" || v === null || objects.has(v)) continue
+				if (typeof v != "object" || v === null || objects.has(v)) {
+					continue
+				}
 				objects.add(v)
 				const kind = kind_of(v)
 				/**
@@ -1761,15 +2062,21 @@ describe(
 						writable.push(d?.writable, d?.configurable)
 					}
 					if (kind == "map") {
-						for (const [ k, x ] of as_map(v)) core.push("m", k, x)
+						for (const [ k, x ] of as_map(v)) {
+							core.push("m", k, x)
+						}
 					}
 					if (kind == "set") {
-						for (const x of as_set(v)) core.push("s", x)
+						for (const x of as_set(v)) {
+							core.push("s", x)
+						}
 					}
-					if (kind == "date") core.push(
-						"t",
-						/** @type {Date} */(v)/**/.getTime()
-					)
+					if (kind == "date") {
+						core.push(
+							"t",
+							/** @type {Date} */(v)/**/.getTime()
+						)
+					}
 					return {
 						core,
 						frozen: Object.isFrozen(v),
@@ -1788,26 +2095,38 @@ describe(
 						function same(x, y) {
 							return x.length == y.length && x.every((z, i) => same_prim(z, y[i]))
 						}
-						if (!same(after.core, before.core)) return `input ${kind} changed: ${show(v, 3)}`
-						if (after.frozen != before.frozen || !same(after.writable, before.writable)) return `input ${kind} got frozen: ${show(v, 3)}`
+						if (!same(after.core, before.core)) {
+							return `input ${kind} changed: ${show(v, 3)}`
+						}
+						if (after.frozen != before.frozen || !same(after.writable, before.writable)) {
+							return `input ${kind} got frozen: ${show(v, 3)}`
+						}
 						return undefined
 					}
 				)
-				for (const k of Reflect.ownKeys(v)) stack.push(
-					fields(v)[/** @type {string} */(k)/**/]
-				)
+				for (const k of Reflect.ownKeys(v)) {
+					stack.push(
+						fields(v)[/** @type {string} */(k)/**/]
+					)
+				}
 				if (kind == "map") {
-					for (const [ k, x ] of as_map(v)) stack.push(k, x)
+					for (const [ k, x ] of as_map(v)) {
+						stack.push(k, x)
+					}
 				}
 				if (kind == "set") {
-					for (const x of as_set(v)) stack.push(x)
+					for (const x of as_set(v)) {
+						stack.push(x)
+					}
 				}
 			}
 			return {
 				check: () => {
 					for (const record of records) {
 						const message = record()
-						if (message) return message
+						if (message) {
+							return message
+						}
 					}
 					return undefined
 				},
@@ -1820,9 +2139,15 @@ describe(
 		 * @returns {unknown}
 		 */
 		function step(v, s) {
-			if (s.t == "o") return fields(v)[s.k]
-			if (s.t == "a") return as_array(v)[s.i]
-			if (s.t == "m") return as_map(v).get(s.k)
+			if (s.t == "o") {
+				return fields(v)[s.k]
+			}
+			if (s.t == "a") {
+				return as_array(v)[s.i]
+			}
+			if (s.t == "m") {
+				return as_map(v).get(s.k)
+			}
 			return [ ...as_set(v) ][s.n]
 		}
 		/**
@@ -1861,9 +2186,15 @@ describe(
 		 * @returns {string}
 		 */
 		function val_text(x) {
-			if (x.t == "prim") return show(x.v)
-			if (x.t == "ref") return path_text(x.path)
-			if (x.t == "merge") return `deepMerge(${path_text(x.path)}, ${show_spec(x.spec, [])})`
+			if (x.t == "prim") {
+				return show(x.v)
+			}
+			if (x.t == "ref") {
+				return path_text(x.path)
+			}
+			if (x.t == "merge") {
+				return `deepMerge(${path_text(x.path)}, ${show_spec(x.spec, [])})`
+			}
 			return show_spec(x.spec, x.refs.map(path_text))
 		}
 		it(
@@ -1906,9 +2237,10 @@ describe(
 				for (let c = 0; c < configs.length; c++) {
 					for (let i = 0; i < per; i++) {
 						const seed = first * 1000003 + c * 100000 + i
-						if (only && String(seed) != only) continue
+						if (only && String(seed) != only) {
+							continue
+						}
 						cases++
-						// eslint-disable-next-line no-await-in-loop
 						await update_case(
 							seed,
 							/** @type {CaseConfig} */(configs[c])/**/,
@@ -1944,31 +2276,43 @@ describe(
 		 * @returns {unknown}
 		 */
 		function fill_holes(v, seen = new Map()) {
-			if (typeof v != "object" || v === null || !is_drafted_kind(kind_of(v))) return v
-			if (seen.has(v)) return seen.get(v)
+			if (typeof v != "object" || v === null || !is_drafted_kind(kind_of(v))) {
+				return v
+			}
+			if (seen.has(v)) {
+				return seen.get(v)
+			}
 			if (Array.isArray(v)) {
 				/** @type {unknown[]} */
 				const out = []
 				seen.set(v, out)
-				for (let i = 0; i < v.length; i++) out.push(fill_holes(v[i], seen))
+				for (let i = 0; i < v.length; i++) {
+					out.push(fill_holes(v[i], seen))
+				}
 				return out
 			}
 			if (v instanceof Map) {
 				const out = new Map()
 				seen.set(v, out)
-				for (const [ k, x ] of v) out.set(k, fill_holes(x, seen))
+				for (const [ k, x ] of v) {
+					out.set(k, fill_holes(x, seen))
+				}
 				return out
 			}
 			if (v instanceof Set) {
 				const out = new Set()
 				seen.set(v, out)
-				for (const x of v) out.add(fill_holes(x, seen))
+				for (const x of v) {
+					out.add(fill_holes(x, seen))
+				}
 				return out
 			}
 			/** @type {Record<string, unknown>} */
 			const out = Object.create(Object.getPrototypeOf(v))
 			seen.set(v, out)
-			for (const k of Object.keys(v)) out[k] = fill_holes(fields(v)[k], seen)
+			for (const k of Object.keys(v)) {
+				out[k] = fill_holes(fields(v)[k], seen)
+			}
 			return out
 		}
 		/**
@@ -1983,10 +2327,16 @@ describe(
 			 * @returns {boolean}
 			 */
 			function go(v) {
-				if (typeof v != "object" || v === null || kind_of(v) == "date") return false
+				if (typeof v != "object" || v === null || kind_of(v) == "date") {
+					return false
+				}
 				const s = state.get(v)
-				if (s == 1) return true
-				if (s == 2) return false
+				if (s == 1) {
+					return true
+				}
+				if (s == 2) {
+					return false
+				}
 				state.set(v, 1)
 				const kids = v instanceof Map
 					? [ ...v.values(), ...v.keys() ]
@@ -1994,7 +2344,9 @@ describe(
 						? [ ...v ]
 						: Object.values(v)
 				for (const c of kids) {
-					if (go(c)) return true
+					if (go(c)) {
+						return true
+					}
 				}
 				state.set(v, 2)
 				return false
@@ -2010,29 +2362,35 @@ describe(
 			const w = depth > 3
 				? 0
 				: r.int(4)
-			if (w == 0) return r.pick(
-				[ 0, 1, "s", "", null, true, false, 2.5 ]
-			)
-			if (w == 1) return Array.from(
-				{ length: r.int(4) },
-				() => json_safe(r, depth + 1)
-			)
+			if (w == 0) {
+				return r.pick(
+					[ 0, 1, "s", "", null, true, false, 2.5 ]
+				)
+			}
+			if (w == 1) {
+				return Array.from(
+					{ length: r.int(4) },
+					() => json_safe(r, depth + 1)
+				)
+			}
 			/** @type {Record<string, unknown>} */
 			const o = {}
-			for (let i = r.int(4); i > 0; i--) define(
-				o,
-				r.pick(
-					[
-						...obj_keys,
-						"__proto__",
-						"constructor",
-						"0",
-						"10",
-						"2"
-					]
-				),
-				json_safe(r, depth + 1)
-			)
+			for (let i = r.int(4); i > 0; i--) {
+				define(
+					o,
+					r.pick(
+						[
+							...obj_keys,
+							"__proto__",
+							"constructor",
+							"0",
+							"10",
+							"2"
+						]
+					),
+					json_safe(r, depth + 1)
+				)
+			}
 			return o
 		}
 		/**
@@ -2049,7 +2407,9 @@ describe(
 			const stack = [ clone ]
 			while (stack.length) {
 				const v = stack.pop()
-				if (typeof v != "object" || v === null || seen.has(v) || !is_drafted_kind(kind_of(v))) continue
+				if (typeof v != "object" || v === null || seen.has(v) || !is_drafted_kind(kind_of(v))) {
+					continue
+				}
 				seen.add(v)
 				nodes.push(v)
 				stack.push(
@@ -2103,30 +2463,40 @@ describe(
 		 * @returns {unknown}
 		 */
 		function mutate_json(r, v, depth = 0) {
-			if (r.chance(0.15) || depth > 4) return json_safe(r, depth)
+			if (r.chance(0.15) || depth > 4) {
+				return json_safe(r, depth)
+			}
 			if (Array.isArray(v)) {
 				const out = v.map(
 					x => mutate_json(r, x, depth + 1)
 				)
-				if (r.chance(0.2)) out.push(json_safe(r, depth + 1))
-				if (r.chance(0.2)) out.shift()
+				if (r.chance(0.2)) {
+					out.push(json_safe(r, depth + 1))
+				}
+				if (r.chance(0.2)) {
+					out.shift()
+				}
 				return out
 			}
 			if (typeof v == "object" && v !== null) {
 				/** @type {Record<string, unknown>} */
 				const out = {}
 				for (const [ k, x ] of Object.entries(v)) {
-					if (!r.chance(0.15)) define(
+					if (!r.chance(0.15)) {
+						define(
+							out,
+							k,
+							mutate_json(r, x, depth + 1)
+						)
+					}
+				}
+				if (r.chance(0.3)) {
+					define(
 						out,
-						k,
-						mutate_json(r, x, depth + 1)
+						r.pick(obj_keys),
+						json_safe(r, depth + 1)
 					)
 				}
-				if (r.chance(0.3)) define(
-					out,
-					r.pick(obj_keys),
-					json_safe(r, depth + 1)
-				)
 				return out
 			}
 			return v
@@ -2139,7 +2509,9 @@ describe(
 		function ref_merge(values, fresh) {
 			let acc = values[0]
 			for (const b of values.slice(1)) {
-				if (b !== undefined && b !== null) acc = ref_merge_into(acc, b, fresh)
+				if (b !== undefined && b !== null) {
+					acc = ref_merge_into(acc, b, fresh)
+				}
 			}
 			return acc
 		}
@@ -2153,7 +2525,9 @@ describe(
 				const failures = []
 				for (let i = 0; i < count; i++) {
 					const seed = first * 7919 + i
-					if (only && String(seed) != only) continue
+					if (only && String(seed) != only) {
+						continue
+					}
 					const r = rand(seed)
 					/** @type {GenOptions} */
 					const opt = {
@@ -2175,24 +2549,36 @@ describe(
 						trace: []
 					}
 					const equal = deepEqual(a, b)
-					if (equal != deepEqual(b, a)) fail(ctx, "equal-symmetry", "")
-					if (equal != ref_equal(a, b)) fail(
-						ctx,
-						"equal-vs-reference",
-						`deepEqual is ${equal}`
-					)
-					if (!deepEqual(a, a) || !deepEqual(b, b)) fail(ctx, "equal-reflexive", "")
+					if (equal != deepEqual(b, a)) {
+						fail(ctx, "equal-symmetry", "")
+					}
+					if (equal != ref_equal(a, b)) {
+						fail(
+							ctx,
+							"equal-vs-reference",
+							`deepEqual is ${equal}`
+						)
+					}
+					if (!deepEqual(a, a) || !deepEqual(b, b)) {
+						fail(ctx, "equal-reflexive", "")
+					}
 					const copy = deepCopy(a)
 					const res = iso(
 						copy,
 						a,
 						v => typeof v == "function"
 					)
-					if (res.fail) fail(ctx, "copy-iso", res.fail)
-					for (const [ c, o ] of res.pairs) {
-						if (c === o) fail(ctx, "copy-shares-input", show(c))
+					if (res.fail) {
+						fail(ctx, "copy-iso", res.fail)
 					}
-					if (!deepEqual(copy, a)) fail(ctx, "copy-not-equal", "")
+					for (const [ c, o ] of res.pairs) {
+						if (c === o) {
+							fail(ctx, "copy-shares-input", show(c))
+						}
+					}
+					if (!deepEqual(copy, a)) {
+						fail(ctx, "copy-not-equal", "")
+					}
 					/** @type {unknown} */
 					let kept
 					try {
@@ -2202,11 +2588,13 @@ describe(
 					}
 					if (is_drafted_kind(kind_of(a))
 						? kept !== a
-						: !(kept instanceof TypeError)) fail(
-						ctx,
-						"update-undrafted",
-						show(kept)
-					)
+						: !(kept instanceof TypeError)) {
+						fail(
+							ctx,
+							"update-undrafted",
+							show(kept)
+						)
+					}
 					if (!has_cycle(a) && !has_cycle(b)) {
 						const snap = snapshot(a)
 						/** @type {Change[]} */
@@ -2217,13 +2605,19 @@ describe(
 							if (!ref_equal(
 								fill_holes(patched),
 								fill_holes(b)
-							)) fail(
-								ctx,
-								"diff-round-trip",
-								`patched=${show(patched)} changes=${show(changes)}`
-							)
-							if (Object.isFrozen(a) && typeof patched == "object" && patched !== null && patched !== a && !Object.isFrozen(patched)) fail(ctx, "diff-frozen", show(patched))
-							if (deepDiff(a, a).length) fail(ctx, "diff-self", "")
+							)) {
+								fail(
+									ctx,
+									"diff-round-trip",
+									`patched=${show(patched)} changes=${show(changes)}`
+								)
+							}
+							if (Object.isFrozen(a) && typeof patched == "object" && patched !== null && patched !== a && !Object.isFrozen(patched)) {
+								fail(ctx, "diff-frozen", show(patched))
+							}
+							if (deepDiff(a, a).length) {
+								fail(ctx, "diff-self", "")
+							}
 						} catch (error) {
 							fail(
 								ctx,
@@ -2232,12 +2626,16 @@ describe(
 							)
 						}
 						const message = snap.check()
-						if (message) fail(ctx, "diff-input-changed", message)
+						if (message) {
+							fail(ctx, "diff-input-changed", message)
+						}
 						if (typeof b == "object" && b !== null && !Object.isFrozen(b) && Object.isFrozen(a)) {
 							const after = snapshot(b)
 							deepPatch(a, deepDiff(a, b))
 							const changed = after.check()
-							if (changed) fail(ctx, "diff-after-changed", changed)
+							if (changed) {
+								fail(ctx, "diff-after-changed", changed)
+							}
 						}
 					}
 					const j1 = json_safe(r)
@@ -2258,11 +2656,13 @@ describe(
 							? deepFreeze(JSON.parse(JSON.stringify(j1)))
 							: j1
 						const patched = deepPatch(source, wire)
-						if (!ref_equal(patched, j2)) fail(
-							json_ctx,
-							"json-round-trip",
-							`patched=${JSON.stringify(patched)} wire=${JSON.stringify(wire)}`
-						)
+						if (!ref_equal(patched, j2)) {
+							fail(
+								json_ctx,
+								"json-round-trip",
+								`patched=${JSON.stringify(patched)} wire=${JSON.stringify(wire)}`
+							)
+						}
 					} catch (error) {
 						fail(
 							json_ctx,
@@ -2282,15 +2682,17 @@ describe(
 					]
 					const merged = deepMerge(...layers)
 					const expected = ref_merge(layers, [])
-					if (!ref_equal(merged, expected) || JSON.stringify(merged) != JSON.stringify(expected)) fail(
-						{
-							failures,
-							label: `seed=${seed} layers=${JSON.stringify(layers)}`,
-							trace: []
-						},
-						"merge-vs-reference",
-						`${JSON.stringify(merged)} vs ${JSON.stringify(expected)}`
-					)
+					if (!ref_equal(merged, expected) || JSON.stringify(merged) != JSON.stringify(expected)) {
+						fail(
+							{
+								failures,
+								label: `seed=${seed} layers=${JSON.stringify(layers)}`,
+								trace: []
+							},
+							"merge-vs-reference",
+							`${JSON.stringify(merged)} vs ${JSON.stringify(expected)}`
+						)
+					}
 				}
 				report(failures, count)
 			},

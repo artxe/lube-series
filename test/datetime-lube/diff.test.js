@@ -238,7 +238,9 @@ describe(
 								"YYYY-MM-DD HH:mm",
 								zone
 							)
-							if (isNaN(from.getTime())) continue
+							if (isNaN(from.getTime())) {
+								continue
+							}
 							for (let months = -14; months <= 14; months++) {
 								const to = add(from, `${months}M`, zone)
 								assert.equal(

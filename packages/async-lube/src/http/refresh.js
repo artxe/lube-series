@@ -60,7 +60,9 @@ export function get_refresh_state(refresher) {
  */
 async function refresh(c, state, generation, error) {
 	if (generation != state.generation) {
-		if (generation == state.failed_generation) throw error
+		if (generation == state.failed_generation) {
+			throw error
+		}
 		return
 	}
 	if (!state.refreshing) {
@@ -79,13 +81,17 @@ async function refresh(c, state, generation, error) {
 			.then(c.config.refresh)
 			.then(
 				() => {
-					if (state.generation != generation) return
+					if (state.generation != generation) {
+						return
+					}
 					clearTimeout(state.timer)
 					state.generation++
 					state.refreshing = void 0
 				},
 				(/** @type {unknown} */ reason) => {
-					if (state.generation == generation) fail_refresh(c, state, error, reason)
+					if (state.generation == generation) {
+						fail_refresh(c, state, error, reason)
+					}
 					throw reason
 				}
 			)
@@ -116,7 +122,9 @@ async function refresh(c, state, generation, error) {
  * @returns {void}
  */
 export function reject_refreshed(c, state, generation, error) {
-	if (state.unauthorized_generation == generation) return
+	if (state.unauthorized_generation == generation) {
+		return
+	}
 	state.unauthorized_generation = generation
 	call_hook(
 		c.config.on?.unauthorized,
@@ -132,7 +140,9 @@ export function reject_refreshed(c, state, generation, error) {
  * @returns {void}
  */
 function time_out_refresh(c, state, error, timeout_error) {
-	if (!state.refreshing) return
+	if (!state.refreshing) {
+		return
+	}
 	const controller = state.controller
 	state.time_out?.(timeout_error)
 	fail_refresh(c, state, error, timeout_error)
@@ -171,7 +181,9 @@ export async function wait_refresh(
 		: void 0
 	const waiting = refresh(c, state, generation, error)
 	const joined = state.generation == generation && state.refreshing != null
-	if (joined) state.waiters++
+	if (joined) {
+		state.waiters++
+	}
 	try {
 		await race_signal(waiting, controller.signal)
 	} catch (reason) {
@@ -182,13 +194,21 @@ export async function wait_refresh(
 			)
 			: void 0
 		if (joined && state.generation == generation && state.refreshing) {
-			if (timeout_error) state.timed_out = timeout_error
-			if (--state.waiters == 0 && state.timed_out) time_out_refresh(c, state, error, state.timed_out)
+			if (timeout_error) {
+				state.timed_out = timeout_error
+			}
+			if (--state.waiters == 0 && state.timed_out) {
+				time_out_refresh(c, state, error, state.timed_out)
+			}
 		}
-		if (signal.aborted) throw signal.reason instanceof CancelError
-			? signal.reason
-			: new CancelError(signal.reason, summary)
-		if (timeout_error) throw timeout_error
+		if (signal.aborted) {
+			throw signal.reason instanceof CancelError
+				? signal.reason
+				: new CancelError(signal.reason, summary)
+		}
+		if (timeout_error) {
+			throw timeout_error
+		}
 		throw reason instanceof TimeoutError
 			? new TimeoutError(reason.timeout, summary)
 			: reason

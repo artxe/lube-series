@@ -133,8 +133,12 @@ function generate(seed) {
 	 * @returns {string}
 	 */
 	function layout(open, parts, close) {
-		if (!parts.length) return `${open}${close}`
-		if (chance(0.6)) return `${open} ${parts.map(part => chance(0.1) ? `/* k */ ${part}` : part).join(", ")} ${close}`
+		if (!parts.length) {
+			return `${open}${close}`
+		}
+		if (chance(0.6)) {
+			return `${open} ${parts.map(part => chance(0.1) ? `/* k */ ${part}` : part).join(", ")} ${close}`
+		}
 		const body = parts.map(
 			(part, index) => {
 				const comment = weighted(
@@ -192,7 +196,9 @@ function generate(seed) {
 				}
 				continue
 			}
-			if (used.has(key) && chance(0.7)) continue
+			if (used.has(key) && chance(0.7)) {
+				continue
+			}
 			used.add(key)
 			parts.push(
 				`${/^[a-zA-Z_$]/.test(key) || chance(0.5) ? key : JSON.stringify(key)}: ${value(depth, in_function)}`
@@ -239,7 +245,9 @@ function generate(seed) {
 			const name = fresh()
 			lines.push(`let ${name} = ${int(5)}`)
 			lets.push(name)
-			if (chance(0.5)) lines.push(`${name} += ${int(3)}`)
+			if (chance(0.5)) {
+				lines.push(`${name} += ${int(3)}`)
+			}
 		} else if (kind == "log") {
 			lines.push(
 				`log(show(${object(0, false)}))`
@@ -263,7 +271,9 @@ function generate(seed) {
 				const key = pick([ "a", "b", "c", "aB", "zz" ])
 				if (parts.some(
 					part => part.startsWith(`${key}:`)
-				)) continue
+				)) {
+					continue
+				}
 				const name = fresh()
 				names.push(name)
 				parts.push(
@@ -439,11 +449,15 @@ function generate(seed) {
 		)
 		for (const [ item, weight ] of items) {
 			rest -= weight
-			if (rest < 0) return item
+			if (rest < 0) {
+				return item
+			}
 		}
 		return /** @type {[string, number]} */(items.at(-1))/**/[0]
 	}
-	for (let count = 4 + int(10); count > 0; count--) statement()
+	for (let count = 4 + int(10); count > 0; count--) {
+		statement()
+	}
 	return [
 		"import { readCounter, fixedLimit, counterValue, bumpCounter } from \"./lib.js\"",
 		"import defaultHelper from \"./lib.js\"",
@@ -502,7 +516,9 @@ describe(
 								crlf,
 								`seed ${seed} converges with CRLF`
 							)
-							if (first.output == code && crlf == code.replaceAll("\n", "\r\n")) continue
+							if (first.output == code && crlf == code.replaceAll("\n", "\r\n")) {
+								continue
+							}
 							changed.push(seed)
 							for (const [ name, source ] of /** @type {[string, string][]} */([
 								[ "original", code ],
@@ -539,7 +555,8 @@ describe(
 							}
 						)
 						assert.strictEqual(run.status, 0, run.stderr)
-						const results = /** @type {string[]} */(JSON.parse(run.stdout))/**/
+						/** @type {string[]} */
+						const results = JSON.parse(run.stdout)
 						for (const [ index, seed ] of changed.entries()) {
 							const [ original, fixed, crlf ] = results.slice(index * 3, index * 3 + 3)
 							assert.strictEqual(fixed, original, `seed ${seed}`)

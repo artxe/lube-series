@@ -61,7 +61,9 @@ const names = new Set(
 /** @type {Map<Prototype, string>} */
 const kinds = new Map()
 for (const name of names) {
-	if (global[name]) kinds.set(global[name].prototype, name)
+	if (global[name]) {
+		kinds.set(global[name].prototype, name)
+	}
 }
 kinds.set(
 	getPrototypeOf(Uint8Array.prototype),
@@ -83,7 +85,9 @@ for (const name of [
 	"Uint8Array",
 	"Uint8ClampedArray"
 ]) {
-	if (global[name]) builtins.add(global[name].prototype)
+	if (global[name]) {
+		builtins.add(global[name].prototype)
+	}
 }
 /**
  * @param {Prototype | null} proto
@@ -97,10 +101,14 @@ function builtin_prototype(proto) {
  * @returns {"Array" | "Map" | "Object" | "Set" | undefined}
  */
 function container_kind(value) {
-	if (typeof value != "object" || value === null) return undefined
+	if (typeof value != "object" || value === null) {
+		return undefined
+	}
 	/** @type {Prototype | null} */
 	const proto = getPrototypeOf(value)
-	if (proto === object_prototype || proto === null) return "Object"
+	if (proto === object_prototype || proto === null) {
+		return "Object"
+	}
 	const kind = kind_of(value, proto)
 	return kind == "Array" || kind == "Map" || kind == "Set"
 		? kind
@@ -113,8 +121,12 @@ function container_kind(value) {
  * @returns {string}
  */
 function foreign_kind(value) {
-	if (Array.isArray(value)) return "Array"
-	if (typed_array_name.call(value)) return "TypedArray"
+	if (Array.isArray(value)) {
+		return "Array"
+	}
+	if (typed_array_name.call(value)) {
+		return "TypedArray"
+	}
 	const name = to_string.call(value).slice(8, -1)
 	return names.has(name)
 		? resolve(value, name)
@@ -138,7 +150,9 @@ function kind_of(value, proto) {
 function prototype_kind(proto) {
 	for (let current = proto; current; current = getPrototypeOf(current)) {
 		const kind = kinds.get(current)
-		if (kind) return kind
+		if (kind) {
+			return kind
+		}
 	}
 	return undefined
 }
@@ -170,7 +184,9 @@ function resolve(value, kind) {
 			data_view_buffer.call(value)
 			break
 		case "Error":
-			if (is_error && !is_error(value)) return "Object"
+			if (is_error && !is_error(value)) {
+				return "Object"
+			}
 			break
 		case "Date":
 			Date.prototype.getTime.call(value)
@@ -223,24 +239,36 @@ function resolve(value, kind) {
  */
 function sparse_indices(array) {
 	const length = array.length
-	if (length < 4096) return undefined
+	if (length < 4096) {
+		return undefined
+	}
 	let present = 0
 	for (let i = 1; i <= 16; i++) {
 		if (Math.floor(
 			length * (Math.imul(i, 0x9e3779b1) >>> 0) / 0x100000000
-		) in array) present++
+		) in array) {
+			present++
+		}
 	}
-	if (present == 16) return undefined
+	if (present == 16) {
+		return undefined
+	}
 	/** @type {number[]} */
 	const indices = []
 	let sorted = true
 	for (const key of getOwnPropertyNames(array)) {
 		const index = Number(key)
-		if (!(index < length) || String(index) !== key) continue
-		if (index < /** @type {number} */(indices[indices.length - 1] ?? -1)/**/) sorted = false
+		if (!(index < length) || String(index) !== key) {
+			continue
+		}
+		if (index < /** @type {number} */(indices[indices.length - 1] ?? -1)/**/) {
+			sorted = false
+		}
 		indices.push(index)
 	}
-	if (!sorted) indices.sort((x, y) => x - y)
+	if (!sorted) {
+		indices.sort((x, y) => x - y)
+	}
 	return indices.length < length / 2
 		? indices
 		: undefined

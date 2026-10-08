@@ -17,24 +17,35 @@ const finished_statuses = new Set(
  */
 async function check(d, key, poller) {
 	poller.timer = void 0
-	if (d.live.has(key)) return
+	if (d.live.has(key)) {
+		return
+	}
 	poller.checking = true
 	const saved = await load(d.store, key).catch(noop)
-	if (saved && is_due(d, saved) && d.pollers.get(key) == poller) await resume(d, key).catch(noop)
+	if (saved && is_due(d, saved) && d.pollers.get(key) == poller) {
+		await resume(d, key).catch(noop)
+	}
 	poller.checking = false
-	if (d.pollers.get(key) != poller) return
+	if (d.pollers.get(key) != poller) {
+		return
+	}
 	if (saved && finished_statuses.has(saved.status)) {
 		settle(
 			d,
 			key,
 			watcher => {
-				if (saved.status == "done") watcher.resolve(saved.result)
-				else watcher.reject(error_of(saved))
+				if (saved.status == "done") {
+					watcher.resolve(saved.result)
+				} else {
+					watcher.reject(error_of(saved))
+				}
 			}
 		)
 		return
 	}
-	if (d.live.has(key)) return
+	if (d.live.has(key)) {
+		return
+	}
 	const { delay } = poller
 	poller.delay = Math.min(delay * 2, d.poll_cap)
 	const left = (saved && dueAt(saved) || 0) - Date.now()
@@ -56,8 +67,11 @@ export function notify(d, key, outcome) {
 		d,
 		key,
 		watcher => {
-			if ("error" in outcome) watcher.reject(outcome.error)
-			else watcher.resolve(outcome.value)
+			if ("error" in outcome) {
+				watcher.reject(outcome.error)
+			} else {
+				watcher.resolve(outcome.value)
+			}
 		}
 	)
 }
@@ -98,9 +112,13 @@ export function settle(d, key, each) {
 		d.pollers.delete(key)
 	}
 	const waiting = d.watchers.get(key)
-	if (!waiting) return
+	if (!waiting) {
+		return
+	}
 	d.watchers.delete(key)
-	for (const watcher of waiting) each(watcher)
+	for (const watcher of waiting) {
+		each(watcher)
+	}
 }
 /**
  * @param {DurableWorker} d
@@ -118,7 +136,9 @@ function watch(d, key) {
 		d.pollers.set(key, poller)
 	}
 	poller.delay = d.poll_ms
-	if (poller.checking) return
+	if (poller.checking) {
+		return
+	}
 	clearTimeout(poller.timer)
 	void check(d, key, poller)
 }

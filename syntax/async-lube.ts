@@ -51,7 +51,9 @@ function parse_user(data: unknown): User {
 		&& typeof data.id == "number"
 		&& "name" in data
 		&& typeof data.name == "string"
-	) return { id: data.id, name: data.name }
+	) {
+		return { id: data.id, name: data.name }
+	}
 	throw TypeError("Invalid user")
 }
 const api = http(
@@ -103,7 +105,9 @@ async function arrive_syntax() {
 			{ limit: 5 }
 		)
 		.run()
-	for await (const made of run.stream(burger)) expect_type<typeof made, string>(true)
+	for await (const made of run.stream(burger)) {
+		expect_type<typeof made, string>(true)
+	}
 	flow()
 		.add(bread)
 		.add(patty)
@@ -222,11 +226,15 @@ async function backend_syntax() {
 	for await (const items of latest(
 		typed,
 		(q, signal) => api.get<string[]>("/search", { q }, { signal })
-	)) expect_type<typeof items, string[]>(true)
+	)) {
+		expect_type<typeof items, string[]>(true)
+	}
 	for await (const doubled of latest(
 		channel<number>(),
 		value => value * 2
-	)) expect_type<typeof doubled, number>(true)
+	)) {
+		expect_type<typeof doubled, number>(true)
+	}
 	for await (const answer of latest(
 		typed,
 		(q, signal) => api.post(
@@ -238,31 +246,45 @@ async function backend_syntax() {
 				signal
 			}
 		)
-	)) expect_type<typeof answer, User>(true)
+	)) {
+		expect_type<typeof answer, User>(true)
+	}
 	for await (const line of latest(
 		typed,
 		async q => (await api.get("/search", { q }, { as: "ndjson" }))
-	)) expect_type<typeof line, unknown>(true)
-	for await (const list of latest(typed, async () => [ 1 ])) expect_type<typeof list, number[]>(true)
+	)) {
+		expect_type<typeof line, unknown>(true)
+	}
+	for await (const list of latest(typed, async () => [ 1 ])) {
+		expect_type<typeof list, number[]>(true)
+	}
 	async function* spell(q: string) {
 		yield* q
 	}
 	for await (const letter of latest(
 		typed,
 		async q => q.length > 1 ? spell(q) : q
-	)) expect_type<typeof letter, string>(true)
+	)) {
+		expect_type<typeof letter, string>(true)
+	}
 	for await (const part of latest(
 		typed,
 		q => q ? spell(q) : q.length
-	)) expect_type<typeof part, string | number>(true)
-	for await (const tick of every(1000, { immediate: true })) expect_type<typeof tick, number>(true)
+	)) {
+		expect_type<typeof part, string | number>(true)
+	}
+	for await (const tick of every(1000, { immediate: true })) {
+		expect_type<typeof tick, number>(true)
+	}
 	const identified = saved.run(void 0, { id: "order-1" })
 	void identified
 	void saved.run(
 		void 0,
 		{
 			trace: (event: TraceEvent) => {
-				if (event.type == "fail") expect_type<typeof event.retry, boolean>(true)
+				if (event.type == "fail") {
+					expect_type<typeof event.retry, boolean>(true)
+				}
 			}
 		}
 	)
@@ -774,8 +796,12 @@ async function flow_syntax() {
 			}
 		)
 	} catch (error) {
-		if (error instanceof FlowError) error.node.trim()
-		if (error instanceof TimeoutError) error.timeout.toFixed()
+		if (error instanceof FlowError) {
+			error.node.trim()
+		}
+		if (error instanceof TimeoutError) {
+			error.timeout.toFixed()
+		}
 	}
 }
 async function http_syntax() {
@@ -869,7 +895,9 @@ async function http_syntax() {
 		void 0,
 		{ as: "ndjson", parse: parse_user }
 	)
-	for await (const line of users) line.name.trim()
+	for await (const line of users) {
+		line.name.trim()
+	}
 	const names = api.get(
 		"/users.ndjson",
 		void 0,
@@ -913,7 +941,9 @@ async function http_syntax() {
 		{ page: 2, tags: [ "a", "b" ] }
 	).safe()
 	if (error) {
-		if (isCancel(error)) error satisfies CancelError
+		if (isCancel(error)) {
+ error satisfies CancelError
+		}
 		if (error instanceof HttpError) {
 			expect_type<typeof error.data, unknown>(true)
 			// @ts-expect-error: the data of an error is unknown until it is checked
@@ -951,7 +981,9 @@ async function http_syntax() {
 	)
 	for await (const event of stream) {
 		expect_type<typeof event.data, string>(true)
-		if (event.event == "close") break
+		if (event.event == "close") {
+			break
+		}
 	}
 	stream.lastEventId.trim()
 	expect_type<typeof stream.status, ConnectionStatus>(true)
@@ -977,9 +1009,13 @@ async function http_syntax() {
 			parse: async (value: unknown) => parse_user(value)
 		}
 	)
-	for await (const checked_event of checked_events) expect_type<typeof checked_event.data, User>(true)
+	for await (const checked_event of checked_events) {
+		expect_type<typeof checked_event.data, User>(true)
+	}
 	const json_events = api.sse("/prices", {}, { as: "json" })
-	for await (const json_event of json_events) expect_type<typeof json_event.data, unknown>(true)
+	for await (const json_event of json_events) {
+		expect_type<typeof json_event.data, unknown>(true)
+	}
 	const measured_events = api.sse(
 		"/prices",
 		{},
@@ -988,7 +1024,9 @@ async function http_syntax() {
 			parse: (value: unknown) => String(value).length
 		}
 	)
-	for await (const measured_event of measured_events) expect_type<typeof measured_event.data, number>(true)
+	for await (const measured_event of measured_events) {
+		expect_type<typeof measured_event.data, number>(true)
+	}
 	// @ts-expect-error: an event stream reads text or JSON
 	api.sse("/prices", {}, { as: "ndjson" })
 	const reconnect: ReconnectOptions = {
@@ -1059,7 +1097,9 @@ async function http_syntax() {
 	socket.send({ type: "join" })
 	for await (const message of socket) {
 		expect_type<typeof message, Message>(true)
-		if (message.text == "bye") socket.cancel()
+		if (message.text == "bye") {
+			socket.cancel()
+		}
 	}
 	// @ts-expect-error: the path needs an id
 	api.ws("/rooms/:id")
@@ -1070,7 +1110,9 @@ async function http_syntax() {
 		{},
 		{ parse: parse_user }
 	)
-	for await (const socket_user of user_socket) expect_type<typeof socket_user, User>(true)
+	for await (const socket_user of user_socket) {
+		expect_type<typeof socket_user, User>(true)
+	}
 	const checked_socket = api.ws(
 		"/users",
 		{},
@@ -1078,7 +1120,9 @@ async function http_syntax() {
 			parse: async (value: unknown) => parse_user(value)
 		}
 	)
-	for await (const checked_user of checked_socket) expect_type<typeof checked_user, User>(true)
+	for await (const checked_user of checked_socket) {
+		expect_type<typeof checked_user, User>(true)
+	}
 	const live = api.ws(
 		"/live",
 		{},
@@ -1088,7 +1132,9 @@ async function http_syntax() {
 			protocols: [ "v1" ]
 		}
 	)
-	for await (const socket_data of live) expect_type<typeof socket_data, unknown>(true)
+	for await (const socket_data of live) {
+		expect_type<typeof socket_data, unknown>(true)
+	}
 	expect_type<ReturnType<typeof live.send>, boolean>(true)
 	api.ws("/live", {}, { reconnect })
 	live.send(new Uint8Array(1))
@@ -1130,10 +1176,14 @@ async function http_syntax() {
 	try {
 		await socket[Symbol.asyncIterator]().next()
 	} catch (socket_error) {
-		if (socket_error instanceof SocketError) expect_type<typeof socket_error.code, number>(true)
+		if (socket_error instanceof SocketError) {
+			expect_type<typeof socket_error.code, number>(true)
+		}
 	}
 	const [ typed_error, typed_users ] = await api.get("/users/:id/friends", { id: 1 }).safe<User[]>()
-	if (!typed_error) expect_type<typeof typed_users, User[]>(true)
+	if (!typed_error) {
+		expect_type<typeof typed_users, User[]>(true)
+	}
 	// @ts-expect-error: a type argument of safe() keeps the check of the path parameters
 	void api.get("/users/:id/friends").safe<User[]>()
 	const typed_raw = await api.get("/users/:id", { id: 1 }).raw<User>()
@@ -1245,7 +1295,9 @@ async function stream_dependency_syntax() {
 	const later = flow().add(() => 1)
 		.add(breads, flow.keep(patties))
 	expect_type<Awaited<ReturnType<typeof later.run>>, string>(true)
-	for await (const bread of breads) expect_type<typeof bread, string>(true)
+	for await (const bread of breads) {
+		expect_type<typeof bread, string>(true)
+	}
 }
 async function stream_syntax() {
 	const words: Channel<string> = channel<string>({ limit: 10 })
@@ -1253,11 +1305,21 @@ async function stream_syntax() {
 	// @ts-expect-error: a channel of strings takes strings
 	words.send(1)
 	const lengths = channel<number>()
-	for await (const value of merge(words, lengths)) expect_type<typeof value, string | number>(true)
-	for await (const batch of buffer(words, 16)) expect_type<typeof batch, string[]>(true)
-	for await (const word of debounce(words, 300)) expect_type<typeof word, string>(true)
-	for await (const word of throttle(share(words), 16)) expect_type<typeof word, string>(true)
-	for await (const word of until(words, lengths)) expect_type<typeof word, string>(true)
+	for await (const value of merge(words, lengths)) {
+		expect_type<typeof value, string | number>(true)
+	}
+	for await (const batch of buffer(words, 16)) {
+		expect_type<typeof batch, string[]>(true)
+	}
+	for await (const word of debounce(words, 300)) {
+		expect_type<typeof word, string>(true)
+	}
+	for await (const word of throttle(share(words), 16)) {
+		expect_type<typeof word, string>(true)
+	}
+	for await (const word of until(words, lengths)) {
+		expect_type<typeof word, string>(true)
+	}
 	for await (const length of latest(words, () => share(lengths))) {
 		expect_type<typeof length, number>(true)
 		void word_of(length)

@@ -66,7 +66,9 @@ describe(
 		async function until(condition) {
 			const started = Date.now()
 			while (!condition()) {
-				if (Date.now() - started > 2000) assert.fail("Timed out")
+				if (Date.now() - started > 2000) {
+					assert.fail("Timed out")
+				}
 				await pause(5)
 			}
 		}
@@ -113,7 +115,9 @@ describe(
 				}
 				async function poll() {
 					await pause(1)
-					if (++polls < 3) throw Error("Pending")
+					if (++polls < 3) {
+						throw Error("Pending")
+					}
 					return "job"
 				}
 				function route() {
@@ -250,7 +254,9 @@ describe(
 				/** @type {unknown[]} */
 				const served = []
 				void (async () => {
-					for await (const made of run.stream(burger)) served.push(made)
+					for await (const made of run.stream(burger)) {
+						served.push(made)
+					}
 				})()
 				await pause(2)
 				run.send(patty, "p1")
@@ -317,7 +323,9 @@ describe(
 				await pause(2)
 				limited.send(bread, "b1")
 				await pause(10)
-				for (const value of [ "b2", "b3", "b4" ]) limited.send(bread, value)
+				for (const value of [ "b2", "b3", "b4" ]) {
+					limited.send(bread, value)
+				}
 				assert.equal(limited.pending(burger), 3)
 				await pause(400)
 				assert.equal(limited.pending(burger), 0)
@@ -336,7 +344,9 @@ describe(
 					.run()
 				paused.catch(() => {})
 				await pause(2)
-				for (const value of [ "c1", "c2", "c3" ]) paused.send(bread, value)
+				for (const value of [ "c1", "c2", "c3" ]) {
+					paused.send(bread, value)
+				}
 				await pause(10)
 				const saved = JSON.parse(
 					JSON.stringify(paused.snapshot())
@@ -1391,8 +1401,12 @@ describe(
 					attempts[file] = (attempts[file] ?? 0) + 1
 					await pause(5)
 					active--
-					if (file == "b" && Number(attempts[file]) < 2) throw Error("flaky")
-					if (file == "c") throw Error("broken")
+					if (file == "b" && Number(attempts[file]) < 2) {
+						throw Error("flaky")
+					}
+					if (file == "c") {
+						throw Error("broken")
+					}
 					return file.toUpperCase() + index
 				}
 				const uploads = flow()
@@ -1425,7 +1439,9 @@ describe(
 				}
 				/** @param {string} line */
 				function parse(line) {
-					if (Number.isNaN(Number(line))) throw Error("NaN")
+					if (Number.isNaN(Number(line))) {
+						throw Error("NaN")
+					}
 					return Number(line)
 				}
 				const parsed = await flow()
@@ -1573,7 +1589,9 @@ describe(
 			"each over async sources",
 			async () => {
 				async function* rows() {
-					for (const n of [ 1, 2, 3 ]) yield n
+					for (const n of [ 1, 2, 3 ]) {
+						yield n
+					}
 				}
 				const double = flow.each(
 					(/** @type {number} */ x) => x * 2
@@ -1655,7 +1673,9 @@ describe(
 					return [ "a", "b", "c" ]
 				}
 				function send_mail(/** @type {string} */ to) {
-					if (broken && to == "b") throw Error("smtp")
+					if (broken && to == "b") {
+						throw Error("smtp")
+					}
 					return to
 				}
 				const send_all = flow.each(send_mail)
@@ -1705,7 +1725,9 @@ describe(
 					(
 						/** @type {number | undefined} */ x
 					) => {
-						if (x === void 0) throw Error("missing")
+						if (x === void 0) {
+							throw Error("missing")
+						}
 						return x + 1
 					}
 				)
@@ -1779,7 +1801,9 @@ describe(
 				}
 				const upload = flow.each(
 					(/** @type {string} */ file) => {
-						if (file == "b") throw Error("too large")
+						if (file == "b") {
+							throw Error("too large")
+						}
 						return file
 					}
 				)
@@ -2085,7 +2109,9 @@ describe(
 			async () => {
 				let attempts = 0
 				function pay() {
-					if (++attempts < 3) throw Error("Card declined")
+					if (++attempts < 3) {
+						throw Error("Card declined")
+					}
 					return "paid"
 				}
 				const retry_prompt = flow.input("retry_prompt")
@@ -2128,7 +2154,9 @@ describe(
 				assert.equal(await given_up, "given up")
 				let polls = 0
 				function poll() {
-					if (++polls < 3) throw Error("Not ready")
+					if (++polls < 3) {
+						throw Error("Not ready")
+					}
 					return "ready"
 				}
 				const polled = await flow()
@@ -2444,7 +2472,9 @@ describe(
 					/** @type {Context} */ { attempt, key }
 				) {
 					keys.push(key)
-					if (failures-- > 0) throw Error(`attempt ${attempt}`)
+					if (failures-- > 0) {
+						throw Error(`attempt ${attempt}`)
+					}
 					return key
 				}
 				const run = flow().add(charge, { retry: 3 })
@@ -2941,7 +2971,9 @@ describe(
 						/** @type {number} */ n,
 						/** @type {Context} */ { sleep }
 					) {
-						if (ms) await sleep(ms)
+						if (ms) {
+							await sleep(ms)
+						}
 						seen.push(n)
 					}
 					async function tick(
@@ -3005,7 +3037,9 @@ describe(
 				polls = 0
 				saved.length = 0
 				async function check() {
-					if (++polls < 3) throw Error("pending")
+					if (++polls < 3) {
+						throw Error("pending")
+					}
 					return "paid"
 				}
 				assert.equal(
@@ -3117,7 +3151,9 @@ describe(
 				 */
 				function summarize(pages, { state }) {
 					count("summarize " + state)
-					if (crash && state == "q1") throw Error("overloaded")
+					if (crash && state == "q1") {
+						throw Error("overloaded")
+					}
 					return state + ":" + pages.length
 				}
 				const read_all = flow.each(read)
@@ -3204,7 +3240,9 @@ describe(
 				}
 				function step_b(/** @type {string} */ a) {
 					count("b")
-					if (failures-- > 0) throw Error("b")
+					if (failures-- > 0) {
+						throw Error("b")
+					}
 					return a + "b"
 				}
 				const before_group = { ...calls }
@@ -3350,7 +3388,9 @@ describe(
 						/** @type {Context} */ { signal }
 					) {
 						await pause(80)
-						if (!signal.aborted) done.push(String(z))
+						if (!signal.aborted) {
+							done.push(String(z))
+						}
 						return x + y + z
 					}
 					async function e(
@@ -3358,7 +3398,9 @@ describe(
 						/** @type {Context} */ { signal }
 					) {
 						await pause(120)
-						if (!signal.aborted) received.push(value)
+						if (!signal.aborted) {
+							received.push(value)
+						}
 						return value
 					}
 					const run = flow()
@@ -3446,7 +3488,8 @@ describe(
 				const region = /** @type {import("async-lube").Flow<number>} */(flow())/**/.add(left, { name: "left" })
 					.add(right, { name: "right" })
 					.add(combine, left, right)
-				const value = /** @type {import("async-lube").Input<number>} */(flow.input("value"))/**/
+				/** @type {import("async-lube").Input<number>} */
+				const value = flow.input("value")
 				/** @type {number[]} */
 				const collected = []
 				function collect(/** @type {number} */ x) {
@@ -3511,7 +3554,9 @@ describe(
 					/** @type {Context} */ { signal }
 				) {
 					await pause(20)
-					if (!signal.aborted) written.push(x)
+					if (!signal.aborted) {
+						written.push(x)
+					}
 					return x
 				}
 				const writer = flow().add(entry)
@@ -3565,8 +3610,12 @@ describe(
 					) {
 						await sleep(10)
 						handled.push(value)
-						if (value != 1) return value
-						if (throws) throw Error("first")
+						if (value != 1) {
+							return value
+						}
+						if (throws) {
+							throw Error("first")
+						}
 						return goto(other)
 					}
 					function other() {
@@ -3625,7 +3674,9 @@ describe(
 					)
 					.run()
 				await pause(1)
-				for (let i = 1; i <= 6; i++) run.send(tick, i)
+				for (let i = 1; i <= 6; i++) {
+					run.send(tick, i)
+				}
 				assert.equal(run.pending(work), 3)
 				assert.deepEqual(
 					internals(run).nodes["work"]?.backlog?.map(entry => entry.args[0]),
@@ -3732,7 +3783,9 @@ describe(
 					ledger.push("sent")
 					await sleep(30)
 					ledger.push(`answered ${signal.aborted}`)
-					if (charge_error) throw charge_error
+					if (charge_error) {
+						throw charge_error
+					}
 					return "pay_1"
 				}
 				const rider = flow.input("rider")
@@ -3949,7 +4002,9 @@ describe(
 				) {
 					signals.push(signal)
 					await sleep(20)
-					if (charge_error) throw charge_error
+					if (charge_error) {
+						throw charge_error
+					}
 					return "pay_1"
 				}
 				const rider = flow.input("rider")
@@ -4445,7 +4500,9 @@ describe(
 					/** @type {{ id: number }} */ value
 				) {
 					log.push(`write ${value.id}`)
-					if (broken) throw Error("constraint")
+					if (broken) {
+						throw Error("constraint")
+					}
 					return value.id
 				}
 				const retried = flow().add(tx, { release })
@@ -4658,7 +4715,9 @@ describe(
 					"is not added to the flow"
 				)
 				function flaky() {
-					if (!version++) throw Error("first")
+					if (!version++) {
+						throw Error("first")
+					}
 					return "ok"
 				}
 				function page(
@@ -4813,7 +4872,9 @@ describe(
 				const delays = []
 				/** @param {Context} context */
 				function flaky({ attempt }) {
-					if (attempt < 3) throw Error("again")
+					if (attempt < 3) {
+						throw Error("again")
+					}
 					return attempt
 				}
 				assert.equal(
@@ -4898,7 +4959,9 @@ describe(
 				)
 				let attempts = 0
 				function flaky() {
-					if (++attempts < 3) throw Error("flaky")
+					if (++attempts < 3) {
+						throw Error("flaky")
+					}
 					return attempts
 				}
 				vi.useFakeTimers()
@@ -4923,7 +4986,9 @@ describe(
 				}
 				function save(/** @type {number} */ value) {
 					calls.save++
-					if (broken) throw Error("disk")
+					if (broken) {
+						throw Error("disk")
+					}
 					return "saved " + value
 				}
 				const job = flow()
@@ -4942,7 +5007,9 @@ describe(
 				const fetched = []
 				function fetch_item(/** @type {number} */ id) {
 					fetched.push(id)
-					if (id == 2 && bad) throw Error("503")
+					if (id == 2 && bad) {
+						throw Error("503")
+					}
 					return id * 10
 				}
 				function ids() {
@@ -4977,7 +5044,9 @@ describe(
 				const upload = flow.each(
 					(/** @type {string} */ name) => {
 						calls[name] = (calls[name] ?? 0) + 1
-						if (name == "f2" && down) throw Error("f2 down")
+						if (name == "f2" && down) {
+							throw Error("f2 down")
+						}
 						return name.toUpperCase()
 					}
 				)
@@ -5358,7 +5427,9 @@ describe(
 			async () => {
 				let broken = true
 				function a() {
-					if (broken) throw Error("a")
+					if (broken) {
+						throw Error("a")
+					}
 					return 1
 				}
 				const first = flow()
@@ -5389,7 +5460,9 @@ describe(
 				}
 				function up(/** @type {number} */ value) {
 					calls.push(value)
-					if (value == 2 && bad) throw Error("bad")
+					if (value == 2 && bad) {
+						throw Error("bad")
+					}
 					return value * 10
 				}
 				const optional = flow()
@@ -5424,7 +5497,9 @@ describe(
 				strict.retry()
 				assert.deepEqual(await strict, [ 10, 20, 30 ])
 				function odd(/** @type {number} */ value) {
-					if (value % 2) throw Error("odd")
+					if (value % 2) {
+						throw Error("odd")
+					}
 					return value
 				}
 				const caught = flow()
@@ -5625,7 +5700,9 @@ describe(
 				function flaky(
 					/** @type {Context<number>} */ { state }
 				) {
-					if (state == 1 && failures++ < 1) throw Error("flaky")
+					if (state == 1 && failures++ < 1) {
+						throw Error("flaky")
+					}
 					return state
 				}
 				function list() {
@@ -5669,7 +5746,9 @@ describe(
 				const seen = []
 				let ended = false
 				void (async () => {
-					for await (const value of run.stream(double)) seen.push(value)
+					for await (const value of run.stream(double)) {
+						seen.push(value)
+					}
 					ended = true
 				})()
 				await pause(2)
@@ -5971,7 +6050,9 @@ describe(
 					resolve => {
 						const stop = watched.subscribe(
 							() => {
-								if (watched.status != "failed") return
+								if (watched.status != "failed") {
+									return
+								}
 								stop()
 								resolve(rejection(watched))
 							}
@@ -5979,7 +6060,8 @@ describe(
 					}
 				)
 				live.fail(failure)
-				const late_error = /** @type {FlowError} */(await late_failure)/**/
+				/** @type {FlowError} */
+				const late_error = await late_failure
 				assert.equal(late_error.cause, failure)
 				assert.deepEqual(
 					watched.nodes,
@@ -6074,7 +6156,9 @@ describe(
 				let closed = false
 				async function* endless() {
 					try {
-						for (let value = 1; ; value++) yield value
+						for (let value = 1; ; value++) {
+							yield value
+						}
 					} finally {
 						closed = true
 					}
@@ -6213,7 +6297,9 @@ describe(
 				async function step() {
 					const current = ++count
 					await pause(10)
-					if (current == 1) throw Error("first")
+					if (current == 1) {
+						throw Error("first")
+					}
 					return current
 				}
 				const run = flow()
@@ -6419,7 +6505,9 @@ describe(
 						: Promise.resolve("ok")
 				}
 				function throws() {
-					if (++attempts.throws < 3) throw Error("thrown")
+					if (++attempts.throws < 3) {
+						throw Error("thrown")
+					}
 					return "ok"
 				}
 				assert.equal(
@@ -6439,7 +6527,9 @@ describe(
 				}
 				const parse = flow.each(
 					(/** @type {number} */ x) => {
-						if (x == 1) throw Error("sync item")
+						if (x == 1) {
+							throw Error("sync item")
+						}
 						return Promise.reject(Error("async item"))
 					}
 				)
@@ -6510,7 +6600,9 @@ describe(
 				async function flaky(
 					/** @type {Context} */ { attempt }
 				) {
-					if (failures-- > 0) throw Error("flaky")
+					if (failures-- > 0) {
+						throw Error("flaky")
+					}
 					return attempt
 				}
 				const retrying = flow().add(
@@ -6576,7 +6668,9 @@ describe(
 					return value * 2
 				}
 				function flaky() {
-					if (failures-- > 0) throw Error("busy")
+					if (failures-- > 0) {
+						throw Error("busy")
+					}
 					return [ 1, 2 ]
 				}
 				function never(
@@ -6730,9 +6824,11 @@ describe(
 						[ 10, 20 ],
 						{
 							trace: event => {
-								if (event.type != "done") events.push(
-									`${event.type} ${event.node}#${event.index}`
-								)
+								if (event.type != "done") {
+									events.push(
+										`${event.type} ${event.node}#${event.index}`
+									)
+								}
 							}
 						}
 					)
@@ -6990,7 +7086,9 @@ describe(
 				const broken = Error("broken condition")
 				let throws = 1
 				function when() {
-					if (throws-- > 0) throw broken
+					if (throws-- > 0) {
+						throw broken
+					}
 					return true
 				}
 				let runs = 0
@@ -7064,7 +7162,9 @@ describe(
 					{
 						retry: { count: 1, delay: 5 },
 						when: () => {
-							if (throws-- > 0) throw broken
+							if (throws-- > 0) {
+								throw broken
+							}
 							return answer
 						}
 					}

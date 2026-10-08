@@ -247,22 +247,24 @@ describe(
 				assert.equal(added.map.get("b")?.value, 2)
 				assert.equal(added.object["a"], 3)
 				const key = { room: 1 }
-				const wire = /** @type {import("data-lube").Change[]} */(JSON.parse(
+				/** @type {import("data-lube").Change[]} */
+				const wire = JSON.parse(
 					JSON.stringify(
 						deepDiff(
 							new Map([ [ key, "a" ] ]),
 							new Map([ [ { room: 1 }, "b" ] ])
 						)
 					)
-				))/**/
+				)
 				assert.throws(
 					() => deepPatch(new Map([ [ key, "a" ] ]), wire),
 					RangeError
 				)
 				const members = new Set([ { id: 1 } ])
-				const removed = /** @type {import("data-lube").Change[]} */(JSON.parse(
+				/** @type {import("data-lube").Change[]} */
+				const removed = JSON.parse(
 					JSON.stringify(deepDiff(members, new Set()))
-				))/**/
+				)
 				assert.throws(
 					() => deepPatch(members, removed),
 					RangeError

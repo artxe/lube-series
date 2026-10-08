@@ -42,7 +42,7 @@ export default {
 		const fixable_name_regex = /^[_$]?[_$]?(?:[\dA-Za-z]+(?:_[\dA-Za-z]+)*\$?\$?)?$/
 		/** @type {Set<string>} */
 		const blocked = new Set()
-		const is_svelte = !!(/** @type {{ isSvelte?: boolean } | undefined} */(source.parserServices)/**/)?.isSvelte
+		const is_svelte = !!source.parserServices?.isSvelte
 		/** @type {Map<string, import("../../private.js").NamingIdentifier[]>} */
 		const store_usages = new Map()
 		/** @type {Set<import("../../private.js").NamingIdentifier>} */
@@ -74,8 +74,11 @@ export default {
 		 */
 		function add(map, node) {
 			const nodes = map.get(node.name)
-			if (nodes) nodes.push(node)
-			else map.set(node.name, [ node ])
+			if (nodes) {
+				nodes.push(node)
+			} else {
+				map.set(node.name, [ node ])
+			}
 		}
 		/**
 		 * @param {import("../../private.js").Comment} comment
@@ -84,7 +87,9 @@ export default {
 		 * @returns {import("../../private.js").RenameEdit[]}
 		 */
 		function comment_edits(comment, name, names_params) {
-			if (comment.type != "Block" || !comment.value.startsWith("*")) return []
+			if (comment.type != "Block" || !comment.value.startsWith("*")) {
+				return []
+			}
 			const text = comment.value
 			const start = comment.range[0] + 2
 			const fixed_name = to_snake_case(name)
@@ -97,7 +102,9 @@ export default {
 					"g"
 				)
 			)) {
-				if (!in_braces(text, match.index)) continue
+				if (!in_braces(text, match.index)) {
+					continue
+				}
 				edits.push(
 					{
 						range: [
@@ -108,7 +115,9 @@ export default {
 					}
 				)
 			}
-			if (!names_params) return edits
+			if (!names_params) {
+				return edits
+			}
 			for (const match of text.matchAll(jsdoc_param_regex)) {
 				let index = skip_space(
 					text,
@@ -116,12 +125,17 @@ export default {
 				)
 				if (text[index] == "{") {
 					for (let depth = 0; index < text.length; index++) {
-						if (text[index] == "{") depth++
-						else if (text[index] == "}" && !--depth) break
+						if (text[index] == "{") {
+							depth++
+						} else if (text[index] == "}" && !--depth) {
+							break
+						}
 					}
 					index = skip_space(text, index + 1)
 				}
-				if (text[index] == "[") index = skip_space(text, index + 1)
+				if (text[index] == "[") {
+					index = skip_space(text, index + 1)
+				}
 				if (text.startsWith(name, index) && !word_character_regex.test(
 					text[index + name.length] ?? ""
 				)) {
@@ -157,14 +171,18 @@ export default {
 					)
 					: []
 			)
-			if (leading) comments.add(leading)
-			for (const comment of comments) edits.push(
-				...comment_edits(
-					comment,
-					node.name,
-					comment == leading
+			if (leading) {
+				comments.add(leading)
+			}
+			for (const comment of comments) {
+				edits.push(
+					...comment_edits(
+						comment,
+						node.name,
+						comment == leading
+					)
 				)
-			)
+			}
 			return edits
 		}
 		/**
@@ -198,7 +216,8 @@ export default {
 			const child = node.parent.type == "AssignmentPattern" && node.parent.left == node || node.parent.type == "RestElement"
 				? node.parent
 				: node
-			const func = /** @type {import("../../private.js").AstNode & { params?: import("../../private.js").AstNode[] }} */(child.parent)/**/
+			/** @type {import("../../private.js").AstNode & { params?: import("../../private.js").AstNode[] }} */
+			const func = child.parent
 			return function_types.has(func.type) && func.params?.includes(child) ? func : void 0
 		}
 		/**
@@ -209,8 +228,11 @@ export default {
 		function in_braces(text, index) {
 			let depth = 0
 			for (let i = 0; i < index; i++) {
-				if (text[i] == "{") depth++
-				else if (text[i] == "}" && depth) depth--
+				if (text[i] == "{") {
+					depth++
+				} else if (text[i] == "}" && depth) {
+					depth--
+				}
 			}
 			return depth > 0
 		}
@@ -248,7 +270,9 @@ export default {
 			for (const directive of disable_directives) {
 				const rule_ids = directive.value.split(",").map(rule_id => rule_id.trim())
 					.filter(Boolean)
-				if (rule_ids.length && !rule_ids.includes(context.id)) continue
+				if (rule_ids.length && !rule_ids.includes(context.id)) {
+					continue
+				}
 				const comment_loc = directive.node.loc
 				switch (directive.type) {
 				case "disable":
@@ -258,10 +282,14 @@ export default {
 					}
 					break
 				case "disable-line":
-					if (comment_loc.start.line == line) return true
+					if (comment_loc.start.line == line) {
+						return true
+					}
 					break
 				case "disable-next-line":
-					if (comment_loc.end.line + 1 == line) return true
+					if (comment_loc.end.line + 1 == line) {
+						return true
+					}
 				}
 			}
 			return disabled
@@ -280,9 +308,13 @@ export default {
 				anchor = parent
 				break
 			case "VariableDeclarator":
-				if (parent.init == func) anchor = parent.parent
+				if (parent.init == func) {
+					anchor = parent.parent
+				}
 			}
-			if (anchor.parent.type == "ExportDefaultDeclaration" || anchor.parent.type == "ExportNamedDeclaration") anchor = anchor.parent
+			if (anchor.parent.type == "ExportDefaultDeclaration" || anchor.parent.type == "ExportNamedDeclaration") {
+				anchor = anchor.parent
+			}
 			return /** @type {import("../../private.js").Comment[]} */(source.getCommentsBefore(
 				/** @type {import("estree").Node} */(anchor)/**/
 			))/**/.at(-1)
@@ -302,22 +334,31 @@ export default {
 					? /** @type {import("../../private.js").AstNode} */(decorators[decorators.length - 1])/**/.range[1]
 					: target.range[0]
 			)
-			const range = /** @type {[number, number]} */([ start, start + name.length ])/**/
-			if (svelte_shorthands.has(target)) return {
-				range: /** @type {[number, number]} */(parent.range)/**/,
-				text: name + "={" + fixed_name + "}"
+			/** @type {[number, number]} */
+			const range = [ start, start + name.length ]
+			if (svelte_shorthands.has(target)) {
+				return {
+					range: /** @type {[number, number]} */(parent.range)/**/,
+					text: name + "={" + fixed_name + "}"
+				}
 			}
-			if (shorthand_properties.has(target)) return {
-				range,
-				text: name + ": " + fixed_name
+			if (shorthand_properties.has(target)) {
+				return {
+					range,
+					text: name + ": " + fixed_name
+				}
 			}
-			if (import_shorthands.has(target)) return {
-				range,
-				text: name + " as " + fixed_name
+			if (import_shorthands.has(target)) {
+				return {
+					range,
+					text: name + " as " + fixed_name
+				}
 			}
-			if (export_shorthands.has(target)) return {
-				range,
-				text: fixed_name + " as " + name
+			if (export_shorthands.has(target)) {
+				return {
+					range,
+					text: fixed_name + " as " + name
+				}
 			}
 			if (parent.type == "ImportSpecifier" && parent.imported.type == "Identifier" && parent.imported.name == fixed_name) {
 				return {
@@ -352,7 +393,9 @@ export default {
 						name: node.name
 					},
 					fix(fixer) {
-						if (!edits) return null
+						if (!edits) {
+							return null
+						}
 						/** @type {Set<number>} */
 						const starts = new Set()
 						return edits.filter(
@@ -377,7 +420,9 @@ export default {
 		function skip_space(text, index) {
 			while (index < text.length && space_regex.test(
 				/** @type {string} */(text[index])/**/
-			)) index++
+			)) {
+				index++
+			}
 			return index
 		}
 		/**
@@ -396,11 +441,18 @@ export default {
 					const store = name.slice(1)
 					if (is_svelte) {
 						const nodes = store_usages.get(store)
-						if (nodes) nodes.push(node)
-						else store_usages.set(store, [ node ])
-					} else blocked.add(store)
+						if (nodes) {
+							nodes.push(node)
+						} else {
+							store_usages.set(store, [ node ])
+						}
+					} else {
+						blocked.add(store)
+					}
 				}
-				if (allow_regex.test(name) || visited.has(node)) return
+				if (allow_regex.test(name) || visited.has(node)) {
+					return
+				}
 				visited.add(node)
 				const parent = /** @type {import("../../private.js").NamingParent} */(node.parent)/**/
 				switch (parent.type) {
@@ -410,29 +462,41 @@ export default {
 				case "TSAbstractPropertyDefinition":
 				case "TSMethodSignature":
 				case "TSPropertySignature":
-					if (parent.computed || parent.value == node) defer(node)
+					if (parent.computed || parent.value == node) {
+						defer(node)
+					}
 					break
 				case "ArrayExpression":
 					defer(node)
 					break
 				case "ArrayPattern":
-					if (is_declaration(node)) declare(node)
-					else defer(node)
+					if (is_declaration(node)) {
+						declare(node)
+					} else {
+						defer(node)
+					}
 					break
 				case "ArrowFunctionExpression":
-					if (parent.body == node) defer(node)
-					else declare(node)
+					if (parent.body == node) {
+						defer(node)
+					} else {
+						declare(node)
+					}
 					break
 				case "AssignmentExpression":
 					defer(node)
 					break
 				case "AssignmentPattern":
-					if (parent.left != node) defer(node)
-					else if (parent.parent?.type == "Property" && parent.parent.shorthand) {
+					if (parent.left != node) {
+						defer(node)
+					} else if (parent.parent?.type == "Property" && parent.parent.shorthand) {
 						shorthand_properties.add(node)
 						defer(node)
-					} else if (is_declaration(node)) declare(node)
-					else defer(node)
+					} else if (is_declaration(node)) {
+						declare(node)
+					} else {
+						defer(node)
+					}
 					break
 				case "AwaitExpression":
 					defer(node)
@@ -480,8 +544,11 @@ export default {
 					break
 				case "ClassDeclaration":
 				case "ClassExpression":
-					if (parent.id == node) declare(node)
-					else defer(node)
+					if (parent.id == node) {
+						declare(node)
+					} else {
+						defer(node)
+					}
 					break
 				case "ConditionalExpression":
 					defer(node)
@@ -498,7 +565,9 @@ export default {
 				case "ExportSpecifier":
 					if (parent.local == node && !(/** @type {import("estree").ExportNamedDeclaration} */(parent.parent)/**/).source) {
 						const is_shorthand = parent.exported == node || parent.exported.range?.[0] == node.range[0]
-						if (is_shorthand) export_shorthands.add(node)
+						if (is_shorthand) {
+							export_shorthands.add(node)
+						}
 						add(export_locals, node)
 					}
 					break
@@ -517,8 +586,12 @@ export default {
 				case "FunctionDeclaration":
 				case "TSDeclareFunction":
 					if (parent.id != node) {
-						if (parent.type == "FunctionDeclaration") declare(node)
-					} else if (parent.parent?.type != "ExportNamedDeclaration" || !camel_case_regex.test(name)) declare(node)
+						if (parent.type == "FunctionDeclaration") {
+							declare(node)
+						}
+					} else if (parent.parent?.type != "ExportNamedDeclaration" || !camel_case_regex.test(name)) {
+						declare(node)
+					}
 					break
 				case "FunctionExpression":
 					declare(node)
@@ -540,17 +613,23 @@ export default {
 						if (parent.imported.type == "Identifier" && parent.imported.name == name) {
 							import_shorthands.add(node)
 							defer(node)
-						} else declare(node)
+						} else {
+							declare(node)
+						}
 					}
 					break
 				case "LogicalExpression":
 					defer(node)
 					break
 				case "MemberExpression":
-					if (parent.object == node || parent.computed) defer(node)
+					if (parent.object == node || parent.computed) {
+						defer(node)
+					}
 					break
 				case "MethodDefinition":
-					if (parent.computed) defer(node)
+					if (parent.computed) {
+						defer(node)
+					}
 					break
 				case "NewExpression":
 					defer(node)
@@ -558,18 +637,30 @@ export default {
 				case "Property":
 					if (parent.value == node) {
 						const is_shorthand = parent.shorthand
-						if (is_shorthand) shorthand_properties.add(node)
+						if (is_shorthand) {
+							shorthand_properties.add(node)
+						}
 						const declares = !is_shorthand && parent.parent?.type == "ObjectPattern" && is_declaration(node)
-						if (declares) declare(node)
-						else defer(node)
-					} else if (parent.computed) defer(node)
+						if (declares) {
+							declare(node)
+						} else {
+							defer(node)
+						}
+					} else if (parent.computed) {
+						defer(node)
+					}
 					break
 				case "PropertyDefinition":
-					if (parent.value == node || parent.computed) defer(node)
+					if (parent.value == node || parent.computed) {
+						defer(node)
+					}
 					break
 				case "RestElement":
-					if (is_declaration(node)) declare(node)
-					else defer(node)
+					if (is_declaration(node)) {
+						declare(node)
+					} else {
+						defer(node)
+					}
 					break
 				case "ReturnStatement":
 					defer(node)
@@ -587,14 +678,21 @@ export default {
 					defer(node)
 					break
 				case "TSEnumMember":
-					if (parent.initializer == node) defer(node)
+					if (parent.initializer == node) {
+						defer(node)
+					}
 					break
 				case "TSImportEqualsDeclaration":
-					if (parent.id == node) declare(node)
-					else defer(node)
+					if (parent.id == node) {
+						declare(node)
+					} else {
+						defer(node)
+					}
 					break
 				case "TSQualifiedName":
-					if (parent.left == node) defer(node)
+					if (parent.left == node) {
+						defer(node)
+					}
 					break
 				case "TaggedTemplateExpression":
 					defer(node)
@@ -619,7 +717,9 @@ export default {
 						) {
 							declare(node)
 						}
-					} else defer(node)
+					} else {
+						defer(node)
+					}
 					break
 				case "WhileStatement":
 					defer(node)
@@ -628,7 +728,8 @@ export default {
 					defer(node)
 					break
 				default: {
-					const type = /** @type {string} */(parent.type)/**/
+					/** @type {string} */
+					const type = parent.type
 					const svelte_parent = /** @type {{ expression?: unknown, kind?: string, value?: unknown }} */(/** @type {unknown} */(parent))/**/
 					if (type == "SvelteShorthandAttribute") {
 						if (svelte_parent.value == node) {
@@ -639,17 +740,23 @@ export default {
 						svelte_usage_parents.has(type)
 						|| type == "SvelteDirective" && svelte_parent.kind != "Let"
 						|| svelte_expression_parents.has(type) && svelte_parent.expression == node
-					) defer(node)
-					else blocked.add(name)
+					) {
+						defer(node)
+					} else {
+						blocked.add(name)
+					}
 				}
 				}
 			},
 			/** @param {import("../../private.js").AstNode & import("estree").Identifier} node */
 			JSXIdentifier(node) {
 				const name = node.name
-				const parent = /** @type {{ object?: unknown, type: string }} */(/** @type {unknown} */(node.parent))/**/
+				/** @type {{ object?: unknown, type: string }} */
+				const parent = node.parent
 				if (parent.type == "JSXMemberExpression" && parent.object == node) {
-					if (allow_regex.test(name)) return
+					if (allow_regex.test(name)) {
+						return
+					}
 					jsx_objects.add(node)
 					defer(node)
 				} else if ((parent.type == "JSXOpeningElement" || parent.type == "JSXClosingElement") && !lowercase_regex.test(name)) {
@@ -657,7 +764,9 @@ export default {
 				}
 			},
 			"Program:exit": () => {
-				if (!declarations.size) return
+				if (!declarations.size) {
+					return
+				}
 				/** @type {Map<import("../../private.js").AstNode, import("eslint").Scope.Variable | null>} */
 				const resolution = new Map()
 				/** @type {Map<string, import("eslint").Scope.Variable[]>} */
@@ -666,22 +775,31 @@ export default {
 				for (const scope of scopes) {
 					for (const variable of scope.variables) {
 						const same_names = variables_by_name.get(variable.name)
-						if (same_names) same_names.push(variable)
-						else variables_by_name.set(variable.name, [ variable ])
-						for (const identifier of variable.identifiers) resolution.set(
+						if (same_names) {
+							same_names.push(variable)
+						} else {
+							variables_by_name.set(variable.name, [ variable ])
+						}
+						for (const identifier of variable.identifiers) {
+							resolution.set(
 							/** @type {import("../../private.js").AstNode} */(/** @type {unknown} */(identifier))/**/,
-							variable
-						)
+								variable
+							)
+						}
 					}
 				}
 				for (const scope of scopes) {
 					for (const reference of scope.references) {
 						const identifier = /** @type {import("../../private.js").AstNode} */(/** @type {unknown} */(reference.identifier))/**/
-						if (!resolution.has(identifier)) resolution.set(identifier, reference.resolved)
+						if (!resolution.has(identifier)) {
+							resolution.set(identifier, reference.resolved)
+						}
 					}
 				}
 				for (const node of jsx_objects) {
-					if (!resolution.has(node)) blocked.add(node.name)
+					if (!resolution.has(node)) {
+						blocked.add(node.name)
+					}
 				}
 				/** @type {Set<import("eslint").Scope.Variable>} */
 				const renamable = new Set()
@@ -691,7 +809,9 @@ export default {
 					for (const node of nodes) {
 						declared.add(node)
 						const variable = resolution.get(node)
-						if (variable) renamable.add(variable)
+						if (variable) {
+							renamable.add(variable)
+						}
 					}
 				}
 				/** @type {Map<string, Set<import("eslint").Scope.Scope>>} */
@@ -699,11 +819,14 @@ export default {
 				for (const variable of renamable) {
 					const target = to_snake_case(variable.name)
 					const target_scopes = scopes_by_target.get(target)
-					if (target_scopes) target_scopes.add(variable.scope)
-					else scopes_by_target.set(
-						target,
-						new Set([ variable.scope ])
-					)
+					if (target_scopes) {
+						target_scopes.add(variable.scope)
+					} else {
+						scopes_by_target.set(
+							target,
+							new Set([ variable.scope ])
+						)
+					}
 				}
 				/** @type {Set<string>} */
 				const nested_targets = new Set()
@@ -711,7 +834,9 @@ export default {
 					const target = to_snake_case(variable.name)
 					const target_scopes = /** @type {Set<import("eslint").Scope.Scope>} */(scopes_by_target.get(target))/**/
 					for (let scope = variable.scope.upper; scope; scope = scope.upper) {
-						if (target_scopes.has(scope)) nested_targets.add(target)
+						if (target_scopes.has(scope)) {
+							nested_targets.add(target)
+						}
 					}
 				}
 				/**
@@ -719,7 +844,9 @@ export default {
 				 * @returns {boolean}
 				 */
 				function belongs(node) {
-					if (!resolution.has(node)) return true
+					if (!resolution.has(node)) {
+						return true
+					}
 					const variable = resolution.get(node)
 					return !!variable && renamable.has(variable)
 				}
@@ -729,9 +856,13 @@ export default {
 				 */
 				function collides(name) {
 					const others = variables_by_name.get(to_snake_case(name)) ?? []
-					if (!others.length) return false
+					if (!others.length) {
+						return false
+					}
 					for (const variable of variables_by_name.get(name) ?? []) {
-						if (!renamable.has(variable)) continue
+						if (!renamable.has(variable)) {
+							continue
+						}
 						for (const scope of [
 							variable.scope,
 							...variable.references.map(reference => reference.from)
@@ -739,14 +870,20 @@ export default {
 							for (let current = /** @type {import("eslint").Scope.Scope | null} */(scope)/**/; current; current = current.upper) {
 								if (others.some(
 									other => other.scope == current
-								)) return true
-								if (current == variable.scope) break
+								)) {
+									return true
+								}
+								if (current == variable.scope) {
+									break
+								}
 							}
 						}
 						for (const other of others) {
 							for (const reference of other.references) {
 								for (let current = /** @type {import("eslint").Scope.Scope | null} */(reference.from)/**/; current && current != other.scope; current = current.upper) {
-									if (current == variable.scope) return true
+									if (current == variable.scope) {
+										return true
+									}
 								}
 							}
 						}
@@ -770,9 +907,11 @@ export default {
 				const held = new Set(default_exports)
 				for (const variable of renamable) {
 					for (const reference of variable.references) {
-						if (reference.isWrite() && !reference.init) held.add(
+						if (reference.isWrite() && !reference.init) {
+							held.add(
 							/** @type {import("../../private.js").AstNode} */(/** @type {unknown} */(reference.identifier))/**/
-						)
+							)
+						}
 					}
 				}
 				/** @type {Map<string, import("../../private.js").RenamePlan>} */
@@ -820,17 +959,23 @@ export default {
 				let atomic_node
 				for (const [ name, nodes ] of declarations) {
 					const plan = /** @type {import("../../private.js").RenamePlan} */(plans.get(name))/**/
-					if (!plan.exported.length || !plan.fixable || !plan.atomic && plan.used.length) continue
+					if (!plan.exported.length || !plan.fixable || !plan.atomic && plan.used.length) {
+						continue
+					}
 					atomic_node ??= nodes[0]
-					for (const node of nodes) atomic.push(
-						...declaration_edits(node, resolution)
-					)
+					for (const node of nodes) {
+						atomic.push(
+							...declaration_edits(node, resolution)
+						)
+					}
 					for (const node of [
 						...plan.exported,
 						...plan.used,
 						...plan.held,
 						...store_usages.get(name) ?? []
-					]) atomic.push(rename_edit(node))
+					]) {
+						atomic.push(rename_edit(node))
+					}
 				}
 				for (const [ name, nodes ] of declarations) {
 					const {
@@ -841,15 +986,19 @@ export default {
 						used
 					} = /** @type {import("../../private.js").RenamePlan} */(plans.get(name))/**/
 					if (exported.length) {
-						for (const node of nodes) report(
-							node,
-							node == atomic_node ? atomic : null
-						)
+						for (const node of nodes) {
+							report(
+								node,
+								node == atomic_node ? atomic : null
+							)
+						}
 					} else if (!renames_at_once) {
-						for (const node of nodes) report(
-							node,
-							fixable && !used.length ? declaration_fix(node, nodes, usages_held) : null
-						)
+						for (const node of nodes) {
+							report(
+								node,
+								fixable && !used.length ? declaration_fix(node, nodes, usages_held) : null
+							)
+						}
 					} else {
 						report(
 							/** @type {import("../../private.js").NamingIdentifier} */(nodes[0])/**/,
@@ -864,15 +1013,25 @@ export default {
 								]
 								: null
 						)
-						for (const node of nodes.slice(1)) report(node, null)
+						for (const node of nodes.slice(1)) {
+							report(node, null)
+						}
 					}
-					if (!fix_same_names) continue
-					for (const node of exported) report(node, null)
-					for (const node of usages_held) report(node, null)
-					for (const node of used) report(
-						node,
-						fixable && !renames_at_once ? [ rename_edit(node) ] : null
-					)
+					if (!fix_same_names) {
+						continue
+					}
+					for (const node of exported) {
+						report(node, null)
+					}
+					for (const node of usages_held) {
+						report(node, null)
+					}
+					for (const node of used) {
+						report(
+							node,
+							fixable && !renames_at_once ? [ rename_edit(node) ] : null
+						)
+					}
 				}
 			}
 		}

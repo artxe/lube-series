@@ -29,7 +29,9 @@ function deliver(execution, item) {
 		0,
 		{ at: item.at, value: item.value }
 	)
-	if (execution.finished) wake_if_sent(saved)
+	if (execution.finished) {
+		wake_if_sent(saved)
+	}
 }
 /**
  * @param {DurableExecution} execution
@@ -37,12 +39,16 @@ function deliver(execution, item) {
  */
 function drain(execution) {
 	const { saved } = execution
-	if (!saved.events || execution.finished) return
+	if (!saved.events || execution.finished) {
+		return
+	}
 	for (const name of Object.keys(saved.events)) {
 		for (;;) {
 			const event = saved.events?.[name]?.[0]
 			const waiter = event && !execution.unsaved.has(event) && take_waiter(execution, name, event.at)
-			if (!event || !waiter) break
+			if (!event || !waiter) {
+				break
+			}
 			take_event(saved, name)
 			give(execution, waiter, event.value)
 			waiter.resolve(copy(event.value))
@@ -55,10 +61,14 @@ function drain(execution) {
  * @returns {Promise<boolean>}
  */
 export async function inbox_read(d, execution) {
-	if (execution.writing) await execution.writing
+	if (execution.writing) {
+		await execution.writing
+	}
 	try {
 		const latest = await load(d.store, execution.key)
-		if (execution.lost || execution.finished) return false
+		if (execution.lost || execution.finished) {
+			return false
+		}
 		return execution.fault === void 0 && (!latest?.inbox?.length || latest.version == execution.saved.version) || await persist(d, execution)
 	} catch (error) {
 		execution.fault = error
@@ -71,7 +81,9 @@ export async function inbox_read(d, execution) {
  * @returns {Promise<boolean>}
  */
 export function persist(d, execution) {
-	if (execution.lost) return Promise.resolve(false)
+	if (execution.lost) {
+		return Promise.resolve(false)
+	}
 	if (execution.writing) {
 		execution.dirty = true
 		return execution.writing
@@ -83,9 +95,13 @@ export function persist(d, execution) {
 				const current = execution.saved
 				const next = snapshot(current)
 				const included = execution.unsaved
-				if (included.size) execution.unsaved = new Set()
+				if (included.size) {
+					execution.unsaved = new Set()
+				}
 				const attempt = ++execution.taken
-				if (next.owner) next.lease = Date.now() + d.lease_ms
+				if (next.owner) {
+					next.lease = Date.now() + d.lease_ms
+				}
 				/** @type {SavedRun | undefined} */
 				let latest
 				let putting = true
@@ -105,16 +121,26 @@ export function persist(d, execution) {
 						continue
 					}
 					putting = false
-					for (const event of included) execution.unsaved.add(event)
+					for (const event of included) {
+						execution.unsaved.add(event)
+					}
 					latest = await load(d.store, execution.key)
 				} catch (error) {
-					for (const event of included) execution.unsaved.add(event)
-					if (putting) execution.tried.push(next)
+					for (const event of included) {
+						execution.unsaved.add(event)
+					}
+					if (putting) {
+						execution.tried.push(next)
+					}
 					execution.fault = error
-					if (expiring(d, execution)) lose(execution, store_error(error))
+					if (expiring(d, execution)) {
+						lose(execution, store_error(error))
+					}
 					return false
 				}
-				if (execution.lost) return false
+				if (execution.lost) {
+					return false
+				}
 				const committed = latest && execution.tried.findLast(
 					tried => same_state(
 						/** @type {SavedRun} */(latest)/**/,
@@ -137,10 +163,12 @@ export function persist(d, execution) {
 				execution.tried = []
 				current.version = latest.version
 				const inbox = latest.inbox ?? []
-				for (let index = execution.absorbed; index < inbox.length; index++) deliver(
-					execution,
-					/** @type {NonNullable<SavedRun["inbox"]>[number]} */(inbox[index])/**/
-				)
+				for (let index = execution.absorbed; index < inbox.length; index++) {
+					deliver(
+						execution,
+						/** @type {NonNullable<SavedRun["inbox"]>[number]} */(inbox[index])/**/
+					)
+				}
 				execution.absorbed = inbox.length
 				execution.dirty = true
 			} while (execution.dirty && !execution.lost)
@@ -158,7 +186,9 @@ export function persist(d, execution) {
  */
 export async function save(d, execution) {
 	while (!await persist(d, execution)) {
-		if (execution.lost) return false
+		if (execution.lost) {
+			return false
+		}
 		await sleep(
 			d.renew_ms,
 			execution.controller.signal
@@ -174,13 +204,21 @@ export async function save(d, execution) {
 export function watch_inbox(d, execution) {
 	execution.inbox_timer ??= setInterval(
 		() => {
-			if (execution.finished || execution.lost || execution.writing) return
+			if (execution.finished || execution.lost || execution.writing) {
+				return
+			}
 			let waiting = false
-			for (const list of execution.waiters.values()) waiting ||= list.length > 0
-			if (!waiting) return
+			for (const list of execution.waiters.values()) {
+				waiting ||= list.length > 0
+			}
+			if (!waiting) {
+				return
+			}
 			void load(d.store, execution.key).then(
 				latest => {
-					if (latest?.inbox?.length && latest.version != execution.saved.version) void persist(d, execution)
+					if (latest?.inbox?.length && latest.version != execution.saved.version) {
+						void persist(d, execution)
+					}
 				},
 				noop
 			)

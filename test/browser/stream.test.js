@@ -40,7 +40,9 @@ describe(
 				/** @type {MouseEvent[]} */
 				const seen = []
 				void (async () => {
-					for await (const event of clicks) seen.push(event)
+					for await (const event of clicks) {
+						seen.push(event)
+					}
 				})()
 				await settle()
 				link.click()
@@ -131,7 +133,9 @@ describe(
 				/** @type {string[]} */
 				const seen = []
 				void (async () => {
-					for await (const name of throttle(merge(ones, twos), 40)) seen.push(name)
+					for await (const name of throttle(merge(ones, twos), 40)) {
+						seen.push(name)
+					}
 				})()
 				await settle()
 				one.click()

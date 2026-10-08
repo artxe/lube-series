@@ -24,15 +24,20 @@ export async function throttle(c, key, ms, cancel, signal) {
 		try {
 			await sleep(Math.max(wait, 0), signal)
 		} finally {
-			if (current.cancel == cancel) current.cancel = void 0
+			if (current.cancel == cancel) {
+				current.cancel = void 0
+			}
 		}
 	}
 	current.next = Date.now() + ms
-	const sweeper = /** @type {{ unref?: () => void }} */(/** @type {unknown} */(setTimeout(
+	/** @type {{ unref?: () => void }} */
+	const sweeper = setTimeout(
 		() => {
-			if (!current.cancel && Date.now() >= current.next && c.shared.throttles.get(key) == current) c.shared.throttles.delete(key)
+			if (!current.cancel && Date.now() >= current.next && c.shared.throttles.get(key) == current) {
+				c.shared.throttles.delete(key)
+			}
 		},
 		clamp_delay(ms)
-	)))/**/
+	)
 	sweeper.unref?.()
 }

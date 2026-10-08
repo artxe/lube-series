@@ -42,14 +42,16 @@ describe(
 						`SIM_MODE=queue SIM_SEED=${seed}`,
 						simulate_queue(seed, unhandled)
 					)
-					if (problems.length) failures.push(
-						[
-							`SIM_MODE=queue SIM_SEED=${seed} ${config}`,
-							...problems,
-							...nodes,
-							...log
-						].join("\n")
-					)
+					if (problems.length) {
+						failures.push(
+							[
+								`SIM_MODE=queue SIM_SEED=${seed} ${config}`,
+								...problems,
+								...nodes,
+								...log
+							].join("\n")
+						)
+					}
 				}
 				assert.deepEqual(
 					{

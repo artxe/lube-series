@@ -42,7 +42,9 @@ function decode_bytes(bytes, charset) {
  * @returns {string | undefined}
  */
 function decode_korean(bytes) {
-	if (!get_cp949_regex().test(bytes)) return
+	if (!get_cp949_regex().test(bytes)) {
+		return
+	}
 	let korean
 	try {
 		korean = decode_bytes(bytes, "euc-kr")
@@ -51,7 +53,9 @@ function decode_korean(bytes) {
 	}
 	for (let i = 0; i < korean.length; i++) {
 		const code = korean.charCodeAt(i)
-		if (code >= 0x80 && code < 0xa0) return
+		if (code >= 0x80 && code < 0xa0) {
+			return
+		}
 	}
 	return reads_as_latin1(bytes) ? void 0 : korean
 }
@@ -79,7 +83,9 @@ function decode_plain_name(name) {
  * @returns {RegExp}
  */
 function get_cp949_regex() {
-	if (cp949_regex) return cp949_regex
+	if (cp949_regex) {
+		return cp949_regex
+	}
 	let uhc = false
 	try {
 		uhc = decode_bytes("\x8c\x63", "euc-kr") == "똠"
@@ -108,12 +114,16 @@ export function get_file_name(response, url) {
 			const decoded = byte_string_regex.test(bytes)
 				? decode_bytes(bytes, extended?.[1] || "utf-8")
 				: ""
-			if (decoded) return decoded
+			if (decoded) {
+				return decoded
+			}
 		} catch {}
 	}
 	const plain = plain_file_name_regex.exec(disposition)
 	const name = plain?.[1]?.replace(/\\(.)/g, "$1") ?? plain?.[2]?.trim()
-	if (name) return decode_plain_name(name)
+	if (name) {
+		return decode_plain_name(name)
+	}
 	const segment = new URL(url, "http://localhost").pathname.split("/").pop()
 	try {
 		return segment ? decodeURIComponent(segment) : "download"
@@ -188,10 +198,16 @@ export async function read_body(response, as, method, url) {
 	case "text":
 		return response.text()
 	}
-	if (method == "HEAD" || null_body_statuses.has(response.status)) return
+	if (method == "HEAD" || null_body_statuses.has(response.status)) {
+		return
+	}
 	const type = response.headers.get("Content-Type") ?? ""
-	if (json_type_regex.test(type)) return parse_json(await response.text())
-	if (type && !text_type_regex.test(type)) return response.blob()
+	if (json_type_regex.test(type)) {
+		return parse_json(await response.text())
+	}
+	if (type && !text_type_regex.test(type)) {
+		return response.blob()
+	}
 	const text = await response.text()
 	return type || text ? text : void 0
 }
@@ -200,12 +216,18 @@ export async function read_body(response, as, method, url) {
  * @returns {Promise<unknown>}
  */
 export async function read_error_data(response) {
-	if (null_body_statuses.has(response.status)) return
+	if (null_body_statuses.has(response.status)) {
+		return
+	}
 	const type = response.headers.get("Content-Type") ?? ""
 	try {
-		if (type && !json_type_regex.test(type) && !text_type_regex.test(type)) return await response.blob()
+		if (type && !json_type_regex.test(type) && !text_type_regex.test(type)) {
+			return await response.blob()
+		}
 		const text = await response.text()
-		if (!json_type_regex.test(type)) return text || void 0
+		if (!json_type_regex.test(type)) {
+			return text || void 0
+		}
 		try {
 			return parse_json(text)
 		} catch {
@@ -220,7 +242,9 @@ export async function read_error_data(response) {
  * @returns {AsyncGenerator<StreamRecord, void, undefined>}
  */
 async function* read_events(response) {
-	if (!response.body) return
+	if (!response.body) {
+		return
+	}
 	const reader = response.body.pipeThrough(new TextDecoderStream())
 		.getReader()
 	let buffer = ""
@@ -235,10 +259,14 @@ async function* read_events(response) {
 	try {
 		for (;;) {
 			const { done, value } = await reader.read()
-			if (done) return
+			if (done) {
+				return
+			}
 			const text = pending_cr && value.startsWith("\n") ? value.slice(1) : value
 			pending_cr = false
-			if (!text) continue
+			if (!text) {
+				continue
+			}
 			buffer += text
 			pending_cr = buffer.endsWith("\r")
 			const lines = buffer.split(line_break_regex)
@@ -265,7 +293,9 @@ async function* read_events(response) {
 					retry = void 0
 					continue
 				}
-				if (line.startsWith(":")) continue
+				if (line.startsWith(":")) {
+					continue
+				}
 				const colon = line.indexOf(":")
 				const field = colon < 0 ? line : line.slice(0, colon)
 				const field_value = colon < 0
@@ -273,10 +303,13 @@ async function* read_events(response) {
 					: line.slice(
 						line[colon + 1] == " " ? colon + 2 : colon + 1
 					)
-				if (field == "data") data.push(field_value)
-				else if (field == "event") event = field_value
-				else if (field == "id" && !field_value.includes("\0")) id = field_value
-				else if (field == "retry" && /^\d+$/.test(field_value)) {
+				if (field == "data") {
+					data.push(field_value)
+				} else if (field == "event") {
+					event = field_value
+				} else if (field == "id" && !field_value.includes("\0")) {
+					id = field_value
+				} else if (field == "retry" && /^\d+$/.test(field_value)) {
 					retry = +field_value
 					yield { retry, type: "retry" }
 				}
@@ -292,22 +325,30 @@ async function* read_events(response) {
  * @returns {AsyncGenerator<unknown, void, undefined>}
  */
 async function* read_lines(response) {
-	if (!response.body) return
+	if (!response.body) {
+		return
+	}
 	const reader = response.body.pipeThrough(new TextDecoderStream())
 		.getReader()
 	let buffer = ""
 	try {
 		for (;;) {
 			const { done, value } = await reader.read()
-			if (done) break
+			if (done) {
+				break
+			}
 			buffer += value
 			const lines = buffer.split("\n")
 			buffer = /** @type {string} */(lines.pop())/**/
 			for (const line of lines) {
-				if (line.trim()) yield JSON.parse(line)
+				if (line.trim()) {
+					yield JSON.parse(line)
+				}
 			}
 		}
-		if (buffer.trim()) yield JSON.parse(buffer)
+		if (buffer.trim()) {
+			yield JSON.parse(buffer)
+		}
 	} finally {
 		reader.cancel()
 			.catch(noop)
@@ -321,20 +362,34 @@ function reads_as_latin1(bytes) {
 	let in_word = false
 	for (let i = 0; i < bytes.length; i++) {
 		const first = bytes.charCodeAt(i)
-		if (first < 0x80) continue
-		if (first < 0xa0) return false
+		if (first < 0x80) {
+			continue
+		}
+		if (first < 0xa0) {
+			return false
+		}
 		const second = bytes.charCodeAt(i + 1)
 		if (second < 0x80 || i + 1 == bytes.length) {
 			in_word = true
 			continue
 		}
-		if (bytes.charCodeAt(i + 2) >= 0x80 || !is_latin1_letter(first) || !is_latin1_letter(second)) return false
+		if (bytes.charCodeAt(i + 2) >= 0x80 || !is_latin1_letter(first) || !is_latin1_letter(second)) {
+			return false
+		}
 		if (is_latin1_lower(first)) {
-			if (!is_latin1_lower(second)) return false
-			if (is_ascii_letter(bytes.charCodeAt(i - 1)) || is_ascii_letter(bytes.charCodeAt(i + 2))) in_word = true
+			if (!is_latin1_lower(second)) {
+				return false
+			}
+			if (is_ascii_letter(bytes.charCodeAt(i - 1)) || is_ascii_letter(bytes.charCodeAt(i + 2))) {
+				in_word = true
+			}
 		} else {
-			if (is_latin1_lower(second) && second != 0xdf) return false
-			if (is_ascii_upper(bytes.charCodeAt(i - 1)) && is_ascii_upper(bytes.charCodeAt(i + 2))) in_word = true
+			if (is_latin1_lower(second) && second != 0xdf) {
+				return false
+			}
+			if (is_ascii_upper(bytes.charCodeAt(i - 1)) && is_ascii_upper(bytes.charCodeAt(i + 2))) {
+				in_word = true
+			}
 		}
 		i++
 	}
@@ -358,7 +413,9 @@ export function to_progress(loaded, total) {
  * @returns {Response}
  */
 export function track_progress(response, on_progress) {
-	if (!on_progress || response.status < 200 || response.status > 599) return response
+	if (!on_progress || response.status < 200 || response.status > 599) {
+		return response
+	}
 	const notify = on_progress
 	if (!response.body) {
 		call_progress(
@@ -385,9 +442,11 @@ export function track_progress(response, on_progress) {
 		new TransformStream(
 			{
 				flush() {
-					if (!complete) report(
-						{ loaded, ratio: 1, total: loaded }
-					)
+					if (!complete) {
+						report(
+							{ loaded, ratio: 1, total: loaded }
+						)
+					}
 				},
 				transform(chunk, controller) {
 					loaded += chunk.byteLength

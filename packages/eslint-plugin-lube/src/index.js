@@ -1,9 +1,11 @@
 import ascii_order from "./rules/ascii-order.js"
+import prefer_type_tag from "./rules/prefer-type-tag.js"
 import pretty_imports from "./rules/pretty-imports.js"
 import pretty_jsdoc_casting from "./rules/pretty-jsdoc-casting.js"
 import pretty_sequence from "./rules/pretty-sequence.js"
 import pretty_ternary from "./rules/pretty-ternary.js"
 import svelte_naming_convention from "./rules/svelte-naming-convention.js"
+import { keep_body_comments } from "./utils/keep_body_comments.js"
 import {
 	keep_comment_order,
 	keep_comments
@@ -14,8 +16,10 @@ import { skip_optional_patterns } from "./utils/skip_optional_patterns.js"
 import { skip_unchanged_fixes } from "./utils/skip_unchanged_fixes.js"
 import { split_declarations } from "./utils/split_declarations.js"
 import stylistic_plugin from "@stylistic/eslint-plugin"
+import { builtinRules } from "eslint/use-at-your-own-risk"
 import { readFileSync } from "node:fs"
-const stylistic = /** @type {import("eslint").ESLint.Plugin} */(stylistic_plugin)/**/
+/** @type {import("eslint").ESLint.Plugin} */
+const stylistic = stylistic_plugin
 /** @type {{ version: string }} */
 const manifest = JSON.parse(
 	readFileSync(
@@ -147,12 +151,13 @@ const strict_rules = {
 			checkTests: true
 		}
 	],
+	"lube/curly": [ "error", "all" ],
+	"lube/prefer-type-tag": "error",
 	"lube/pretty-imports": "error",
 	"lube/pretty-jsdoc-casting": "error",
 	"lube/pretty-sequence": "error",
 	"lube/pretty-ternary": "error",
 	"lube/svelte-naming-convention": "error",
-	"no-await-in-loop": "warn",
 	"no-case-declarations": "off",
 	"no-console": "warn",
 	"no-duplicate-imports": [
@@ -238,6 +243,10 @@ const plugin = {
 	},
 	rules: {
 		"ascii-order": ascii_order,
+		"curly": keep_body_comments(
+			/** @type {import("eslint").Rule.RuleModule} */(builtinRules.get("curly"))/**/
+		),
+		"prefer-type-tag": prefer_type_tag,
 		"pretty-imports": pretty_imports,
 		"pretty-jsdoc-casting": pretty_jsdoc_casting,
 		"pretty-sequence": pretty_sequence,

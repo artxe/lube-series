@@ -50,12 +50,16 @@ export async function advance(ms) {
 	await flush(4)
 	for (;;) {
 		const timer = earliest()
-		if (!timer || timer.at > end) break
+		if (!timer || timer.at > end) {
+			break
+		}
 		now = Math.max(now, timer.at)
 		if (timer.every) {
 			timer.at = now + timer.every
 			timer.seq = sequence++
-		} else timers.delete(timer.id)
+		} else {
+			timers.delete(timer.id)
+		}
 		timer.fn()
 		await flush(1)
 	}
@@ -67,7 +71,9 @@ export async function advance(ms) {
  * @returns {void}
  */
 function clear(handle) {
-	if (handle == null) return
+	if (handle == null) {
+		return
+	}
 	timers.delete(
 		typeof handle == "number"
 			? handle
@@ -81,7 +87,9 @@ function earliest() {
 	/** @type {SimTimer | undefined} */
 	let best
 	for (const timer of timers.values()) {
-		if (!best || timer.at < best.at || timer.at == best.at && timer.seq < best.seq) best = timer
+		if (!best || timer.at < best.at || timer.at == best.at && timer.seq < best.seq) {
+			best = timer
+		}
 	}
 	return best
 }
@@ -100,7 +108,8 @@ export async function flush(rounds) {
  * @returns {void}
  */
 export function install() {
-	const target = /** @type {Record<string, unknown>} */(/** @type {unknown} */(globalThis))/**/
+	/** @type {Record<string, unknown>} */
+	const target = globalThis
 	target["clearInterval"] = clear
 	target["clearTimeout"] = clear
 	target["setInterval"] = (

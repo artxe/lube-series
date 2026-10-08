@@ -29,7 +29,9 @@ describe(
 					await attempt(
 						({ attempt: count }) => {
 							attempts.push(count)
-							if (count < 3) throw Error("busy")
+							if (count < 3) {
+								throw Error("busy")
+							}
 							return "row"
 						},
 						{ retry: 2 }

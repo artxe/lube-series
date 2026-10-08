@@ -15,7 +15,9 @@ import { flow } from "async-lube"
 function hash(value) {
 	const text = stringify(value)
 	let x = 2166136261
-	for (let i = 0; i < text.length; i++) x = Math.imul(x ^ text.charCodeAt(i), 16777619) >>> 0
+	for (let i = 0; i < text.length; i++) {
+		x = Math.imul(x ^ text.charCodeAt(i), 16777619) >>> 0
+	}
 	return x.toString(36).slice(0, 5)
 }
 /**
@@ -59,7 +61,9 @@ export async function simulate_flow(seed, mode, unhandled) {
 		/** @type {number[]} */
 		const deps = []
 		for (let j = 0; j < i; j++) {
-			if (random.chance(0.35) && deps.length < 2) deps.push(j)
+			if (random.chance(0.35) && deps.length < 2) {
+				deps.push(j)
+			}
 		}
 		const roll = random.next()
 		/** @type {SimSpec["kind"]} */
@@ -91,15 +95,20 @@ export async function simulate_flow(seed, mode, unhandled) {
 		if (kind == "input") {
 			if (random.chance(0.2)) {
 				options["timeout"] = random.pick([ 10, 50 ])
-				if (random.chance(0.5)) options["optional"] = true
+				if (random.chance(0.5)) {
+					options["optional"] = true
+				}
 			}
 		} else {
 			const roll_failure = random.next()
-			if (roll_failure < 0.12) options["optional"] = true
-			else if (roll_failure < 0.22) {
+			if (roll_failure < 0.12) {
+				options["optional"] = true
+			} else if (roll_failure < 0.22) {
 				let gotos = 0
 				const back = random.int(i + 1)
-				if (mode == "goto") movable.add("n" + back)
+				if (mode == "goto") {
+					movable.add("n" + back)
+				}
 				options["catch"] = (
 					/** @type {unknown[]} */ ...values
 				) => spec.kind == "each"
@@ -110,19 +119,25 @@ export async function simulate_flow(seed, mode, unhandled) {
 						)
 						: "caught:" + spec.name
 			}
-			if (random.chance(0.3)) options["retry"] = {
-				count: 1 + random.int(2),
-				delay: random.pick([ 0, 2 ])
+			if (random.chance(0.3)) {
+				options["retry"] = {
+					count: 1 + random.int(2),
+					delay: random.pick([ 0, 2 ])
+				}
 			}
-			if (random.chance(0.15)) options["timeout"] = random.pick([ 4, 25 ])
-			if (random.chance(0.2)) options["overlap"] = random.pick(
-				[
-					"rerun",
-					"queue",
-					"ignore",
-					"restart"
-				]
-			)
+			if (random.chance(0.15)) {
+				options["timeout"] = random.pick([ 4, 25 ])
+			}
+			if (random.chance(0.2)) {
+				options["overlap"] = random.pick(
+					[
+						"rerun",
+						"queue",
+						"ignore",
+						"restart"
+					]
+				)
+			}
 			if (kind == "fn" && random.chance(0.15)) {
 				spec.release = true
 				options["release"] = (
@@ -136,10 +151,16 @@ export async function simulate_flow(seed, mode, unhandled) {
 					)
 				}
 			}
-			if (kind == "each") options["concurrency"] = random.pick([ 1, 2, Infinity ])
-			if (mode == "finish" && random.chance(0.3)) options["finish"] = true
+			if (kind == "each") {
+				options["concurrency"] = random.pick([ 1, 2, Infinity ])
+			}
+			if (mode == "finish" && random.chance(0.3)) {
+				options["finish"] = true
+			}
 		}
-		if (deps.length >= 2 && random.chance(mode == "finish" ? 0.6 : 0.25)) options["join"] = random.pick([ "any", "race" ])
+		if (deps.length >= 2 && random.chance(mode == "finish" ? 0.6 : 0.25)) {
+			options["join"] = random.pick([ "any", "race" ])
+		}
 		if (deps.length && random.chance(0.1)) {
 			const throws = random.chance(0.3)
 			options["when"] = (
@@ -159,7 +180,9 @@ export async function simulate_flow(seed, mode, unhandled) {
 			spec.kind = "fn"
 			delete spec.options["concurrency"]
 		}
-		if (spec.kind == "each" && spec.options["catch"]) spec.options["catch"] = () => "caught-item"
+		if (spec.kind == "each" && spec.options["catch"]) {
+			spec.options["catch"] = () => "caught-item"
+		}
 		if (spec.kind != "fn" && spec.kind != "input") {
 			delete spec.options["release"]
 			spec.release = false
@@ -191,14 +214,21 @@ export async function simulate_flow(seed, mode, unhandled) {
 			)
 			const delay = random.pick(spec.delay)
 			if (delay) {
-				if (spec.coop) await context.sleep(delay)
-				else await new Promise(
-					resolve => setTimeout(resolve, delay)
-				)
+				if (spec.coop) {
+					await context.sleep(delay)
+				} else {
+					await new Promise(
+						resolve => setTimeout(resolve, delay)
+					)
+				}
 			}
-			if (spec.fail && random.chance(spec.fail)) throw Error("fail " + label)
+			if (spec.fail && random.chance(spec.fail)) {
+				throw Error("fail " + label)
+			}
 			const value = label + ":" + hash(args)
-			if (!spec.release) return value
+			if (!spec.release) {
+				return value
+			}
 			/** @type {SimToken} */
 			const token = {
 				node: label,
@@ -210,12 +240,13 @@ export async function simulate_flow(seed, mode, unhandled) {
 			return token
 		}
 	}
-	let definition = /** @type {SimFlow} */(/** @type {unknown} */(flow(
+	/** @type {SimFlow} */
+	let definition = flow(
 		{
 			concurrency: random.pick([ Infinity, Infinity, 1, 2 ]),
 			maxSteps: 500
 		}
-	)))/**/
+	)
 	for (const spec of specs) {
 		/** @type {Ref} */
 		let ref
@@ -223,8 +254,9 @@ export async function simulate_flow(seed, mode, unhandled) {
 			const input = flow.input(spec.name)
 			inputs.push(input)
 			ref = input
-		} else if (spec.kind == "each") ref = flow.each(body(spec, spec.name))
-		else if (spec.kind == "sub") {
+		} else if (spec.kind == "each") {
+			ref = flow.each(body(spec, spec.name))
+		} else if (spec.kind == "sub") {
 			const inner = body(
 				{
 					...spec,
@@ -239,7 +271,9 @@ export async function simulate_flow(seed, mode, unhandled) {
 				) => inner(context.state, context),
 				{ name: "a" }
 			)))/**/
-		} else ref = body(spec, spec.name)
+		} else {
+			ref = body(spec, spec.name)
+		}
 		spec.ref = ref
 		refs.push(ref)
 		definition = definition.add(
@@ -254,7 +288,9 @@ export async function simulate_flow(seed, mode, unhandled) {
 	const notes = []
 	if (mode == "edges") {
 		for (let i = 1; i < specs.length; i++) {
-			if (!random.chance(0.3) || specs[i]?.kind == "input") continue
+			if (!random.chance(0.3) || specs[i]?.kind == "input") {
+				continue
+			}
 			const back = random.int(i + 1)
 			const forward = specs.findIndex(
 				(spec, j) => j > i && spec.deps.includes(i)
@@ -268,7 +304,9 @@ export async function simulate_flow(seed, mode, unhandled) {
 					]
 			]
 			movable.add("n" + back)
-			if (forward >= 0) movable.add("n" + forward)
+			if (forward >= 0) {
+				movable.add("n" + forward)
+			}
 			let loops = 0
 			const limit = 1 + random.int(3)
 			definition = definition.edge(
@@ -282,7 +320,9 @@ export async function simulate_flow(seed, mode, unhandled) {
 		}
 	}
 	for (const spec of specs) {
-		if (spec.deps.some(dep => movable.has("n" + dep))) movable.add(spec.name)
+		if (spec.deps.some(dep => movable.has("n" + dep))) {
+			movable.add(spec.name)
+		}
 	}
 	const describe = [
 		...notes,
@@ -325,10 +365,14 @@ export async function simulate_flow(seed, mode, unhandled) {
 	/** @type {Set<string> | undefined} */
 	let guard
 	function check_guard() {
-		if (!guard) return
+		if (!guard) {
+			return
+		}
 		for (const call of calls) {
 			const name = /** @type {string} */(call.node.split(".")[0])/**/
-			if (call.epoch != epoch || checked.has(call) || !guard.has(name) || movable.has(name)) continue
+			if (call.epoch != epoch || checked.has(call) || !guard.has(name) || movable.has(name)) {
+				continue
+			}
 			checked.add(call)
 			problems.push(
 				`resumed run re-ran done node ${call.node} (epoch ${epoch})`
@@ -376,7 +420,9 @@ export async function simulate_flow(seed, mode, unhandled) {
 					.map(([ name ]) => name)
 			)
 			for (const spec of specs) {
-				if (spec.deps.some(dep => retried.has("n" + dep))) retried.add(spec.name)
+				if (spec.deps.some(dep => retried.has("n" + dep))) {
+					retried.add(spec.name)
+				}
 			}
 			const done = new Set(
 				Object.entries(snapshot.nodes)
@@ -406,9 +452,11 @@ export async function simulate_flow(seed, mode, unhandled) {
 			}
 			watch(run)
 			for (const name of done) {
-				if (JSON.stringify(run.results[name]) != JSON.stringify(snapshot.nodes[name]?.result)) problems.push(
-					"resume changed result of " + name
-				)
+				if (JSON.stringify(run.results[name]) != JSON.stringify(snapshot.nodes[name]?.result)) {
+					problems.push(
+						"resume changed result of " + name
+					)
+				}
 			}
 			guard = done
 		}
@@ -423,14 +471,18 @@ export async function simulate_flow(seed, mode, unhandled) {
 			const waiting = inputs.filter(
 				input => run.nodes[input.name] == "waiting"
 			)
-			if (!waiting.length) break
+			if (!waiting.length) {
+				break
+			}
 			for (const input of waiting) {
 				say("drain send " + input.name)
 				run.send(input, "d" + round)
 			}
 			watch(run)
 			guard = void 0
-		} else if (status != "running") break
+		} else if (status != "running") {
+			break
+		}
 	}
 	await advance(200)
 	const status = run.status
@@ -438,15 +490,21 @@ export async function simulate_flow(seed, mode, unhandled) {
 	const busy = Object.entries(nodes).filter(
 		([ , node_status ]) => node_status == "running" || node_status == "pending"
 	)
-	if (status == "running") problems.push(
-		`hang: status running, busy=${JSON.stringify(busy)} timers=${pending_timers()}`
-	)
-	if (status != "running" && status != "waiting" && busy.length) problems.push(
-		`settled ${status} with busy nodes ${JSON.stringify(busy)}`
-	)
-	if (status == "waiting" && !Object.values(nodes).includes("waiting")) problems.push(
-		"waiting without waiting node " + JSON.stringify(nodes)
-	)
+	if (status == "running") {
+		problems.push(
+			`hang: status running, busy=${JSON.stringify(busy)} timers=${pending_timers()}`
+		)
+	}
+	if (status != "running" && status != "waiting" && busy.length) {
+		problems.push(
+			`settled ${status} with busy nodes ${JSON.stringify(busy)}`
+		)
+	}
+	if (status == "waiting" && !Object.values(nodes).includes("waiting")) {
+		problems.push(
+			"waiting without waiting node " + JSON.stringify(nodes)
+		)
+	}
 	let resolved = false
 	void run.idle().then(
 		() => {
@@ -454,21 +512,29 @@ export async function simulate_flow(seed, mode, unhandled) {
 		}
 	)
 	await advance(10)
-	if (!resolved && status != "running") problems.push(
-		`run.idle() not resolved while ${status}`
-	)
+	if (!resolved && status != "running") {
+		problems.push(
+			`run.idle() not resolved while ${status}`
+		)
+	}
 	if (status == "done" && mode != "edges") {
 		const results = run.results
 		for (const spec of specs) {
-			if (spec.kind != "fn" || nodes[spec.name] != "done") continue
-			if (spec.options["catch"] || spec.options["overlap"] == "ignore" || spec.options["join"] == "race" || spec.deps.some(dep => specs[dep]?.release)) continue
+			if (spec.kind != "fn" || nodes[spec.name] != "done") {
+				continue
+			}
+			if (spec.options["catch"] || spec.options["overlap"] == "ignore" || spec.options["join"] == "race" || spec.deps.some(dep => specs[dep]?.release)) {
+				continue
+			}
 			const values = spec.deps.map(dep => results["n" + dep])
 			const expected = spec.name + ":" + hash(values)
 			const result = results[spec.name]
 			const value = spec.release ? /** @type {SimToken | undefined} */(result)/**/?.value : result
-			if (value !== expected && !String(value).startsWith("caught")) problems.push(
-				`stale result ${spec.name}: ${String(value)} expected ${expected} from ${JSON.stringify(values)}`
-			)
+			if (value !== expected && !String(value).startsWith("caught")) {
+				problems.push(
+					`stale result ${spec.name}: ${String(value)} expected ${expected} from ${JSON.stringify(values)}`
+				)
+			}
 		}
 	}
 	/** @type {Map<string, SimCall[]>} */
@@ -481,9 +547,11 @@ export async function simulate_flow(seed, mode, unhandled) {
 	}
 	for (const [ key, list ] of by_key) {
 		const names = new Set(list.map(call => call.node))
-		if (names.size > 1) problems.push(
-			`key ${key} shared by nodes ${[ ...names ].join(",")}`
-		)
+		if (names.size > 1) {
+			problems.push(
+				`key ${key} shared by nodes ${[ ...names ].join(",")}`
+			)
+		}
 		if (new Set(list.map(call => call.args)).size > 1) {
 			problems.push(
 				`key ${key} used with different args: ${list.map(call => `e${call.epoch}a${call.attempt} ${call.args}`).join(" | ")}`
@@ -494,13 +562,17 @@ export async function simulate_flow(seed, mode, unhandled) {
 	run.catch(() => {})
 	await advance(500)
 	for (const token of tokens) {
-		if (token.released.length != 1) problems.push(
-			`token ${token.node}#${token.token} released ${token.released.length} times ${JSON.stringify(token.released)}`
+		if (token.released.length != 1) {
+			problems.push(
+				`token ${token.node}#${token.token} released ${token.released.length} times ${JSON.stringify(token.released)}`
+			)
+		}
+	}
+	for (const error of unhandled.splice(0)) {
+		problems.push(
+			"unhandled rejection: " + (error instanceof Error ? error.name + ": " + error.message : String(error))
 		)
 	}
-	for (const error of unhandled.splice(0)) problems.push(
-		"unhandled rejection: " + (error instanceof Error ? error.name + ": " + error.message : String(error))
-	)
 	return { describe, log, problems }
 }
 /**

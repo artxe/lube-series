@@ -64,7 +64,9 @@ describe(
 		async function eventually(condition) {
 			const started = Date.now()
 			while (!condition()) {
-				if (Date.now() - started > 2000) assert.fail("Timed out")
+				if (Date.now() - started > 2000) {
+					assert.fail("Timed out")
+				}
 				await sleep(5)
 			}
 		}
@@ -267,7 +269,9 @@ describe(
 						{},
 						{
 							progress: ({ loaded }) => {
-								if (loaded > 0) reader.abort("mid-read")
+								if (loaded > 0) {
+									reader.abort("mid-read")
+								}
 							},
 							signal: reader.signal
 						}
@@ -800,7 +804,9 @@ describe(
 						name
 					)
 				}
-				for (const name of latin) names.set(name, name)
+				for (const name of latin) {
+					names.set(name, name)
+				}
 				const api = http(
 					{
 						base: "http://localhost",
@@ -1132,7 +1138,9 @@ describe(
 				const error = await rejection(
 					(async () => {
 						for (;;) {
-							if ((await reader.read()).done) return
+							if ((await reader.read()).done) {
+								return
+							}
 						}
 					})()
 				)
@@ -1223,7 +1231,9 @@ describe(
 					"/sse",
 					{ key: "listeners" },
 					{ signal: controller.signal }
-				)) void event
+				)) {
+					void event
+				}
 				assert.equal(
 					getEventListeners(controller.signal, "abort").length,
 					0
@@ -1361,7 +1371,9 @@ describe(
 					"/ndjson",
 					{ q: 1 },
 					{ as: "ndjson" }
-				)) lines.push(line)
+				)) {
+					lines.push(line)
+				}
 				assert.deepEqual(
 					lines,
 					[
@@ -1385,7 +1397,9 @@ describe(
 							/** @type {Record<string, unknown>} */(line)/**/
 						)[0] ?? ""
 					}
-				)) keys.push(key)
+				)) {
+					keys.push(key)
+				}
 				assert.deepEqual(keys, [ "body", "a", "b", "c" ])
 				assert.equal(
 					typeof await api.get("/ndjson"),
@@ -1393,12 +1407,16 @@ describe(
 				)
 				/** @type {unknown[]} */
 				const empty = []
-				for await (const line of await api.get("/empty", {}, { as: "ndjson" })) empty.push(line)
+				for await (const line of await api.get("/empty", {}, { as: "ndjson" })) {
+					empty.push(line)
+				}
 				assert.deepEqual(empty, [])
 				const raw = await api.get("/ndjson", {}, { as: "ndjson" }).raw()
 				assert.equal(raw.status, 200)
 				let last
-				for await (const line of raw.data) last = line
+				for await (const line of raw.data) {
+					last = line
+				}
 				assert.deepEqual(last, { c: 3 })
 				/** @type {(number | undefined)[]} */
 				const ratios = []
@@ -1409,7 +1427,9 @@ describe(
 						as: "ndjson",
 						progress: progress => ratios.push(progress.ratio)
 					}
-				)) void line
+				)) {
+					void line
+				}
 				assert.equal(ratios.at(-1), 1)
 				const counts = []
 				for (const stream of await Promise.all(
@@ -1425,9 +1445,13 @@ describe(
 							{ as: "ndjson" }
 						)
 					]
-				)) for await (const line of stream) counts.push(
-					/** @type {{ count: number }} */(line)/**/.count
-				)
+				)) {
+					for await (const line of stream) {
+						counts.push(
+							/** @type {{ count: number }} */(line)/**/.count
+						)
+					}
+				}
 				assert.deepEqual(counts.sort(), [ 1, 2 ])
 			}
 		)
@@ -1458,7 +1482,9 @@ describe(
 							"/ndjson-drop",
 							{},
 							{ as: "ndjson" }
-						)) void line
+						)) {
+							void line
+						}
 					})()
 				)
 				assert.instanceOf(dropped, NetworkError)
@@ -1473,7 +1499,9 @@ describe(
 									throw TypeError("Invalid line")
 								}
 							}
-						)) void line
+						)) {
+							void line
+						}
 					})()
 				)
 				assert.instanceOf(failing, TypeError)
@@ -1497,7 +1525,9 @@ describe(
 				const cancelled = await rejection(
 					(async () => {
 						for await (const line of live) {
-							if (/** @type {{ n: number }} */(line)/**/.n == 2) request.cancel()
+							if (/** @type {{ n: number }} */(line)/**/.n == 2) {
+								request.cancel()
+							}
 						}
 					})()
 				)
@@ -1513,7 +1543,9 @@ describe(
 								signal: controller.signal
 							}
 						)) {
-							if (/** @type {{ n: number }} */(line)/**/.n == 2) controller.abort()
+							if (/** @type {{ n: number }} */(line)/**/.n == 2) {
+								controller.abort()
+							}
 						}
 					})()
 				)
@@ -1527,7 +1559,9 @@ describe(
 					{ key: "ndjson-break" },
 					{ as: "ndjson" }
 				)) {
-					if (/** @type {{ n: number }} */(line)/**/.n == 2) break
+					if (/** @type {{ n: number }} */(line)/**/.n == 2) {
+						break
+					}
 				}
 				await eventually(
 					() => server.hits.has("ndjson-break-closed") && server.hits.has("ndjson-cancel-closed")
@@ -1869,7 +1903,9 @@ describe(
 							unauthorized: (_, reason) => void unauthorized.push(reason)
 						},
 						refresh: async () => {
-							if (++stream_refreshes > 1) throw Error("Logged out")
+							if (++stream_refreshes > 1) {
+								throw Error("Logged out")
+							}
 						}
 					}
 				)
@@ -2071,8 +2107,11 @@ describe(
 							unauthorized: (error, reason) => void calls.push([ error, reason ])
 						},
 						refresh: async () => {
-							if (++late_refreshes == 1) await sleep(100)
-							else late_token = "fresh"
+							if (++late_refreshes == 1) {
+								await sleep(100)
+							} else {
+								late_token = "fresh"
+							}
 						},
 						timeout: 30
 					}
@@ -2333,7 +2372,9 @@ describe(
 					{
 						parse: data => {
 							const method = /** @type {{ method?: unknown } | null | undefined} */(data)/**/?.method
-							if (typeof method != "string") throw TypeError("Invalid response")
+							if (typeof method != "string") {
+								throw TypeError("Invalid response")
+							}
 							return method
 						}
 					}
@@ -2541,7 +2582,9 @@ describe(
 						base: "https://retry.test",
 						fetch: async () => {
 							const header = retry_after[calls++]
-							if (calls > retry_after.length) return Response.json({ calls })
+							if (calls > retry_after.length) {
+								return Response.json({ calls })
+							}
 							return new Response(
 								"",
 								{
@@ -2746,7 +2789,9 @@ describe(
 					{ key: "live-break" }
 				)) {
 					received.push(event.data)
-					if (received.length == 2) break
+					if (received.length == 2) {
+						break
+					}
 				}
 				assert.deepEqual(received, [ "1", "2" ])
 				const stream = api.sse(
@@ -2756,7 +2801,9 @@ describe(
 				let count = 0
 				for await (const event of stream) {
 					assert.equal(event.data, String(++count))
-					if (count == 3) stream.cancel()
+					if (count == 3) {
+						stream.cancel()
+					}
 				}
 				assert.equal(count, 3)
 				await eventually(
@@ -2783,7 +2830,9 @@ describe(
 						base: "https://events.test",
 						fetch: async () => {
 							const index = attempt++
-							if (!index) return new Response("", { status: 503 })
+							if (!index) {
+								return new Response("", { status: 503 })
+							}
 							return new Response(
 								new ReadableStream(
 									{
@@ -2896,7 +2945,9 @@ describe(
 						"/e",
 						{},
 						{ ...options, reconnect: false }
-					)) values.push(event.data)
+					)) {
+						values.push(event.data)
+					}
 					return values
 				}
 				assert.deepEqual(
@@ -2952,7 +3003,9 @@ describe(
 					"/events",
 					{},
 					{ reconnect: false }
-				)) events.push(event)
+				)) {
+					events.push(event)
+				}
 				assert.deepEqual(
 					events,
 					[
@@ -2996,7 +3049,9 @@ describe(
 						/** @type {string} */ type,
 						/** @type {() => void} */ listener
 					) => {
-						if (type == "online") online.push(listener)
+						if (type == "online") {
+							online.push(listener)
+						}
 					}
 				)
 				vi.stubGlobal(
@@ -3005,7 +3060,9 @@ describe(
 						/** @type {string} */ type,
 						/** @type {() => void} */ listener
 					) => {
-						if (type == "online") online.splice(online.indexOf(listener), 1)
+						if (type == "online") {
+							online.splice(online.indexOf(listener), 1)
+						}
 					}
 				)
 				let calls = 0
@@ -3016,14 +3073,16 @@ describe(
 						base: "https://events.test",
 						fetch: async () => {
 							const header = script[calls++]
-							if (header === void 0) return new Response(
-								"data: ok\n\n",
-								{
-									headers: {
-										"Content-Type": "text/event-stream"
+							if (header === void 0) {
+								return new Response(
+									"data: ok\n\n",
+									{
+										headers: {
+											"Content-Type": "text/event-stream"
+										}
 									}
-								}
-							)
+								)
+							}
 							return new Response(
 								"",
 								{
@@ -3039,7 +3098,9 @@ describe(
 				 * @returns {Promise<unknown>}
 				 */
 				async function first(options) {
-					for await (const event of api.sse("/e", {}, options)) return event.data
+					for await (const event of api.sse("/e", {}, options)) {
+						return event.data
+					}
 					return void 0
 				}
 				script = [ "120", null ]
@@ -3123,7 +3184,9 @@ describe(
 					}
 				)
 				const cancelled = (async () => {
-					for await (const event of cancelling) return event.data
+					for await (const event of cancelling) {
+						return event.data
+					}
 					return "ended"
 				})()
 				await vi.advanceTimersByTimeAsync(0)
@@ -3139,7 +3202,9 @@ describe(
 				const stream = api.sse("/sse", { key: "sse-reconnect" })
 				/** @type {string[]} */
 				const received = []
-				for await (const event of stream) received.push(event.data)
+				for await (const event of stream) {
+					received.push(event.data)
+				}
 				assert.deepEqual(
 					received,
 					[
@@ -3167,7 +3232,9 @@ describe(
 				)
 				const not_found = await rejection(
 					(async () => {
-						for await (const event of api.sse("/missing")) assert.fail(event.data)
+						for await (const event of api.sse("/missing")) {
+							assert.fail(event.data)
+						}
 					})()
 				)
 				assert.instanceOf(not_found, HttpError)
@@ -3279,7 +3346,9 @@ describe(
 				for (let i = 0; i < 2; i++) {
 					/** @type {string[]} */
 					const data = []
-					for await (const event of events) data.push(event.data)
+					for await (const event of events) {
+						data.push(event.data)
+					}
 					assert.equal(data[data.length - 1], "last")
 				}
 				/** @type {number[]} */
@@ -3298,7 +3367,9 @@ describe(
 							}
 						}
 					}
-				)) ticks.push(event.data)
+				)) {
+					ticks.push(event.data)
+				}
 				assert.lengthOf(ticks, 2)
 				assert.deepEqual(delays, [])
 				assert.isBelow(Date.now() - started, 500)
@@ -3312,7 +3383,9 @@ describe(
 									delay: failures => failures < 2 ? 1 : void 0
 								}
 							}
-						)) void event
+						)) {
+							void event
+						}
 					})()
 				)
 				assert.instanceOf(given_up, HttpError)
@@ -3337,21 +3410,27 @@ describe(
 					{ reconnect: false }
 				)) {
 					received.push(event.data)
-					if (event.data == "first") await api.get("/sse-cr-release", { key: "cr" })
+					if (event.data == "first") {
+						await api.get("/sse-cr-release", { key: "cr" })
+					}
 				}
 				assert.deepEqual(received, [ "first", "second" ])
 				assert.isFalse(server.hits.has("cr-late"))
 				const state = api.sse("/sse-state", { key: "state" })
 				/** @type {string[]} */
 				const data = []
-				for await (const event of state) data.push(event.data)
+				for await (const event of state) {
+					data.push(event.data)
+				}
 				assert.deepEqual(data, [ "a" ])
 				assert.equal(state.lastEventId, "2")
 				assert.equal(server.hits.get("state:2"), 1)
 				for await (const event of api.sse(
 					"/sse-unicode",
 					{ key: "unicode" }
-				)) void event
+				)) {
+					void event
+				}
 				assert.equal(
 					server.hits.get("unicode:사용자-1"),
 					1

@@ -45,12 +45,16 @@ export default {
 			)
 			const first = specifiers[0]
 			const last = specifiers[specifiers.length - 1]
-			if (first?.type != specifier_type || !last || source_code.getCommentsInside(node).length) return
+			if (first?.type != specifier_type || !last || source_code.getCommentsInside(node).length) {
+				return
+			}
 			const tokens = source_code.getTokens(node)
 			const open_index = tokens.findIndex(
 				token => token.range[0] == first.range[0]
 			) - 1
-			if (tokens[open_index]?.value != "{") return
+			if (tokens[open_index]?.value != "{") {
+				return
+			}
 			const head = tokens.slice(0, open_index)
 				.map(token => token.value)
 				.join(" ")
@@ -94,9 +98,13 @@ export default {
 					: `${head} ${names}`
 			) + tail + (keeps_semicolon ? ";" : "")
 			const current = get_text(node.range[0], end)
-			if (corrected_text == current) return
+			if (corrected_text == current) {
+				return
+			}
 			const same_structure = to_structure(current) == to_structure(corrected_text)
-			if (!fix_indent && same_structure) return
+			if (!fix_indent && same_structure) {
+				return
+			}
 			context.report(
 				{
 					data: {
@@ -127,18 +135,22 @@ export default {
 		/** @type {import("../../private.js").RuleListener} */
 		const listener = {
 			ExportNamedDeclaration: node => {
-				if (check_exports) verify(
+				if (check_exports) {
+					verify(
 					/** @type {import("../../private.js").AstNode & import("estree").ExportNamedDeclaration} */(node)/**/,
-					"ExportSpecifier",
-					"export"
-				)
+						"ExportSpecifier",
+						"export"
+					)
+				}
 			},
 			ImportDeclaration: node => {
-				if (check_imports) verify(
+				if (check_imports) {
+					verify(
 					/** @type {import("../../private.js").AstNode & import("estree").ImportDeclaration} */(node)/**/,
-					"ImportSpecifier",
-					"import"
-				)
+						"ImportSpecifier",
+						"import"
+					)
+				}
 			}
 		}
 		return /** @type {import("eslint").Rule.RuleListener} */(/** @type {unknown} */(listener))/**/

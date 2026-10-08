@@ -47,15 +47,21 @@ export function durable(store, fn, options = {}) {
 	const idle_ms = options.idle ?? 1000
 	const lease_ms = options.lease ?? 30000
 	const poll_ms = options.poll ?? 500
-	if (!(typeof idle_ms == "number" && idle_ms >= 0)) throw TypeError(
-		"The idle of durable() must be a non-negative number of milliseconds"
-	)
-	if (!(Number.isFinite(lease_ms) && lease_ms > 0)) throw TypeError(
-		"The lease of durable() must be a positive number of milliseconds"
-	)
-	if (!(Number.isFinite(poll_ms) && poll_ms > 0)) throw TypeError(
-		"The poll of durable() must be a positive number of milliseconds"
-	)
+	if (!(typeof idle_ms == "number" && idle_ms >= 0)) {
+		throw TypeError(
+			"The idle of durable() must be a non-negative number of milliseconds"
+		)
+	}
+	if (!(Number.isFinite(lease_ms) && lease_ms > 0)) {
+		throw TypeError(
+			"The lease of durable() must be a positive number of milliseconds"
+		)
+	}
+	if (!(Number.isFinite(poll_ms) && poll_ms > 0)) {
+		throw TypeError(
+			"The poll of durable() must be a positive number of milliseconds"
+		)
+	}
 	/** @type {DurableWorker} */
 	const d = {
 		fn: /** @type {DurableWorker["fn"]} */(fn)/**/,
@@ -101,7 +107,9 @@ export function durable(store, fn, options = {}) {
 		) => enter(d, key, input, "start"),
 		stop() {
 			d.halted = true
-			for (const stop of [ ...d.stoppers ]) stop()
+			for (const stop of [ ...d.stoppers ]) {
+				stop()
+			}
 			for (const key of [ ...d.watchers.keys() ]) {
 				settle(
 					d,

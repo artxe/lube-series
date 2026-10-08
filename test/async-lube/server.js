@@ -26,25 +26,35 @@ export function read_frames(socket, on_frame) {
 		(/** @type {Buffer} */ chunk) => {
 			pending = Buffer.concat([ pending, chunk ])
 			for (;;) {
-				if (pending.length < 2) return
+				if (pending.length < 2) {
+					return
+				}
 				const opcode = /** @type {number} */(pending[0])/**/ & 15
 				let length = /** @type {number} */(pending[1])/**/ & 127
 				let offset = 2
 				if (length == 126) {
-					if (pending.length < 4) return
+					if (pending.length < 4) {
+						return
+					}
 					length = pending.readUInt16BE(2)
 					offset = 4
 				} else if (length == 127) {
-					if (pending.length < 10) return
+					if (pending.length < 10) {
+						return
+					}
 					length = Number(pending.readBigUInt64BE(2))
 					offset = 10
 				}
-				if (pending.length < offset + 4 + length) return
+				if (pending.length < offset + 4 + length) {
+					return
+				}
 				const mask = pending.subarray(offset, offset + 4)
 				const payload = Buffer.from(
 					pending.subarray(offset + 4, offset + 4 + length)
 				)
-				for (let i = 0; i < payload.length; i++) payload[i] = /** @type {number} */(payload[i])/**/ ^ /** @type {number} */(mask[i % 4])/**/
+				for (let i = 0; i < payload.length; i++) {
+					payload[i] = /** @type {number} */(payload[i])/**/ ^ /** @type {number} */(mask[i % 4])/**/
+				}/**/
 				pending = pending.subarray(offset + 4 + length)
 				on_frame(opcode, payload)
 			}
@@ -106,7 +116,9 @@ export async function start_server() {
 			}
 			/** @type {Buffer[]} */
 			const chunks = []
-			for await (const chunk of request) chunks.push(chunk)
+			for await (const chunk of request) {
+				chunks.push(chunk)
+			}
 			const body = Buffer.concat(chunks)
 			const key = url.searchParams.get("key") ?? url.pathname
 			/**
@@ -127,8 +139,11 @@ export async function start_server() {
 			switch (url.pathname) {
 			case "/auth": {
 				hit(key)
-				if (request.headers.authorization == "Bearer fresh") json(200, { ok: true })
-				else json(401, { message: "Expired" })
+				if (request.headers.authorization == "Bearer fresh") {
+					json(200, { ok: true })
+				} else {
+					json(401, { message: "Expired" })
+				}
 				return
 			}
 			case "/bad-json":
@@ -572,7 +587,9 @@ export async function start_server() {
 			)
 			const key = url.searchParams.get("key") ?? url.pathname
 			const count = hit(key)
-			if (url.pathname == "/ws-hang") return
+			if (url.pathname == "/ws-hang") {
+				return
+			}
 			if (url.pathname != "/ws") {
 				socket.end(
 					"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n"
@@ -610,15 +627,17 @@ export async function start_server() {
 				)
 				return
 			}
-			if (!silent) write_frame(
-				socket,
-				1,
-				Buffer.from(
-					JSON.stringify(
-						{ count, protocol, url: request.url }
+			if (!silent) {
+				write_frame(
+					socket,
+					1,
+					Buffer.from(
+						JSON.stringify(
+							{ count, protocol, url: request.url }
+						)
 					)
 				)
-			)
+			}
 			read_frames(
 				socket,
 				(opcode, payload) => {
@@ -627,13 +646,18 @@ export async function start_server() {
 						close_frame(socket, 1000, "")
 						return
 					}
-					if (silent) return
+					if (silent) {
+						return
+					}
 					const text = payload.toString()
 					if (opcode == 1 && text.startsWith("close ")) {
 						const [ , code, reason ] = text.split(" ")
 						close_frame(socket, Number(code), reason ?? "")
-					} else if (opcode == 1 && text == "drop") socket.destroy()
-					else write_frame(socket, opcode, payload)
+					} else if (opcode == 1 && text == "drop") {
+						socket.destroy()
+					} else {
+						write_frame(socket, opcode, payload)
+					}
 				}
 			)
 		}
@@ -651,7 +675,9 @@ export async function start_server() {
 		close: () => new Promise(
 			resolve => {
 				server.closeAllConnections()
-				for (const socket of upgrades) socket.destroy()
+				for (const socket of upgrades) {
+					socket.destroy()
+				}
 				server.close(() => resolve())
 			}
 		),
@@ -676,7 +702,9 @@ export function write_frame(socket, opcode, payload) {
 				length & 255
 			]
 		)
-	if (!socket.destroyed) socket.write(
-		Buffer.concat([ head, payload ])
-	)
+	if (!socket.destroyed) {
+		socket.write(
+			Buffer.concat([ head, payload ])
+		)
+	}
 }

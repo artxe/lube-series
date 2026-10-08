@@ -66,7 +66,9 @@ const shebang_types = new Set([ "Hashbang", "Shebang" ])
  */
 function compare(a, b) {
 	const rank = (a.rank ?? 1) - (b.rank ?? 1)
-	if (rank) return rank
+	if (rank) {
+		return rank
+	}
 	return a.name < b.name
 		? -1
 		: a.name > b.name
@@ -81,7 +83,9 @@ function compare(a, b) {
 function count_same_line(comments, line) {
 	let count = 0
 	for (const comment of comments) {
-		if (comment.loc.start.line != line) break
+		if (comment.loc.start.line != line) {
+			break
+		}
 		line = comment.loc.end.line
 		count++
 	}
@@ -120,7 +124,9 @@ function create_reorder(context) {
 			last_token = /** @type {import("eslint").AST.Token} */(source_code.getTokenBefore(last_token))/**/
 		} else if (layout == "sequence") {
 			const next = source_code.getTokenAfter(last_token)
-			if (next?.value == ",") separator = next
+			if (next?.value == ",") {
+				separator = next
+			}
 		}
 		const inner = /** @type {import("../../private.js").Comment[]} */(source_code.getCommentsAfter(last_token))/**/
 		let code_end = last_token.range[1]
@@ -130,7 +136,9 @@ function create_reorder(context) {
 		if (separator) {
 			if (inner.some(
 				comment => comment.type == "Line"
-			)) return undefined
+			)) {
+				return undefined
+			}
 			code_end = inner[inner.length - 1]?.range[1] ?? code_end
 			line = separator.loc.end.line
 			tail = /** @type {import("../../private.js").Comment[]} */(source_code.getCommentsAfter(separator))/**/
@@ -147,9 +155,13 @@ function create_reorder(context) {
 		const last_comment = tail[tail_count - 1]
 		const after = last_comment ? last_comment.range[1] : sep_end
 		let next = after
-		while (text[next] == " " || text[next] == "\t") next++
+		while (text[next] == " " || text[next] == "\t") {
+			next++
+		}
 		let previous = start
-		while (text[previous - 1] == " " || text[previous - 1] == "\t") previous--
+		while (text[previous - 1] == " " || text[previous - 1] == "\t") {
+			previous--
+		}
 		const declaration = entry.last.type == "ExportNamedDeclaration"
 			? entry.last.declaration
 			: entry.last
@@ -184,14 +196,18 @@ function create_reorder(context) {
 		const items = []
 		for (const entry of entries) {
 			const item = get_item(entry, layout, get_level)
-			if (!item) return null
+			if (!item) {
+				return null
+			}
 			items.push(item)
 		}
 		const sorted = items.slice().sort(
 			(a, b) => compare(a.entry, b.entry)
 		)
 		const blocker = find_blocker(items, sorted, reported)
-		if (blocker) return blocker
+		if (blocker) {
+			return blocker
+		}
 		const last_index = items.length - 1
 		let result = ""
 		for (let i = 0; i <= last_index; i++) {
@@ -205,9 +221,13 @@ function create_reorder(context) {
 				|| slot.tail_start < slot.after && !slot.break_after && (i < last_index || !slot.closes)
 				|| has_tail && !slot.break_after && (i < last_index || item.tail_line)
 				|| layout == "statement" && i < last_index && !item.terminated && !slot.break_after
-			) return null
+			) {
+				return null
+			}
 			result += source.render(item.start, item.code_end) + source.render(slot.code_end, slot.sep_end)
-			if (has_tail) result += " " + source.render(item.tail_start, item.after)
+			if (has_tail) {
+				result += " " + source.render(item.tail_start, item.after)
+			}
 			if (i < last_index) {
 				result += source.render(
 					slot.after,
@@ -217,7 +237,9 @@ function create_reorder(context) {
 		}
 		const first = /** @type {import("../../private.js").OrderItem} */(items[0])/**/
 		const last = /** @type {import("../../private.js").OrderItem} */(items[last_index])/**/
-		if (last.semicolon && !(/** @type {import("../../private.js").OrderItem} */(sorted[last_index])/**/).semicolon) return null
+		if (last.semicolon && !(/** @type {import("../../private.js").OrderItem} */(sorted[last_index])/**/).semicolon) {
+			return null
+		}
 		source.edit(first.start, last.after, result)
 		return {
 			range: [ first.start, last.after ],
@@ -260,7 +282,9 @@ function create_reorder(context) {
 		)
 		const entry = entries[index]
 		const previous = entries[index - 1]
-		if (!entry || !previous) return
+		if (!entry || !previous) {
+			return
+		}
 		const replacement = get_replacement(entries, layout, entry, get_level)
 		const fix = replacement && "range" in replacement ? replacement : null
 		const blocker = replacement && "entry" in replacement ? replacement : null
@@ -341,13 +365,19 @@ function is_portable_regexp(args) {
 	const [ pattern, flags ] = args
 	const source = pattern instanceof RegExp ? pattern.source : pattern
 	const flag_text = flags === undefined && pattern instanceof RegExp ? pattern.flags : flags
-	if (typeof source != "string" && source !== undefined || typeof flag_text != "string" && flag_text !== undefined) return false
-	if (flag_text && !portable_flags_regex.test(flag_text) || source && regexp_modifier_regex.test(source)) return false
+	if (typeof source != "string" && source !== undefined || typeof flag_text != "string" && flag_text !== undefined) {
+		return false
+	}
+	if (flag_text && !portable_flags_regex.test(flag_text) || source && regexp_modifier_regex.test(source)) {
+		return false
+	}
 	/** @type {Set<string>} */
 	const names = new Set()
 	for (const match of source?.matchAll(regexp_group_name_regex) ?? []) {
 		const name = /** @type {string} */(match[1])/**/
-		if (names.has(name)) return false
+		if (names.has(name)) {
+			return false
+		}
 		names.add(name)
 	}
 	return true
@@ -421,7 +451,9 @@ export default {
 			case "TSTypeAssertion":
 				return classify(node.expression)
 			case "UnaryExpression":
-				if (node.operator == "delete") return 2
+				if (node.operator == "delete") {
+					return 2
+				}
 				break
 			}
 			let level = 0
@@ -456,7 +488,9 @@ export default {
 					default_exports.add(statement.declaration.name)
 				} else if (statement.type == "ExportNamedDeclaration" && !statement.source) {
 					for (const specifier of statement.specifiers) {
-						if (get_name(specifier.exported) == "default") default_exports.add(get_name(specifier.local))
+						if (get_name(specifier.exported) == "default") {
+							default_exports.add(get_name(specifier.local))
+						}
 					}
 				}
 			}
@@ -469,7 +503,9 @@ export default {
 		function collect_targets(node, names) {
 			switch (node?.type) {
 			case "ArrayPattern":
-				for (const element of node.elements) collect_targets(element, names)
+				for (const element of node.elements) {
+					collect_targets(element, names)
+				}
 				break
 			case "AssignmentPattern":
 				collect_targets(node.left, names)
@@ -478,7 +514,9 @@ export default {
 				names.push(node.name)
 				break
 			case "ObjectPattern":
-				for (const property of node.properties) collect_targets(property, names)
+				for (const property of node.properties) {
+					collect_targets(property, names)
+				}
 				break
 			case "Property":
 				collect_targets(node.value, names)
@@ -495,13 +533,17 @@ export default {
 		 */
 		function construct(node) {
 			const callee = node.callee
-			if (callee.type != "Identifier" || !safe_constructors.has(callee.name) || !is_global(callee)) return not_static
+			if (callee.type != "Identifier" || !safe_constructors.has(callee.name) || !is_global(callee)) {
+				return not_static
+			}
 			const args = node.arguments.map(static_value)
 			if (
 				args.includes(not_static)
 				|| (callee.name.includes("Array") || callee.name == "DataView") && args.some(is_large)
 				|| callee.name == "RegExp" && !is_portable_regexp(args)
-			) return not_static
+			) {
+				return not_static
+			}
 			try {
 				return new (/** @type {new (...values: unknown[]) => unknown} */(/** @type {Record<string, unknown>} */(/** @type {unknown} */(globalThis))/**/[callee.name])/**/)(...args)
 			} catch {
@@ -552,7 +594,9 @@ export default {
 		 */
 		function get_key_name(node) {
 			const type = node.type
-			if (type != "Property" && type != "TSMethodSignature" && type != "TSPropertySignature") return undefined
+			if (type != "Property" && type != "TSMethodSignature" && type != "TSPropertySignature") {
+				return undefined
+			}
 			return node.computed && node.key.type != "Literal" ? undefined : get_name(node.key)
 		}
 		/**
@@ -560,7 +604,9 @@ export default {
 		 * @returns {string | undefined}
 		 */
 		function get_specifier_name(node) {
-			if (node.type == "ImportSpecifier") return get_name(node.imported)
+			if (node.type == "ImportSpecifier") {
+				return get_name(node.imported)
+			}
 			return node.type == "ExportSpecifier" ? get_name(node.local) : undefined
 		}
 		/**
@@ -569,11 +615,17 @@ export default {
 		 */
 		function get_test_title(statement) {
 			const call = statement.type == "ExpressionStatement" ? statement.expression : undefined
-			if (call?.type != "CallExpression") return undefined
+			if (call?.type != "CallExpression") {
+				return undefined
+			}
 			let callee = call.callee
-			while (callee.type == "MemberExpression" && !callee.computed) callee = callee.object
+			while (callee.type == "MemberExpression" && !callee.computed) {
+				callee = callee.object
+			}
 			const title = call.arguments[0]
-			if (callee.type != "Identifier" || !test_functions.has(callee.name)) return undefined
+			if (callee.type != "Identifier" || !test_functions.has(callee.name)) {
+				return undefined
+			}
 			return title?.type == "Literal" && typeof title.value == "string" || title?.type == "TemplateLiteral"
 				? title
 				: undefined
@@ -587,8 +639,12 @@ export default {
 			const variable = scope.references.find(
 				reference => reference.identifier == node
 			)?.resolved
-			if (!variable?.defs.length) return constant_globals.has(node.name) && is_global(node)
-			if (variable.defs.length > 1) return false
+			if (!variable?.defs.length) {
+				return constant_globals.has(node.name) && is_global(node)
+			}
+			if (variable.defs.length > 1) {
+				return false
+			}
 			const def = /** @type {import("eslint").Scope.Definition} */(variable.defs[0])/**/
 			switch (def.type) {
 			case "ClassName":
@@ -627,7 +683,9 @@ export default {
 		 */
 		function is_global(node) {
 			let scope = context.sourceCode.getScope(node)
-			while (scope.upper && !scope.set.has(node.name)) scope = scope.upper
+			while (scope.upper && !scope.set.has(node.name)) {
+				scope = scope.upper
+			}
 			return !scope.set.get(node.name)?.defs.length
 		}
 		/**
@@ -643,9 +701,13 @@ export default {
 				parent?.type == "SwitchCase"
 				|| parent?.parent?.type == "SwitchCase"
 				|| /** @type {[number, number]} */(node.range)/**/[0] < /** @type {[number, number]} */(declaration.range)/**/[1]
-			) return false
+			) {
+				return false
+			}
 			for (let current = /** @type {import("eslint").Scope.Scope | null} */(scope)/**/; current && current != variable.scope; current = current.upper) {
-				if (current.block.type == "FunctionDeclaration") return false
+				if (current.block.type == "FunctionDeclaration") {
+					return false
+				}
 			}
 			return true
 		}
@@ -654,11 +716,15 @@ export default {
 		 * @returns {boolean}
 		 */
 		function is_package_condition(node) {
-			if (!/(?:^|[/\\])package\.json$/.test(context.filename)) return false
+			if (!/(?:^|[/\\])package\.json$/.test(context.filename)) {
+				return false
+			}
 			let parent = /** @type {import("eslint").Rule.Node} */(node)/**/.parent
 			while (parent && parent.type != "Program") {
 				const name = get_key_name(parent)
-				if (name == "exports" || name == "imports") return true
+				if (name == "exports" || name == "imports") {
+					return true
+				}
 				parent = parent.parent
 			}
 			return false
@@ -679,7 +745,9 @@ export default {
 			for (const key of visitor_keys[node.type] ?? []) {
 				const value = /** @type {Record<string, import("../../private.js").OrderNode | import("../../private.js").OrderNode[] | null | undefined>} */(/** @type {unknown} */(node))/**/[key]
 				for (const child of Array.isArray(value) ? value : [ value ]) {
-					if (child?.type && predicate(child)) return true
+					if (child?.type && predicate(child)) {
+						return true
+					}
 				}
 			}
 			return false
@@ -708,9 +776,13 @@ export default {
 				/** @type {Record<string, unknown>} */
 				const object = {}
 				for (const property of node.properties) {
-					if (property.type != "Property" || property.kind != "init" || property.computed || property.shorthand) return not_static
+					if (property.type != "Property" || property.kind != "init" || property.computed || property.shorthand) {
+						return not_static
+					}
 					const value = static_value(property.value)
-					if (value === not_static) return not_static
+					if (value === not_static) {
+						return not_static
+					}
 					object[String(get_name(property.key))] = value
 				}
 				return object
@@ -761,12 +833,14 @@ export default {
 						}
 					)
 				} else {
-					if (entries.length > 1) defer(
-						entries,
-						message_id,
-						layout,
-						get_level
-					)
+					if (entries.length > 1) {
+						defer(
+							entries,
+							message_id,
+							layout,
+							get_level
+						)
+					}
 					entries = []
 				}
 			}
@@ -776,14 +850,18 @@ export default {
 		 * @returns {void}
 		 */
 		function verify_statements(node) {
-			if (!check_declarations && !check_imports && !check_tests) return
+			if (!check_declarations && !check_imports && !check_tests) {
+				return
+			}
 			/** @type {import("../../private.js").OrderEntry[]} */
 			let entries = []
 			/** @type {"declarations" | "imports" | "tests" | undefined} */
 			let kind
 			for (const statement of [ ...node.body, null ]) {
 				let id = statement && check_declarations ? get_function_id(statement) : undefined
-				if (node.type == "Program" && default_exports.has(id?.name)) id = undefined
+				if (node.type == "Program" && default_exports.has(id?.name)) {
+					id = undefined
+				}
 				const source = statement && check_imports ? get_import_source(statement) : undefined
 				const title = statement && check_tests && !id ? get_test_title(statement) : undefined
 				const report = id ?? source ?? title
@@ -801,7 +879,9 @@ export default {
 					continue
 				}
 				if (kind != next_kind) {
-					if (kind && entries.length > 1) defer(entries, kind, "statement")
+					if (kind && entries.length > 1) {
+						defer(entries, kind, "statement")
+					}
 					entries = []
 					kind = next_kind
 				}
@@ -821,23 +901,29 @@ export default {
 		const listener = {
 			BlockStatement: verify_statements,
 			ExportNamedDeclaration: node => {
-				if (check_names) verify_nodes(
-					node.specifiers,
-					get_specifier_name,
-					"names",
-					"sequence"
-				)
+				if (check_names) {
+					verify_nodes(
+						node.specifiers,
+						get_specifier_name,
+						"names",
+						"sequence"
+					)
+				}
 			},
 			ImportDeclaration: node => {
-				if (check_names) verify_nodes(
-					node.specifiers,
-					get_specifier_name,
-					"names",
-					"sequence"
-				)
+				if (check_names) {
+					verify_nodes(
+						node.specifiers,
+						get_specifier_name,
+						"names",
+						"sequence"
+					)
+				}
 			},
 			ObjectExpression: node => {
-				if (!check_keys) return
+				if (!check_keys) {
+					return
+				}
 				const condition = is_package_condition(node)
 				verify_nodes(
 					node.properties,
@@ -859,7 +945,9 @@ export default {
 					for (const property of node.properties) {
 						const names = collect_targets(property, [])
 						for (const name of new Set(names)) {
-							if (seen.has(name)) repeated.add(name)
+							if (seen.has(name)) {
+								repeated.add(name)
+							}
 							seen.add(name)
 						}
 						targets.set(property, names)
@@ -888,21 +976,25 @@ export default {
 			},
 			StaticBlock: verify_statements,
 			TSInterfaceBody: node => {
-				if (check_keys) verify_nodes(
-					node.body,
-					get_key_name,
-					"keys",
-					"member"
-				)
+				if (check_keys) {
+					verify_nodes(
+						node.body,
+						get_key_name,
+						"keys",
+						"member"
+					)
+				}
 			},
 			TSModuleBlock: verify_statements,
 			TSTypeLiteral: node => {
-				if (check_keys) verify_nodes(
-					node.members,
-					get_key_name,
-					"keys",
-					"member"
-				)
+				if (check_keys) {
+					verify_nodes(
+						node.members,
+						get_key_name,
+						"keys",
+						"member"
+					)
+				}
 			}
 		}
 		return /** @type {import("eslint").Rule.RuleListener} */(/** @type {unknown} */(listener))/**/

@@ -29,9 +29,11 @@ export async function attempt(fn, options = {}) {
 		signal,
 		timeout
 	} = options
-	if (timeout != null && !(typeof timeout == "number" && timeout > 0)) throw TypeError(
-		"The timeout of attempt() must be a positive number of milliseconds"
-	)
+	if (timeout != null && !(typeof timeout == "number" && timeout > 0)) {
+		throw TypeError(
+			"The timeout of attempt() must be a positive number of milliseconds"
+		)
+	}
 	const retry = typeof retry_option == "number" ? { count: retry_option } : retry_option
 	for (let count = 1; ; count++) {
 		const controller = new AbortController()
@@ -43,7 +45,9 @@ export async function attempt(fn, options = {}) {
 			)
 			: void 0
 		try {
-			if (controller.signal.aborted) throw controller.signal.reason
+			if (controller.signal.aborted) {
+				throw controller.signal.reason
+			}
 			return /** @type {Awaited<T>} */(await race_signal(
 				Promise.resolve()
 					.then(
@@ -57,12 +61,18 @@ export async function attempt(fn, options = {}) {
 				controller.signal
 			))/**/
 		} catch (error) {
-			if (signal?.aborted) throw to_cancel_error(signal.reason)
-			if (!retry || count > retry.count || retry.when && !await retry.when(error, count)) throw error
+			if (signal?.aborted) {
+				throw to_cancel_error(signal.reason)
+			}
+			if (!retry || count > retry.count || retry.when && !await retry.when(error, count)) {
+				throw error
+			}
 			const delay = typeof retry.delay == "function"
 				? retry.delay(count, error, 0)
 				: retry.delay ?? 0
-			if (delay == null) throw error
+			if (delay == null) {
+				throw error
+			}
 			clearTimeout(timer)
 			if (delay > 0) {
 				await sleep(delay, signal)

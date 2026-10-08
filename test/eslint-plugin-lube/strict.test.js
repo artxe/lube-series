@@ -9,6 +9,7 @@ import { describe, it } from "vitest"
 RuleTester.describe = describe
 RuleTester.it = it
 const ascii_order_options = /** @type {[ import("eslint").Linter.RuleSeverity, NonNullable<import("../../packages/eslint-plugin-lube/private.js").RuleOptions["ascii-order"]> ]} */(lube.configs.strict.rules["lube/ascii-order"])/**/.slice(1)
+const curly_options = /** @type {[ import("eslint").Linter.RuleSeverity, "all" ]} */(lube.configs.strict.rules["lube/curly"])/**/.slice(1)
 const options = /** @type {[ import("eslint").Linter.RuleSeverity, "declaration" ]} */(lube.configs.strict.rules["func-style"])/**/.slice(1)
 new RuleTester().run(
 	"ascii-order in the strict config",
@@ -47,6 +48,59 @@ new RuleTester().run(
 			}
 		],
 		valid: []
+	}
+)
+new RuleTester().run(
+	"curly in the strict config",
+	/** @type {import("eslint").Rule.RuleModule} */(lube.rules?.["curly"])/**/,
+	{
+		invalid: [
+			{
+				code: "if (a) b()",
+				errors: [
+					{
+						messageId: "missingCurlyAfterCondition"
+					}
+				],
+				options: curly_options,
+				output: "if (a) {b()}"
+			},
+			{
+				code: "if (a) /** @type {A} */(b).c = 1\nelse /* d */ e()",
+				errors: [
+					{
+						messageId: "missingCurlyAfterCondition"
+					},
+					{ messageId: "missingCurlyAfter" }
+				],
+				options: curly_options,
+				output: "if (a) {/** @type {A} */(b).c = 1}\nelse {/* d */ e()}"
+			},
+			{
+				code: "for (const a of b) // c\n\t/** @type {A} */(a).d = 1",
+				errors: [
+					{ messageId: "missingCurlyAfter" }
+				],
+				options: curly_options,
+				output: "for (const a of b) {// c\n\t/** @type {A} */(a).d = 1}"
+			},
+			{
+				code: "if (a) { /* b */ c() }",
+				errors: [
+					{
+						messageId: "unexpectedCurlyAfterCondition"
+					}
+				],
+				options: [ "multi" ],
+				output: "if (a)  /* b */ c() "
+			}
+		],
+		valid: [
+			{
+				code: "if (a) { /** @type {A} */(b).c = 1 }",
+				options: curly_options
+			}
+		]
 	}
 )
 new RuleTester().run(
@@ -294,6 +348,19 @@ describe(
 			}
 		)
 		it(
+			"keeps a comment in front of a body inside the braces it adds",
+			() => {
+				assert_converges(
+					"if (a) /** @type {A} */(b).c = 1\nelse /** @type {A} */(b).d = 2",
+					"if (a) {\n\t/** @type {A} */(b)/**/.c = 1\n} else {\n\t/** @type {A} */(b)/**/.d = 2\n}"
+				)
+				assert_converges(
+					"while (a) // b\n\tc()",
+					"while (a) { // b\n\tc()\n}"
+				)
+			}
+		)
+		it(
 			"keeps a line comment before the colon of a key",
 			() => {
 				const code = "var o = {\n\ta // note\n\t: 1\n}"
@@ -437,8 +504,12 @@ describe(
 					"let [ item_count, last_bid ] = value\nitem_count++\nlog(item_count, last_bid)"
 				)
 				assert_converges(
-					"for (let rowIndex = 0; rowIndex < 2; rowIndex++) log(rowIndex)\nfor (let rowKey in value) {\n\trowKey = rowKey.trim()\n\tlog(rowKey)\n}",
-					"for (let row_index = 0; row_index < 2; row_index++) log(row_index)\nfor (let row_key in value) {\n\trow_key = row_key.trim()\n\tlog(row_key)\n}"
+					"if (a) b()\nelse c()\nwhile (a) b()",
+					"if (a) {\n\tb()\n} else {\n\tc()\n}\nwhile (a) {\n\tb()\n}"
+				)
+				assert_converges(
+					"for (let rowIndex = 0; rowIndex < 2; rowIndex++) {\n\tlog(rowIndex)\n}\nfor (let rowKey in value) {\n\trowKey = rowKey.trim()\n\tlog(rowKey)\n}",
+					"for (let row_index = 0; row_index < 2; row_index++) {\n\tlog(row_index)\n}\nfor (let row_key in value) {\n\trow_key = row_key.trim()\n\tlog(row_key)\n}"
 				)
 				assert_converges(
 					"export let lastBid = 1\nlet pageCount = 1\nexport { pageCount }\nexport function bump() {\n\tlastBid += 1\n\tpageCount += 1\n}",

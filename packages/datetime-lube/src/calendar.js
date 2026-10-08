@@ -10,7 +10,9 @@ function days_of(year, month, day) {
 		year += Math.floor(month / 12)
 		month = (month % 12 + 12) % 12
 	}
-	if (month < 2) year--
+	if (month < 2) {
+		year--
+	}
 	const era = Math.floor(year / 400)
 	const yoe = year - era * 400
 	return era * 146097

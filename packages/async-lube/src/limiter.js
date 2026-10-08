@@ -31,7 +31,9 @@ function create_state(options, on_idle) {
 		while (queue.length && state.running < concurrency) {
 			if (rate) {
 				const now = Date.now()
-				while (starts.length && now - /** @type {number} */(starts[0])/**/ >= rate.per) starts.shift()
+				while (starts.length && now - /** @type {number} */(starts[0])/**/ >= rate.per) {
+					starts.shift()
+				}
 				if (starts.length >= rate.count) {
 					timer ??= setTimeout(
 						() => {
@@ -61,14 +63,18 @@ function create_state(options, on_idle) {
 			job.resolve(
 				{
 					release: () => {
-						if (released) return
+						if (released) {
+							return
+						}
 						released = true
 						done()
 					}
 				}
 			)
 		}
-		if (queue.length || state.running || timer || !on_idle) return
+		if (queue.length || state.running || timer || !on_idle) {
+			return
+		}
 		const left = rate && starts.length
 			? /** @type {number} */(starts.at(-1))/**/ + rate.per - Date.now()
 			: 0
@@ -109,12 +115,16 @@ export function limiter(options) {
 		"rate."
 	)
 	const { concurrency = Infinity, rate } = options
-	if (!(concurrency === Infinity || Number.isInteger(concurrency) && concurrency >= 1)) throw TypeError(
-		"The concurrency of limiter() must be a positive integer or Infinity"
-	)
-	if (rate && !(Number.isInteger(rate.count) && rate.count >= 1 && typeof rate.per == "number" && rate.per > 0)) throw TypeError(
-		"The rate of limiter() must be { count, per } with a positive integer count and positive milliseconds"
-	)
+	if (!(concurrency === Infinity || Number.isInteger(concurrency) && concurrency >= 1)) {
+		throw TypeError(
+			"The concurrency of limiter() must be a positive integer or Infinity"
+		)
+	}
+	if (rate && !(Number.isInteger(rate.count) && rate.count >= 1 && typeof rate.per == "number" && rate.per > 0)) {
+		throw TypeError(
+			"The rate of limiter() must be { count, per } with a positive integer count and positive milliseconds"
+		)
+	}
 	/** @type {Map<unknown, LimiterState>} */
 	const keyed = new Map()
 	const root = create_state(options)
@@ -179,7 +189,9 @@ function to_limiter(current, peek, key) {
 						signal,
 						() => {
 							const index = state.queue.indexOf(job)
-							if (index < 0) return
+							if (index < 0) {
+								return
+							}
 							state.queue.splice(index, 1)
 							reject(to_cancel_error(signal.reason))
 							state.schedule()

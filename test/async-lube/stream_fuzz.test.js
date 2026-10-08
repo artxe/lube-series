@@ -129,7 +129,9 @@ async function fuzz_stream(seed, unhandled) {
 		try {
 			for (;;) {
 				const step = await reader.next()
-				if (loop.forced) return
+				if (loop.forced) {
+					return
+				}
 				if (step.done) {
 					loop.end = { kind: "end", t: now() }
 					return
@@ -158,9 +160,11 @@ async function fuzz_stream(seed, unhandled) {
 					step => step.done ? "" : "a value",
 					() => "a second error"
 				)
-			if (again) problems.push(
-				`next() after the error gave ${again}`
-			)
+			if (again) {
+				problems.push(
+					`next() after the error gave ${again}`
+				)
+			}
 		}
 	}
 	/**
@@ -216,7 +220,9 @@ async function fuzz_stream(seed, unhandled) {
 		/** @type {number | undefined} */
 		let due
 		for (const event of source.events) {
-			if (due === event.t) tie = true
+			if (due === event.t) {
+				tie = true
+			}
 			if (due !== void 0 && due <= event.t) {
 				events.push({ t: due, v: batch })
 				batch = []
@@ -229,7 +235,9 @@ async function fuzz_stream(seed, unhandled) {
 			events.push({ t: due, v: batch })
 			batch = []
 		}
-		if (source.end.kind != "never" && batch.length) events.push({ t: source.end.t, v: batch })
+		if (source.end.kind != "never" && batch.length) {
+			events.push({ t: source.end.t, v: batch })
+		}
 		return { end: source.end, events }
 	}
 	/**
@@ -243,15 +251,21 @@ async function fuzz_stream(seed, unhandled) {
 		/** @type {FuzzEvent | undefined} */
 		let held
 		for (const event of source.events) {
-			if (held && held.t + ms == event.t) tie = true
-			if (held && held.t + ms <= event.t) events.push({ t: held.t + ms, v: held.v })
+			if (held && held.t + ms == event.t) {
+				tie = true
+			}
+			if (held && held.t + ms <= event.t) {
+				events.push({ t: held.t + ms, v: held.v })
+			}
 			held = event
 		}
 		if (held && held.t + ms <= source.end.t) {
 			events.push({ t: held.t + ms, v: held.v })
 			held = void 0
 		}
-		if (source.end.kind != "never" && held) events.push({ t: source.end.t, v: held.v })
+		if (source.end.kind != "never" && held) {
+			events.push({ t: source.end.t, v: held.v })
+		}
 		return { end: source.end, events }
 	}
 	/**
@@ -323,12 +337,18 @@ async function fuzz_stream(seed, unhandled) {
 				outer_error?.t ?? Infinity
 			)
 			const run = expect_inner(inner, value.t, count)
-			if (run.events.some(event => event.t == stop) || run.end.t == stop) tie = true
+			if (run.events.some(event => event.t == stop) || run.end.t == stop) {
+				tie = true
+			}
 			events.push(
 				...run.events.filter(event => event.t < stop)
 			)
-			if (run.end.kind == "error" && run.end.t < stop && (!failure || run.end.t < failure.t)) failure = run.end
-			if (count == outer.events.length - 1) last = run.end
+			if (run.end.kind == "error" && run.end.t < stop && (!failure || run.end.t < failure.t)) {
+				failure = run.end
+			}
+			if (count == outer.events.length - 1) {
+				last = run.end
+			}
 		}
 		events.sort((a, b) => a.t - b.t)
 		if (failure) {
@@ -336,12 +356,18 @@ async function fuzz_stream(seed, unhandled) {
 			events = events.filter(event => event.t <= at)
 			return { end: failure, events }
 		}
-		if (outer.end.kind == "never") return {
-			end: { kind: "never", t: Infinity },
-			events
+		if (outer.end.kind == "never") {
+			return {
+				end: { kind: "never", t: Infinity },
+				events
+			}
 		}
-		if (!last) return { end: outer.end, events }
-		if (last.kind == "never") return { end: last, events }
+		if (!last) {
+			return { end: outer.end, events }
+		}
+		if (last.kind == "never") {
+			return { end: last, events }
+		}
 		return {
 			end: {
 				kind: "end",
@@ -359,29 +385,39 @@ async function fuzz_stream(seed, unhandled) {
 		const owners = new Map()
 		for (const [ index, source ] of sources.entries()) {
 			const times = source.events.map(event => event.t)
-			if (source.end.kind == "error") times.push(source.end.t)
+			if (source.end.kind == "error") {
+				times.push(source.end.t)
+			}
 			for (const t of times) {
 				const owner = owners.get(t)
-				if (owner !== void 0 && owner != index) tie = true
+				if (owner !== void 0 && owner != index) {
+					tie = true
+				}
 				owners.set(t, index)
 			}
 		}
 		/** @type {FuzzEnd | undefined} */
 		let failure
 		for (const source of sources) {
-			if (source.end.kind == "error" && (!failure || source.end.t < failure.t)) failure = source.end
+			if (source.end.kind == "error" && (!failure || source.end.t < failure.t)) {
+				failure = source.end
+			}
 		}
 		const events = sources.flatMap(source => source.events)
 			.filter(
 				event => !failure || event.t <= failure.t
 			)
 			.sort((a, b) => a.t - b.t)
-		if (failure) return { end: failure, events }
+		if (failure) {
+			return { end: failure, events }
+		}
 		if (sources.some(
 			source => source.end.kind == "never"
-		)) return {
-			end: { kind: "never", t: Infinity },
-			events
+		)) {
+			return {
+				end: { kind: "never", t: Infinity },
+				events
+			}
 		}
 		return {
 			end: {
@@ -439,12 +475,16 @@ async function fuzz_stream(seed, unhandled) {
 		 */
 		function reach(t, value) {
 			while (window !== void 0 && window <= t) {
-				if (window == t && value) tie = true
+				if (window == t && value) {
+					tie = true
+				}
 				if (held) {
 					events.push({ t: window, v: held.v })
 					held = void 0
 					window += ms
-				} else window = void 0
+				} else {
+					window = void 0
+				}
 			}
 		}
 		for (const event of source.events) {
@@ -452,10 +492,14 @@ async function fuzz_stream(seed, unhandled) {
 			if (window === void 0) {
 				events.push(event)
 				window = event.t + ms
-			} else held = event
+			} else {
+				held = event
+			}
 		}
 		reach(source.end.t, false)
-		if (source.end.kind != "never" && held) events.push({ t: source.end.t, v: held.v })
+		if (source.end.kind != "never" && held) {
+			events.push({ t: source.end.t, v: held.v })
+		}
 		return { end: source.end, events }
 	}
 	/**
@@ -468,13 +512,21 @@ async function fuzz_stream(seed, unhandled) {
 			stop.events[0]?.t ?? Infinity,
 			stop.end.kind == "never" ? Infinity : stop.end.t
 		)
-		if (source.events.some(event => event.t == at) || source.end.t == at) tie = true
+		if (source.events.some(event => event.t == at) || source.end.t == at) {
+			tie = true
+		}
 		const events = source.events.filter(event => event.t < at)
-		if (source.end.kind != "never" && source.end.t < at) return { end: source.end, events }
-		if (stop.end.kind == "error" && !stop.events.length) return { end: stop.end, events }
-		if (at < Infinity) return {
-			end: { kind: "end", t: at },
-			events
+		if (source.end.kind != "never" && source.end.t < at) {
+			return { end: source.end, events }
+		}
+		if (stop.end.kind == "error" && !stop.events.length) {
+			return { end: stop.end, events }
+		}
+		if (at < Infinity) {
+			return {
+				end: { kind: "end", t: at },
+				events
+			}
 		}
 		return {
 			end: { kind: "never", t: Infinity },
@@ -492,10 +544,12 @@ async function fuzz_stream(seed, unhandled) {
 	 * @returns {FuzzSpec}
 	 */
 	function generate(depth) {
-		if (depth <= 0 || random.chance(0.25)) return generate_source(
-			6,
-			random.chance(0.3) ? "chan" : "src"
-		)
+		if (depth <= 0 || random.chance(0.25)) {
+			return generate_source(
+				6,
+				random.chance(0.3) ? "chan" : "src"
+			)
+		}
 		const k = random.pick(
 			/** @type {const} */([
 				"merge",
@@ -546,17 +600,23 @@ async function fuzz_stream(seed, unhandled) {
 	 */
 	function generate_inner() {
 		const roll = random.next()
-		if (roll < 0.4) return {
-			k: "isrc",
-			src: generate_source(4, "src")
+		if (roll < 0.4) {
+			return {
+				k: "isrc",
+				src: generate_source(4, "src")
+			}
 		}
-		if (roll < 0.6) return {
-			dt: gap(),
-			fail: random.chance(0.2),
-			k: "promise",
-			name: `P${names++}`
+		if (roll < 0.6) {
+			return {
+				dt: gap(),
+				fail: random.chance(0.2),
+				k: "promise",
+				name: `P${names++}`
+			}
 		}
-		if (roll < 0.7) return { k: "value", name: `V${names++}` }
+		if (roll < 0.7) {
+			return { k: "value", name: `V${names++}` }
+		}
 		return {
 			k: "iop",
 			ms: between(1, 20),
@@ -607,8 +667,11 @@ async function fuzz_stream(seed, unhandled) {
 			schedule(
 				(times.at(-1) ?? 0) + spec.term.dt,
 				() => {
-					if (spec.term.kind == "end") values.close()
-					else values.fail(error_of(spec.name))
+					if (spec.term.kind == "end") {
+						values.close()
+					} else {
+						values.fail(error_of(spec.name))
+					}
 				}
 			)
 		}
@@ -673,7 +736,9 @@ async function fuzz_stream(seed, unhandled) {
 				let settle
 				return {
 					next() {
-						if (leaf.returned !== void 0 || leaf.finished) return Promise.resolve({ done: true, value: void 0 })
+						if (leaf.returned !== void 0 || leaf.finished) {
+							return Promise.resolve({ done: true, value: void 0 })
+						}
 						if (leaf.pending) {
 							problems.push(
 								`concurrent next() on ${leaf.name}`
@@ -707,8 +772,11 @@ async function fuzz_stream(seed, unhandled) {
 											leaf.pending = false
 											leaf.finished = true
 											settle = void 0
-											if (spec.term.kind == "end") resolve({ done: true, value: void 0 })
-											else reject(error_of(spec.name + tag))
+											if (spec.term.kind == "end") {
+												resolve({ done: true, value: void 0 })
+											} else {
+												reject(error_of(spec.name + tag))
+											}
 										}
 									)
 								}
@@ -716,7 +784,9 @@ async function fuzz_stream(seed, unhandled) {
 						)
 					},
 					return() {
-						if (leaf.returned === void 0) leaf.returned = now()
+						if (leaf.returned === void 0) {
+							leaf.returned = now()
+						}
 						cancel?.()
 						if (settle) {
 							leaf.pending = false
@@ -789,61 +859,83 @@ async function fuzz_stream(seed, unhandled) {
 			}
 		)
 	}
-	for (let step = 0; step < 50 && settled.includes(false); step++) await advance(100)
+	for (let step = 0; step < 50 && settled.includes(false); step++) {
+		await advance(100)
+	}
 	for (const loop of loops) {
-		if (loop.end.kind != "hang") continue
+		if (loop.end.kind != "hang") {
+			continue
+		}
 		loop.forced = true
 		loop.end = { kind: "hang", t: now() }
 		await loop.reader?.return?.()
 	}
 	await advance(1)
-	if (settled.includes(false)) problems.push(
-		"a pending next() did not settle after return()"
-	)
+	if (settled.includes(false)) {
+		problems.push(
+			"a pending next() did not settle after return()"
+		)
+	}
 	const ended = Math.max(
 		...loops.map(loop => loop.end.t)
 	)
-	for (const timer of timers) clearTimeout(timer)
+	for (const timer of timers) {
+		clearTimeout(timer)
+	}
 	for (const [ index, loop ] of loops.entries()) {
-		if (loop.throws > 1) problems.push(
-			`loop ${index} threw ${loop.throws} times`
-		)
+		if (loop.throws > 1) {
+			problems.push(
+				`loop ${index} threw ${loop.throws} times`
+			)
+		}
 		/** @type {Set<string>} */
 		const seen = new Set()
 		/** @type {Map<string, number>} */
 		const last = new Map()
 		for (const event of loop.events) {
 			for (const value of flatten(event.v)) {
-				if (seen.has(value)) problems.push(
-					`loop ${index} got ${value} twice`
-				)
+				if (seen.has(value)) {
+					problems.push(
+						`loop ${index} got ${value} twice`
+					)
+				}
 				seen.add(value)
 				const [ leaf, position ] = value.split(":")
 				const before = last.get(String(leaf)) ?? -1
-				if (Number(position) <= before) problems.push(
-					`loop ${index} got ${value} after position ${before}`
-				)
+				if (Number(position) <= before) {
+					problems.push(
+						`loop ${index} got ${value} after position ${before}`
+					)
+				}
 				last.set(String(leaf), Number(position))
 			}
 		}
 		if (loop.end.kind == "error" && ![ ...errors.values() ].includes(
 			/** @type {Error} */(loop.end.error)/**/
-		)) problems.push(
-			`loop ${index} failed with ${String(loop.end.error)}`
-		)
+		)) {
+			problems.push(
+				`loop ${index} failed with ${String(loop.end.error)}`
+			)
+		}
 	}
 	for (const leaf of leaves) {
-		if (!leaf.finished && (leaf.returned === void 0 || leaf.returned > ended)) problems.push(
-			`${leaf.name} was released at ${leaf.returned} after the loops ended at ${ended}`
+		if (!leaf.finished && (leaf.returned === void 0 || leaf.returned > ended)) {
+			problems.push(
+				`${leaf.name} was released at ${leaf.returned} after the loops ended at ${ended}`
+			)
+		}
+	}
+	if (pending_timers()) {
+		problems.push(
+			`${pending_timers()} timers left`
 		)
 	}
-	if (pending_timers()) problems.push(
-		`${pending_timers()} timers left`
-	)
-	if (unhandled.length > unhandled_before) problems.push(
-		"unhandled rejections: " + unhandled.slice(unhandled_before).map(String)
-			.join("; ")
-	)
+	if (unhandled.length > unhandled_before) {
+		problems.push(
+			"unhandled rejections: " + unhandled.slice(unhandled_before).map(String)
+				.join("; ")
+		)
+	}
 	tie = false
 	const expected = expect(spec)
 	if (mode != "slow" && !tie) {
@@ -861,15 +953,19 @@ async function fuzz_stream(seed, unhandled) {
 				)
 			} else if (most >= expected.events.length) {
 				const kind = expected.end.kind == "never" ? "hang" : expected.end.kind
-				if (kind != loop.end.kind) problems.push(
-					`loop ${index} ended with ${loop.end.kind}@${loop.end.t}, expected ${kind}@${expected.end.t}`
-				)
-				else if (kind != "hang" && expected.end.t != loop.end.t) problems.push(
-					`loop ${index} ended at ${loop.end.t}, expected ${expected.end.t}`
-				)
-				else if (kind == "error" && expected.end.error !== loop.end.error) problems.push(
-					`loop ${index} failed with ${String(loop.end.error)}, expected ${String(expected.end.error)}`
-				)
+				if (kind != loop.end.kind) {
+					problems.push(
+						`loop ${index} ended with ${loop.end.kind}@${loop.end.t}, expected ${kind}@${expected.end.t}`
+					)
+				} else if (kind != "hang" && expected.end.t != loop.end.t) {
+					problems.push(
+						`loop ${index} ended at ${loop.end.t}, expected ${expected.end.t}`
+					)
+				} else if (kind == "error" && expected.end.error !== loop.end.error) {
+					problems.push(
+						`loop ${index} failed with ${String(loop.end.error)}, expected ${String(expected.end.error)}`
+					)
+				}
 			}
 		}
 	}
@@ -933,12 +1029,14 @@ describe(
 						`SIM_MODE=stream SIM_SEED=${seed}`,
 						fuzz_stream(seed, unhandled)
 					)
-					if (problems.length) failures.push(
-						[
-							`SIM_MODE=stream SIM_SEED=${seed}`,
-							...problems
-						].join("\n")
-					)
+					if (problems.length) {
+						failures.push(
+							[
+								`SIM_MODE=stream SIM_SEED=${seed}`,
+								...problems
+							].join("\n")
+						)
+					}
 				}
 				assert.deepEqual(
 					{

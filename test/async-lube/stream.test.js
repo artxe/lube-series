@@ -28,7 +28,9 @@ describe(
 		async function collect(source) {
 			/** @type {T[]} */
 			const values = []
-			for await (const value of source) values.push(value)
+			for await (const value of source) {
+				values.push(value)
+			}
 			return values
 		}
 		/**
@@ -118,10 +120,14 @@ describe(
 				const loops = Promise.all(
 					[
 						(async () => {
-							for await (const value of values) first.push(value)
+							for await (const value of values) {
+								first.push(value)
+							}
 						})(),
 						(async () => {
-							for await (const value of values) second.push(value)
+							for await (const value of values) {
+								second.push(value)
+							}
 						})()
 					]
 				)
@@ -217,7 +223,9 @@ describe(
 				const values = channel({ limit: 2 })
 				const seen = collect(values)
 				await settle()
-				for (const value of [ 1, 2, 3, 4 ]) values.send(value)
+				for (const value of [ 1, 2, 3, 4 ]) {
+					values.send(value)
+				}
 				values.close()
 				assert.deepEqual(await seen, [ 3, 4 ])
 			}
@@ -264,7 +272,9 @@ describe(
 					const loop = (async () => {
 						for (;;) {
 							const step = await stream.next()
-							if (step.done) return
+							if (step.done) {
+								return
+							}
 							received.push(step.value)
 						}
 					})()
@@ -663,7 +673,9 @@ describe(
 				 * @returns {AsyncGenerator<string>}
 				 */
 				async function* busy(tag) {
-					for (let i = 0; ; i++) yield `${tag}${i}`
+					for (let i = 0; ; i++) {
+						yield `${tag}${i}`
+					}
 				}
 				/** @returns {AsyncGenerator<string>} */
 				async function* once() {
@@ -673,7 +685,9 @@ describe(
 				const seen = []
 				for await (const value of merge(busy("a"), busy("b"), once())) {
 					seen.push(value)
-					if (seen.length == 30) break
+					if (seen.length == 30) {
+						break
+					}
 				}
 				assert.include(seen, "third")
 				/** @type {import("async-lube").Channel<string>[]} */
@@ -681,10 +695,14 @@ describe(
 				const merged = collect(merge(...rooms))
 				await settle()
 				for (let i = 0; i < 2; i++) {
-					for (const [ n, room ] of rooms.entries()) room.send(`${n}-${i}`)
+					for (const [ n, room ] of rooms.entries()) {
+						room.send(`${n}-${i}`)
+					}
 				}
 				await settle()
-				for (const room of rooms) room.close()
+				for (const room of rooms) {
+					room.close()
+				}
 				assert.deepEqual(
 					await merged,
 					[ "0-0", "1-0", "2-0", "0-1", "1-1", "2-1" ]
@@ -762,7 +780,9 @@ describe(
 				 */
 				async function first(stream) {
 					const loop = (async () => {
-						for await (const value of stream) return value
+						for await (const value of stream) {
+							return value
+						}
 						return "ended"
 					})()
 					await settle()
@@ -840,7 +860,9 @@ describe(
 						),
 						"throttle() needs a non-negative number of milliseconds"
 					]
-				])/**/) assert.throws(build, TypeError, message)
+				])/**/) {
+					assert.throws(build, TypeError, message)
+				}
 				assert.doesNotThrow(
 					() => [
 						channel({ limit: Infinity }),
@@ -872,10 +894,14 @@ describe(
 				const loops = Promise.all(
 					[
 						(async () => {
-							for await (const value of shared) first.push(value)
+							for await (const value of shared) {
+								first.push(value)
+							}
 						})(),
 						(async () => {
-							for await (const value of shared) second.push(value)
+							for await (const value of shared) {
+								second.push(value)
+							}
 						})()
 					]
 				)
@@ -900,7 +926,9 @@ describe(
 						let done = false
 						return {
 							async next() {
-								if (done) return { done: true, value: void 0 }
+								if (done) {
+									return { done: true, value: void 0 }
+								}
 								done = true
 								return { done: false, value: ++starts }
 							}
@@ -1079,8 +1107,11 @@ describe(
 									() => {
 										const value = `v${index + 1}`
 										const take = waiting.shift()
-										if (take) take({ done: false, value })
-										else ready.push(value)
+										if (take) {
+											take({ done: false, value })
+										} else {
+											ready.push(value)
+										}
 									},
 									time
 								)
@@ -1126,13 +1157,17 @@ describe(
 							seen.push(
 								`${value}@${Date.now() - started}`
 							)
-							if (seen.length == count) break
+							if (seen.length == count) {
+								break
+							}
 						}
 						return seen
 					}
 				)
 				for (let i = 0; i < 30; i++) {
-					for (let j = 0; j < 50; j++) await Promise.resolve()
+					for (let j = 0; j < 50; j++) {
+						await Promise.resolve()
+					}
 					vi.advanceTimersByTime(10)
 				}
 				assert.deepEqual(

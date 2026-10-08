@@ -28,10 +28,14 @@ let client_count = 0
  * @returns {string}
  */
 function to_socket_url(url) {
-	if (scheme_regex.test(url)) return url.replace(/^http(s?):/i, "ws$1:")
-	if (typeof location == "undefined") throw TypeError(
-		`The URL "${url}" is relative: set base, or use an absolute URL`
-	)
+	if (scheme_regex.test(url)) {
+		return url.replace(/^http(s?):/i, "ws$1:")
+	}
+	if (typeof location == "undefined") {
+		throw TypeError(
+			`The URL "${url}" is relative: set base, or use an absolute URL`
+		)
+	}
 	return new URL(url, location.href).href.replace(/^http(s?):/i, "ws$1:")
 }
 /**
@@ -77,8 +81,11 @@ function http(
 			/** @type {Record<string, unknown>} */
 			const merged = { ...config }
 			for (const [ key, value ] of Object.entries(next)) {
-				if (value === null) delete merged[key]
-				else if (value !== void 0) merged[key] = value
+				if (value === null) {
+					delete merged[key]
+				} else if (value !== void 0) {
+					merged[key] = value
+				}
 			}
 			if (config.headers && next.headers) {
 				merged["headers"] = async () => {
@@ -91,7 +98,9 @@ function http(
 					return headers
 				}
 			}
-			if (config.on && next.on) merged["on"] = merge_hooks(config.on, next.on)
+			if (config.on && next.on) {
+				merged["on"] = merge_hooks(config.on, next.on)
+			}
 			return http(merged, shared)
 		},
 		/**
@@ -207,9 +216,11 @@ function http(
 			{
 				create: (url, protocols) => {
 					const Socket = config.WebSocket ?? globalThis.WebSocket
-					if (!Socket) throw TypeError(
-						"WebSocket is not available: pass WebSocket in the config"
-					)
+					if (!Socket) {
+						throw TypeError(
+							"WebSocket is not available: pass WebSocket in the config"
+						)
+					}
 					return protocols == null ? new Socket(url) : new Socket(url, protocols)
 				},
 				options,
@@ -221,7 +232,9 @@ function http(
 					/** @type {Record<string, string>} */
 					const hidden = {}
 					if (typeof options.params == "function") {
-						for (const key of Object.keys(extra ?? {})) hidden[key] = "***"
+						for (const key of Object.keys(extra ?? {})) {
+							hidden[key] = "***"
+						}
 					}
 					return {
 						redacted: to_socket_url(

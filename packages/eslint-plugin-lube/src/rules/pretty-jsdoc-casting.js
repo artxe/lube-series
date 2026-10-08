@@ -8,7 +8,9 @@ const marker_regex = /\/\*\*\//g
 /** @type {import("eslint").Rule.RuleModule} */
 export default {
 	create(context) {
-		if (typescript_file_regex.test(context.filename)) return {}
+		if (typescript_file_regex.test(context.filename)) {
+			return {}
+		}
 		const source_code = context.sourceCode
 		const source = create_source_text(source_code)
 		const text = source.text
@@ -35,9 +37,13 @@ export default {
 		 */
 		function is_arguments(position) {
 			const node = /** @type {import("../../private.js").AstNode | null} */(/** @type {unknown} */(source_code.getNodeByRangeIndex(position)))/**/
-			if (!node) return false
+			if (!node) {
+				return false
+			}
 			const type = node.type
-			if (type != "CallExpression" && type != "ImportExpression" && type != "NewExpression") return false
+			if (type != "CallExpression" && type != "ImportExpression" && type != "NewExpression") {
+				return false
+			}
 			const before = type == "ImportExpression"
 				? source_code.getFirstToken(
 					/** @type {import("estree").Node} */(node)/**/
@@ -57,7 +63,9 @@ export default {
 		 */
 		function push(node) {
 			const range = node.range[0] + " " + node.range[1]
-			if (node_ranges.has(range)) return
+			if (node_ranges.has(range)) {
+				return
+			}
 			node_ranges.add(range)
 			expressions.push(node)
 		}
@@ -71,17 +79,27 @@ export default {
 			let position = start
 			let result = ""
 			for (const [ removed_start, removed_end ] of removed) {
-				if (removed_end <= start || removed_start >= end) continue
-				if (source.crosses_edit(removed_start) || source.crosses_edit(removed_end)) return null
+				if (removed_end <= start || removed_start >= end) {
+					continue
+				}
+				if (source.crosses_edit(removed_start) || source.crosses_edit(removed_end)) {
+					return null
+				}
 				let chunk_end = removed_start
 				if (text[removed_start] == ")") {
-					while (chunk_end > position && is_space(text.charCodeAt(chunk_end - 1))) chunk_end--
-					if (source.comment_by_end.get(chunk_end)?.type == "Line") chunk_end = removed_start
+					while (chunk_end > position && is_space(text.charCodeAt(chunk_end - 1))) {
+						chunk_end--
+					}
+					if (source.comment_by_end.get(chunk_end)?.type == "Line") {
+						chunk_end = removed_start
+					}
 				}
 				result += source.render(position, chunk_end)
 				position = removed_end
 				if (text[removed_start] == "(") {
-					while (position < end && is_space(text.charCodeAt(position))) position++
+					while (position < end && is_space(text.charCodeAt(position))) {
+						position++
+					}
 				}
 			}
 			return result + source.render(position, end)
@@ -93,7 +111,9 @@ export default {
 		function verify(node) {
 			const node_start = node.range[0]
 			const before = source.skip_left(node_start, 0)
-			if (!before || text[before - 1] != "(" || is_arguments(before - 1)) return
+			if (!before || text[before - 1] != "(" || is_arguments(before - 1)) {
+				return
+			}
 			/** @type {import("../../private.js").CastingLevel[]} */
 			const levels = []
 			/** @type {[number, number][]} */
@@ -110,27 +130,39 @@ export default {
 						continue
 					}
 					const comment = source.comment_by_end.get(left)
-					if (!comment) break
+					if (!comment) {
+						break
+					}
 					const level = levels[levels.length - 1]
 					const type = comment.type == "Block" && type_regex.test(comment.value)
 						? get_type_comment(comment)
 						: void 0
 					if (type && level && level.type == null) {
 						let comment_end = comment.range[1]
-						while (comment_end < level.open && is_space(text.charCodeAt(comment_end))) comment_end++
+						while (comment_end < level.open && is_space(text.charCodeAt(comment_end))) {
+							comment_end++
+						}
 						level.type = type
 						removed.push(
 							[ comment.range[0], comment_end ]
 						)
-					} else if (type) has_inner_type_comment = true
+					} else if (type) {
+						has_inner_type_comment = true
+					}
 					left = comment.range[0]
 				}
-				if (!left || text[left - 1] != "(" || is_arguments(left - 1)) break
+				if (!left || text[left - 1] != "(" || is_arguments(left - 1)) {
+					break
+				}
 				const close = source.skip_right(right, text.length)
 				right = close
-				if (text[close] != ")") break
+				if (text[close] != ")") {
+					break
+				}
 				if (has_inner_type_comment) {
-					if (levels.length) return
+					if (levels.length) {
+						return
+					}
 					content_end = close
 					content_start = left
 					has_inner_type_comment = false
@@ -149,16 +181,21 @@ export default {
 			}
 			const outer = levels[levels.length - 1]
 			const first = levels[0]
-			if (!outer || !first) return
+			if (!outer || !first) {
+				return
+			}
 			const restores_outer = outer.type == null
 			for (const level of levels) {
-				if (level == outer && restores_outer) removed.push(
-					[ level.close + 1, level.close_end ]
-				)
-				else removed.push(
-					[ level.open, level.open + 1 ],
-					[ level.close, level.close_end ]
-				)
+				if (level == outer && restores_outer) {
+					removed.push(
+						[ level.close + 1, level.close_end ]
+					)
+				} else {
+					removed.push(
+						[ level.open, level.open + 1 ],
+						[ level.close, level.close_end ]
+					)
+				}
 			}
 			removed.sort((a, b) => a[0] - b[0])
 			if (content_end + 4 <= first.close && source.render(content_end, content_end + 4) == "/**/") {
@@ -171,12 +208,16 @@ export default {
 			if (unwrapped_outer) {
 				let type_comments = 0
 				for (const level of unwrapped) {
-					if (level != unwrapped_outer && level.type != null) type_comments++
+					if (level != unwrapped_outer && level.type != null) {
+						type_comments++
+					}
 				}
 				if (source.count_comments(
 					unwrapped_outer.open,
 					content_start
-				) > type_comments) return
+				) > type_comments) {
+					return
+				}
 			}
 			const boundaries = [
 				left,
@@ -184,7 +225,9 @@ export default {
 				content_end,
 				right
 			]
-			if (boundaries.some(source.crosses_edit)) return
+			if (boundaries.some(source.crosses_edit)) {
+				return
+			}
 			let corrected_text = source.render(content_start, content_end)
 			for (const [ index, level ] of unwrapped.entries()) {
 				corrected_text = level.type
@@ -202,10 +245,14 @@ export default {
 					&& restricted_regex.test(
 						text.slice(Math.max(0, left - 7), left)
 					)
-			) return
+			) {
+				return
+			}
 			corrected_text = prefix + corrected_text + suffix
 			const current = source.render(left, right)
-			if (current == corrected_text) return
+			if (current == corrected_text) {
+				return
+			}
 			const message_id = current.replace(marker_regex, "") == corrected_text.replace(marker_regex, "")
 				? "marker"
 				: "format"

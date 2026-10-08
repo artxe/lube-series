@@ -24,7 +24,9 @@ describe(
 			const messages = []
 			for await (const message of socket) {
 				messages.push(message)
-				if (messages.length == count) break
+				if (messages.length == count) {
+					break
+				}
 			}
 			return messages
 		}
@@ -58,7 +60,9 @@ describe(
 				/** @type {unknown[]} */
 				const seen = []
 				socket.send("close 1000 bye")
-				for await (const message of socket) seen.push(message)
+				for await (const message of socket) {
+					seen.push(message)
+				}
 				assert.equal(seen.length, 1)
 				assert.equal(socket.status, "idle")
 			}
@@ -152,7 +156,9 @@ describe(
 				/** @type {unknown} */
 				let error
 				try {
-					for await (const message of socket) void message
+					for await (const message of socket) {
+						void message
+					}
 				} catch (thrown) {
 					error = thrown
 				}
@@ -182,7 +188,9 @@ describe(
 				/** @type {unknown} */
 				let failure
 				try {
-					for await (const message of socket) void message
+					for await (const message of socket) {
+						void message
+					}
 				} catch (error) {
 					failure = error
 				}

@@ -62,7 +62,9 @@ describe(
 					response.write(
 						count == 1 ? "retry: 5\ndata: first\n\n" : ": quiet\n\n"
 					)
-					if (url.searchParams.has("end")) setTimeout(() => response.end(), 10)
+					if (url.searchParams.has("end")) {
+						setTimeout(() => response.end(), 10)
+					}
 					return
 				case "/flap":
 					response.writeHead(
@@ -108,11 +110,14 @@ describe(
 						}
 					)
 					response.write("{\"n\":1}\n")
-					if (url.searchParams.has("bad")) response.end("{oops\n")
-					else if (url.searchParams.has("drop")) setTimeout(
-						() => response.socket?.destroy(),
-						5
-					)
+					if (url.searchParams.has("bad")) {
+						response.end("{oops\n")
+					} else if (url.searchParams.has("drop")) {
+						setTimeout(
+							() => response.socket?.destroy(),
+							5
+						)
+					}
 				}
 			}
 		)
@@ -124,7 +129,9 @@ describe(
 		 */
 		async function closes(key) {
 			const started = Date.now()
-			while (!closed.has(key) && Date.now() - started < 2000) await sleep(5)
+			while (!closed.has(key) && Date.now() - started < 2000) {
+				await sleep(5)
+			}
 			return closed.has(key)
 		}
 		/**
@@ -134,7 +141,9 @@ describe(
 		async function eventually(condition) {
 			const started = Date.now()
 			while (!condition()) {
-				if (Date.now() - started > 2000) assert.fail("Timed out")
+				if (Date.now() - started > 2000) {
+					assert.fail("Timed out")
+				}
 				await sleep(5)
 			}
 		}
@@ -307,7 +316,9 @@ describe(
 				 * @returns {Promise<void>}
 				 */
 				async function read(lines) {
-					for await (const line of lines) void line
+					for await (const line of lines) {
+						void line
+					}
 				}
 				const dropped = await rejection(
 					read(
@@ -350,7 +361,9 @@ describe(
 				const lost = await rejection(read(dropping))
 				assert.instanceOf(lost, NetworkError)
 				assert.lengthOf(errors, 3)
-				for (const error of errors) assert.instanceOf(error, NetworkError)
+				for (const error of errors) {
+					assert.instanceOf(error, NetworkError)
+				}
 				assert.equal(errors[2], lost)
 				errors.length = 0
 				const silent = api.sse(
@@ -364,7 +377,9 @@ describe(
 				const timed_out = await rejection(read(silent))
 				assert.instanceOf(timed_out, TimeoutError)
 				assert.lengthOf(errors, 2)
-				for (const error of errors) assert.instanceOf(error, TimeoutError)
+				for (const error of errors) {
+					assert.instanceOf(error, TimeoutError)
+				}
 				errors.length = 0
 				vi.useFakeTimers()
 				try {
@@ -399,7 +414,9 @@ describe(
 							"/late-event",
 							{},
 							{ reconnect: false, timeout: 20 }
-						)) received.push(event.data)
+						)) {
+							received.push(event.data)
+						}
 					})()
 					await vi.advanceTimersByTimeAsync(60)
 					body?.enqueue(
@@ -435,7 +452,9 @@ describe(
 									}
 								}
 							}
-						)) received += event.data == "flap" ? 1 : 0
+						)) {
+							received += event.data == "flap" ? 1 : 0
+						}
 					})()
 				)
 				assert.instanceOf(lost, NetworkError)
@@ -454,7 +473,9 @@ describe(
 					)) {
 						void event
 						vi.setSystemTime(Date.now() + 5000)
-						if (++stable == 4) break
+						if (++stable == 4) {
+							break
+						}
 					}
 					assert.equal(stable, 4)
 				} finally {
@@ -503,7 +524,9 @@ describe(
 				 */
 				function parse(data) {
 					const n = /** @type {{ n: unknown }} */(data)/**/.n
-					if (typeof n != "number") throw TypeError("Not a number")
+					if (typeof n != "number") {
+						throw TypeError("Not a number")
+					}
 					return n * 10
 				}
 				/** @type {unknown[]} */
@@ -517,7 +540,9 @@ describe(
 						reconnect: false
 					}
 				)
-				for await (const event of events) values.push(event.data)
+				for await (const event of events) {
+					values.push(event.data)
+				}
 				assert.deepEqual(values, [ 10, 20 ])
 				assert.equal(events.lastEventId, "1")
 				const bad = api.sse(
@@ -527,7 +552,9 @@ describe(
 				)
 				const error = await rejection(
 					(async () => {
-						for await (const event of bad) void event
+						for await (const event of bad) {
+							void event
+						}
 					})()
 				)
 				assert.instanceOf(error, TypeError)
@@ -548,7 +575,9 @@ describe(
 						},
 						reconnect: false
 					}
-				)) awaited.push(event.data)
+				)) {
+					awaited.push(event.data)
+				}
 				assert.deepEqual(awaited, [ 10, 20 ])
 				reported.length = 0
 				const rejected = api.sse(
@@ -564,7 +593,9 @@ describe(
 				)
 				const async_error = await rejection(
 					(async () => {
-						for await (const event of rejected) void event
+						for await (const event of rejected) {
+							void event
+						}
 					})()
 				)
 				assert.instanceOf(async_error, TypeError)
@@ -581,7 +612,9 @@ describe(
 				assert.instanceOf(
 					await rejection(
 						(async () => {
-							for await (const event of poison) after.push(event.data)
+							for await (const event of poison) {
+								after.push(event.data)
+							}
 						})()
 					),
 					TypeError
@@ -630,7 +663,9 @@ describe(
 					[ "connecting", "open", "closed" ]
 				)
 				assert.isTrue(await closes("signal"))
-				for await (const event of events) assert.fail(event.data)
+				for await (const event of events) {
+					assert.fail(event.data)
+				}
 				assert.equal(events.status, "closed")
 				assert.equal(hits.get("signal"), 1)
 				const idle = new AbortController()
@@ -646,7 +681,9 @@ describe(
 				idle.abort()
 				assert.equal(later.status, "closed")
 				assert.deepEqual(statuses, [ "closed" ])
-				for await (const event of later) assert.fail(event.data)
+				for await (const event of later) {
+					assert.fail(event.data)
+				}
 				assert.deepEqual(statuses, [ "closed" ])
 				assert.isUndefined(hits.get("signal-idle"))
 				const ended = new AbortController()
@@ -702,7 +739,9 @@ describe(
 					{ signal: AbortSignal.abort() }
 				)
 				assert.equal(aborted.status, "closed")
-				for await (const event of aborted) assert.fail(event.data)
+				for await (const event of aborted) {
+					assert.fail(event.data)
+				}
 				assert.isUndefined(hits.get("signal-aborted"))
 			}
 		)
@@ -817,7 +856,9 @@ describe(
 					}
 				)
 				cancelled.cancel()
-				for await (const event of cancelled) assert.fail(event.data)
+				for await (const event of cancelled) {
+					assert.fail(event.data)
+				}
 				await sleep(10)
 				assert.deepEqual(statuses, [ "closed" ])
 				assert.equal(cancelled.status, "closed")

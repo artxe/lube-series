@@ -29,7 +29,9 @@ describe(
 		}
 		afterEach(
 			() => {
-				for (const name of changed) delete process.env[name]
+				for (const name of changed) {
+					delete process.env[name]
+				}
 				changed.length = 0
 				uninstall()
 			}

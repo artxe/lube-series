@@ -4,13 +4,13 @@ description: Measure lube-series hot paths against native APIs and the popular l
 ---
 # Benchmark a lube-series change
 
-Keep every script and dependency in the scratchpad directory, never in the repo.
+Keep every script and dependency in `.scratch/`, which git ignores.
 
 ## Baselines
 - Native: `structuredClone`, `node:util`'s `isDeepStrictEqual`.
 - Already in the workspace: `fast-deep-equal` and `lodash.merge` under `node_modules/.pnpm`.
-- For deepUpdate, deepMerge and deepDiff: `npm i immer mutative deepmerge microdiff` in a
-  scratchpad directory. immer needs `enableMapSet()` and `setAutoFreeze(false)` to compare fairly.
+- For deepUpdate, deepMerge and deepDiff: install `immer mutative deepmerge microdiff` under `.scratch/`
+  with `npm i`. immer needs `enableMapSet()` and `setAutoFreeze(false)` to compare fairly.
 
 ## Harness
 - Warm up about 50 runs, then loop until 600 ms have passed and report microseconds per operation.

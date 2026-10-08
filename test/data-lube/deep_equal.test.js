@@ -428,7 +428,9 @@ describe(
 				 * @returns {unknown}
 				 */
 				function deep(value) {
-					for (let i = 0; i < 100; i++) value = [ value ]
+					for (let i = 0; i < 100; i++) {
+						value = [ value ]
+					}
 					return value
 				}
 				const first = { child: { value: 1 } }
@@ -520,7 +522,9 @@ describe(
 				 * @returns {unknown}
 				 */
 				function nest(value, depth) {
-					for (let i = 0; i < depth; i++) value = [ value ]
+					for (let i = 0; i < depth; i++) {
+						value = [ value ]
+					}
 					return value
 				}
 				const one = { child: { value: 1 } }
@@ -836,7 +840,9 @@ describe(
 							return leaf
 						}
 					}
-					for (let i = 0; i < depth; i++) value = wrap(value)
+					for (let i = 0; i < depth; i++) {
+						value = wrap(value)
+					}
 					return value
 				}
 				for (const wrap of [
@@ -1134,7 +1140,9 @@ describe(
 				function create() {
 					/** @type {ReturnType<typeof create>} */
 					let node = { leaf: true }
-					for (let i = 0; i < 64; i++) node = { left: node, right: node }
+					for (let i = 0; i < 64; i++) {
+						node = { left: node, right: node }
+					}
 					return node
 				}
 				const a = create()
@@ -1145,7 +1153,9 @@ describe(
 				 * @returns {unknown}
 				 */
 				function nest(value) {
-					for (let i = 0; i < 100; i++) value = [ value ]
+					for (let i = 0; i < 100; i++) {
+						value = [ value ]
+					}
 					return value
 				}
 				const shared = { child: { value: 1 } }

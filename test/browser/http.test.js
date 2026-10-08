@@ -36,16 +36,19 @@ describe(
 		it(
 			"closes a live ndjson stream when the loop is left",
 			async () => {
-				const lines = /** @type {AsyncIterable<unknown>} */(await create().get(
+				/** @type {AsyncIterable<unknown>} */
+				const lines = await create().get(
 					"/ndjson-live",
 					{ key: "browser-ndjson" },
 					{ as: "ndjson" }
-				))/**/
+				)
 				/** @type {unknown[]} */
 				const seen = []
 				for await (const line of lines) {
 					seen.push(line)
-					if (seen.length == 3) break
+					if (seen.length == 3) {
+						break
+					}
 				}
 				assert.deepEqual(
 					seen,
@@ -184,7 +187,9 @@ describe(
 				const events = []
 				for await (const event of stream) {
 					events.push(event)
-					if (events.length == 2) break
+					if (events.length == 2) {
+						break
+					}
 				}
 				assert.equal(events[0]?.id, "1")
 				assert.equal(events[1]?.id, "2")

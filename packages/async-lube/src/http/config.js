@@ -13,7 +13,9 @@ export const hook_names = /** @type {const} */([
  * @returns {void}
  */
 export function call_hook(hook, ...args) {
-	if (!hook) return
+	if (!hook) {
+		return
+	}
 	try {
 		Promise.resolve(hook(...args))
 			.catch(noop)
@@ -26,9 +28,11 @@ export function call_hook(hook, ...args) {
  */
 export async function merge_headers(source, target) {
 	const init = typeof source == "function" ? await source() : source
-	if (init) new Headers(init).forEach(
-		(value, key) => target.set(key, value)
-	)
+	if (init) {
+		new Headers(init).forEach(
+			(value, key) => target.set(key, value)
+		)
+	}
 }
 /**
  * @param {import("../../public.js").Hooks} parent
@@ -65,7 +69,9 @@ export function omit_keys(source, keys) {
 	/** @type {Record<string, unknown>} */
 	const init = {}
 	for (const key of Object.keys(source)) {
-		if (!keys.has(key)) init[key] = source[key]
+		if (!keys.has(key)) {
+			init[key] = source[key]
+		}
 	}
 	return init
 }

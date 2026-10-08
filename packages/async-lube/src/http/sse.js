@@ -63,11 +63,15 @@ const stable_delay = 5000
  */
 function check_sse_options(options) {
 	for (const key of Object.keys(options)) {
-		if (request_only_keys.has(key)) throw TypeError(`Unknown sse option "${key}"`)
+		if (request_only_keys.has(key)) {
+			throw TypeError(`Unknown sse option "${key}"`)
+		}
 	}
-	if (options.as != null && options.as != "json" && options.as != "text") throw TypeError(
-		"The as of sse() must be \"json\" or \"text\""
-	)
+	if (options.as != null && options.as != "json" && options.as != "text") {
+		throw TypeError(
+			"The as of sse() must be \"json\" or \"text\""
+		)
+	}
 	check_reconnect(options.reconnect, "sse")
 }
 /**
@@ -138,14 +142,20 @@ export function sse(c, path, params, options) {
 		 * @returns {void}
 		 */
 		function show(next) {
-			if (current == controller && !controller.signal.aborted) set_status(next)
+			if (current == controller && !controller.signal.aborted) {
+				set_status(next)
+			}
 		}
 		try {
-			if (controller.signal.aborted) return
+			if (controller.signal.aborted) {
+				return
+			}
 			show("connecting")
-			if (reconnect && options.body instanceof ReadableStream) throw TypeError(
-				"An event stream with a ReadableStream body cannot reconnect: set reconnect to false"
-			)
+			if (reconnect && options.body instanceof ReadableStream) {
+				throw TypeError(
+					"An event stream with a ReadableStream body cannot reconnect: set reconnect to false"
+				)
+			}
 			for (;;) {
 				const connection = new AbortController()
 				let opened_at = 0
@@ -155,10 +165,12 @@ export function sse(c, path, params, options) {
 				try {
 					const headers = new Headers(options.headers)
 					headers.set("Accept", "text/event-stream")
-					if (last_event_id) headers.set(
-						"Last-Event-ID",
-						to_byte_string(last_event_id)
-					)
+					if (last_event_id) {
+						headers.set(
+							"Last-Event-ID",
+							to_byte_string(last_event_id)
+						)
+					}
 					/** @type {import("../../public.js").RawResponse<unknown>} */
 					const {
 						data,
@@ -183,7 +195,9 @@ export function sse(c, path, params, options) {
 						true
 					)
 						.raw()
-					if (status == 204) return
+					if (status == 204) {
+						return
+					}
 					if (!event_stream_regex.test(
 						response_headers.get("Content-Type") ?? ""
 					)) {
@@ -196,9 +210,11 @@ export function sse(c, path, params, options) {
 					show("open")
 					const records = /** @type {AsyncIterable<StreamRecord>} */(data)/**/
 					for await (const record of records) {
-						if (record.type == "retry") server_retry = record.retry
-						else if (record.type == "id") last_event_id = record.id
-						else {
+						if (record.type == "retry") {
+							server_retry = record.retry
+						} else if (record.type == "id") {
+							last_event_id = record.id
+						} else {
 							last_event_id = record.event.id
 							const event_data = as_json ? read_json(record.event.data) : record.event.data
 							if (!parse) {
@@ -226,11 +242,17 @@ export function sse(c, path, params, options) {
 					}
 					failures = 0
 				} catch (error) {
-					if (controller.signal.aborted) return
+					if (controller.signal.aborted) {
+						return
+					}
 					last_error = error
 					report(c, error)
-					if (opened_at && Date.now() - opened_at >= stable_delay) failures = 0
-					if (error === fatal || !reconnect || !is_reconnectable(error) || ++failures > reconnect_count) throw error
+					if (opened_at && Date.now() - opened_at >= stable_delay) {
+						failures = 0
+					}
+					if (error === fatal || !reconnect || !is_reconnectable(error) || ++failures > reconnect_count) {
+						throw error
+					}
 				} finally {
 					unlink_connection()
 					connection.abort(
@@ -239,26 +261,36 @@ export function sse(c, path, params, options) {
 						)
 					)
 				}
-				if (!reconnect || controller.signal.aborted) return
+				if (!reconnect || controller.signal.aborted) {
+					return
+				}
 				show("connecting")
 				const delay = failures
 					? get_reconnect_wait(reconnect, failures, last_error)
 					: server_retry ?? 3000
-				if (delay == null) throw last_error
+				if (delay == null) {
+					throw last_error
+				}
 				await wait(
 					delay,
 					controller.signal,
 					!!failures && read_retry_after(last_error) == null
 				)
-				if (controller.signal.aborted) return
+				if (controller.signal.aborted) {
+					return
+				}
 			}
 		} catch (error) {
-			if (error !== last_error) report(c, error)
+			if (error !== last_error) {
+				report(c, error)
+			}
 			throw error
 		} finally {
-			if (current == controller) set_status(
-				closed.signal.aborted ? "closed" : "idle"
-			)
+			if (current == controller) {
+				set_status(
+					closed.signal.aborted ? "closed" : "idle"
+				)
+			}
 			unlink()
 			unlink_closed()
 			controller.abort(
@@ -271,7 +303,9 @@ export function sse(c, path, params, options) {
 	 * @returns {void}
 	 */
 	function set_status(next) {
-		if (stream_status == next) return
+		if (stream_status == next) {
+			return
+		}
 		stream_status = next
 		try {
 			options.onStatus?.(next)
@@ -284,13 +318,17 @@ export function sse(c, path, params, options) {
 			return watch_records(
 				connect(controller),
 				left => {
-					if (!left) return
+					if (!left) {
+						return
+					}
 					controller.abort(
 						new CancelError("The event stream was closed")
 					)
-					if (current == controller) set_status(
-						closed.signal.aborted ? "closed" : "idle"
-					)
+					if (current == controller) {
+						set_status(
+							closed.signal.aborted ? "closed" : "idle"
+						)
+					}
 				}
 			)
 		},

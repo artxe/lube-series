@@ -18,7 +18,9 @@ function skip_hole_commas(rule) {
 								const token = descriptor.node
 								if (token?.type == "Punctuator" && token.value == ",") {
 									const before = source_code.getTokenBefore(token)
-									if (before?.value == "," && before.loc.end.line < token.loc.start.line) return
+									if (before?.value == "," && before.loc.end.line < token.loc.start.line) {
+										return
+									}
 								}
 								context.report(descriptor)
 							}

@@ -76,7 +76,9 @@ describe(
 					/** @type {string} */ type,
 					/** @type {() => void} */ listener
 				) => {
-					if (type == "online") online.push(listener)
+					if (type == "online") {
+						online.push(listener)
+					}
 				}
 			)
 			vi.stubGlobal(
@@ -85,7 +87,9 @@ describe(
 					/** @type {string} */ type,
 					/** @type {() => void} */ listener
 				) => {
-					if (type == "online") online.splice(online.indexOf(listener), 1)
+					if (type == "online") {
+						online.splice(online.indexOf(listener), 1)
+					}
 				}
 			)
 			return online
@@ -105,7 +109,9 @@ describe(
 		 */
 		async function failure(socket) {
 			try {
-				for await (const message of socket) void message
+				for await (const message of socket) {
+					void message
+				}
 			} catch (error) {
 				return error
 			}
@@ -129,7 +135,9 @@ describe(
 			if (count) {
 				for await (const message of socket) {
 					messages.push(message)
-					if (messages.length == count) break
+					if (messages.length == count) {
+						break
+					}
 				}
 			}
 			return messages
@@ -141,7 +149,9 @@ describe(
 		async function until(condition) {
 			const started = Date.now()
 			while (!condition()) {
-				if (Date.now() - started > 2000) assert.fail("Timed out")
+				if (Date.now() - started > 2000) {
+					assert.fail("Timed out")
+				}
 				await new Promise(
 					resolve => setTimeout(resolve, 5)
 				)
@@ -558,7 +568,9 @@ describe(
 						)
 					)) {
 						seen.push(message)
-						if (seen.length == 2) break
+						if (seen.length == 2) {
+							break
+						}
 					}
 				})()
 				lines.send("a")
@@ -583,7 +595,9 @@ describe(
 				)
 				const reader = socket[Symbol.asyncIterator]()
 				await reader.next()
-				for (let n = 1; n <= 5; n++) socket.send({ n })
+				for (let n = 1; n <= 5; n++) {
+					socket.send({ n })
+				}
 				await until(
 					() => server.hits.get("ws-limit-received") == 5
 				)
@@ -714,7 +728,9 @@ describe(
 					{ key: "ws-parse" },
 					{
 						parse: data => {
-							if (data == "bad") throw TypeError("Invalid message")
+							if (data == "bad") {
+								throw TypeError("Invalid message")
+							}
 							return { data }
 						}
 					}
@@ -727,7 +743,9 @@ describe(
 				/** @type {unknown} */
 				let invalid
 				try {
-					for await (const message of parsed) valid.push(message)
+					for await (const message of parsed) {
+						valid.push(message)
+					}
 				} catch (error) {
 					invalid = error
 				}
@@ -746,7 +764,9 @@ describe(
 							await new Promise(
 								resolve => setTimeout(resolve, data == "slow" ? 30 : 0)
 							)
-							if (data == "bad") throw TypeError("Invalid message")
+							if (data == "bad") {
+								throw TypeError("Invalid message")
+							}
 							return { data }
 						}
 					}
@@ -760,7 +780,9 @@ describe(
 				/** @type {unknown} */
 				let rejected
 				try {
-					for await (const message of awaited) ordered.push(message)
+					for await (const message of awaited) {
+						ordered.push(message)
+					}
 				} catch (error) {
 					rejected = error
 				}
@@ -789,7 +811,9 @@ describe(
 					{ length: 1100 },
 					(_, i) => String(i)
 				)
-				for (const message of sent) burst.send(message)
+				for (const message of sent) {
+					burst.send(message)
+				}
 				await until(
 					() => server.hits.get("ws-burst-received") == 1100
 				)
@@ -798,7 +822,9 @@ describe(
 				)
 				/** @type {unknown[]} */
 				const echoed = []
-				while (echoed.length < sent.length) echoed.push((await iterator.next()).value)
+				while (echoed.length < sent.length) {
+					echoed.push((await iterator.next()).value)
+				}
 				assert.deepEqual(echoed, sent)
 				assert.equal(burst.status, "open")
 				burst.cancel()
@@ -812,7 +838,9 @@ describe(
 					{ key: "ws-outbox" },
 					{ outbox: 2 }
 				)
-				for (let n = 1; n <= 5; n++) socket.send({ n })
+				for (let n = 1; n <= 5; n++) {
+					socket.send({ n })
+				}
 				const reader = socket[Symbol.asyncIterator]()
 				await reader.next()
 				assert.deepEqual(
@@ -996,7 +1024,9 @@ describe(
 				assert.equal(server.hits.get("ws-reject"), 3)
 				assert.lengthOf(reported, 3)
 				assert.equal(reported[2], error)
-				for (const each of reported) assert.instanceOf(each, NetworkError)
+				for (const each of reported) {
+					assert.instanceOf(each, NetworkError)
+				}
 				reported.length = 0
 				assert.deepEqual(
 					statuses,
@@ -1036,10 +1066,12 @@ describe(
 					{ key: "ws-token" },
 					{
 						params: async () => {
-							if (++token_calls == 1) throw new NetworkError(
-								TypeError("fetch failed"),
-								{ method: "POST", url: "/token" }
-							)
+							if (++token_calls == 1) {
+								throw new NetworkError(
+									TypeError("fetch failed"),
+									{ method: "POST", url: "/token" }
+								)
+							}
 							return { token: "t" }
 						},
 						reconnect: { delay: () => 1 }

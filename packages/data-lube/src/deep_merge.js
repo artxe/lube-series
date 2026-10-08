@@ -25,9 +25,13 @@ function fill(a, b, result, depth, state) {
 	for (let i = 0; i < names.length; i++) {
 		const key = /** @type {string} */(names[i])/**/
 		const value = result[key]
-		if (typeof value != "object" || value === null || !property_is_enumerable.call(a, key)) continue
+		if (typeof value != "object" || value === null || !property_is_enumerable.call(a, key)) {
+			continue
+		}
 		const left = a[key]
-		if (left === value || !is_plain(left) || !is_plain(value)) continue
+		if (left === value || !is_plain(left) || !is_plain(value)) {
+			continue
+		}
 		if (pairs && !registered) {
 			registered = true
 			register(pairs, a, b, result)
@@ -54,7 +58,9 @@ function fill(a, b, result, depth, state) {
  * @returns {value is Record<PropertyKey, unknown>}
  */
 function is_plain(value) {
-	if (typeof value != "object" || value === null) return false
+	if (typeof value != "object" || value === null) {
+		return false
+	}
 	/** @type {Prototype | null} */
 	const proto = getPrototypeOf(value)
 	return proto === object_prototype || proto === null || getPrototypeOf(proto) === null
@@ -70,7 +76,9 @@ function merge(a, b, depth, state) {
 	const pairs = state.pairs
 	if (pairs) {
 		const known = pairs.get(a)?.get(b)
-		if (known) return known
+		if (known) {
+			return known
+		}
 	} else if (depth > 64 || ++state.count > 100000) {
 		throw restart
 	}
@@ -125,7 +133,9 @@ export default function(...values) {
 	let result = values[0]
 	for (let i = 1; i < values.length; i++) {
 		const value = values[i]
-		if (value === undefined || value === null) continue
+		if (value === undefined || value === null) {
+			continue
+		}
 		if (result === value || !is_plain(result) || !is_plain(value)) {
 			result = value
 			continue
@@ -133,7 +143,9 @@ export default function(...values) {
 		try {
 			result = merge(result, value, 0, { count: 0 })
 		} catch (error) {
-			if (error !== restart) throw error
+			if (error !== restart) {
+				throw error
+			}
 			/** @type {MergeState} */
 			const state = { count: 0, pairs: new Map() }
 			result = merge(
@@ -143,7 +155,9 @@ export default function(...values) {
 				state
 			)
 			const pending = state.pending ?? []
-			for (let task = pending.pop(); task; task = pending.pop()) fill(...task, 0, state)
+			for (let task = pending.pop(); task; task = pending.pop()) {
+				fill(...task, 0, state)
+			}
 		}
 	}
 	return /** @type {import("../public.js").Merge<T>} */(result)/**/

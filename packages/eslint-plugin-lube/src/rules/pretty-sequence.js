@@ -43,7 +43,9 @@ export default {
 					}
 				)?.range[0]
 				: node.range[1] - 1
-			if (end == null || text[node.range[0]] != opener || text[end] != closer) return
+			if (end == null || text[node.range[0]] != opener || text[end] != closer) {
+				return
+			}
 			return {
 				end,
 				items,
@@ -68,15 +70,21 @@ export default {
 			let left = code_start
 			for (;;) {
 				left = source.skip_left(code_start, start)
-				if (left <= start || text[left - 1] != "(") break
+				if (left <= start || text[left - 1] != "(") {
+					break
+				}
 				const right = source.skip_right(code_end, end)
-				if (right >= end || text[right] != ")") break
+				if (right >= end || text[right] != ")") {
+					break
+				}
 				code_start = left - 1
 				code_end = right + 1
 			}
 			const right = source.skip_right(code_end, end)
 			let last = right
-			while (last > code_end && source.is_space(text.charCodeAt(last - 1))) last--
+			while (last > code_end && source.is_space(text.charCodeAt(last - 1))) {
+				last--
+			}
 			return {
 				after_comma: "",
 				after_comma_comments: 0,
@@ -117,7 +125,9 @@ export default {
 				if (first && last) {
 					open = source_code.getTokenBefore(first)
 					close = source_code.getTokenAfter(last)
-					if (close?.value == ",") close = source_code.getTokenAfter(close)
+					if (close?.value == ",") {
+						close = source_code.getTokenAfter(close)
+					}
 				} else {
 					const before = node.typeParameters ?? (node.type == "ArrowFunctionExpression" ? void 0 : node.id)
 					open = before
@@ -135,7 +145,9 @@ export default {
 					|| close?.value != ")"
 					|| open.range[0] < node.range[0]
 					|| close.range[1] > node.range[1]
-				) return
+				) {
+					return
+				}
 				return {
 					end: close.range[0],
 					items: params,
@@ -161,7 +173,9 @@ export default {
 					close?.value != ")"
 					|| open?.value != "("
 					|| open.range[0] >= close.range[0]
-				) return
+				) {
+					return
+				}
 				return {
 					end: close.range[0],
 					items: node.arguments,
@@ -203,7 +217,9 @@ export default {
 		 * @returns {void}
 		 */
 		function push(node) {
-			if (!ignore_template_literal || node.range[0] >= template_end) nodes.push(node)
+			if (!ignore_template_literal || node.range[0] >= template_end) {
+				nodes.push(node)
+			}
 		}
 		/**
 		 * @param {number} start
@@ -224,7 +240,9 @@ export default {
 			const texts = []
 			for (let index = start; index < end; index++) {
 				const comment = source.comment_by_start.get(index)
-				if (!comment) continue
+				if (!comment) {
+					continue
+				}
 				texts.push(
 					render(
 						comment.range[0],
@@ -244,12 +262,16 @@ export default {
 		function take_same_line_comments(position, limit, holes) {
 			let index = position
 			for (;;) {
-				while (index < limit && (text[index] == " " || text[index] == "\t" || text[index] == "," && holes-- > 0)) index++
+				while (index < limit && (text[index] == " " || text[index] == "\t" || text[index] == "," && holes-- > 0)) {
+					index++
+				}
 				const comment = source.comment_by_start.get(index)
 				if (!comment || comment.range[1] > limit || comment.loc?.start.line != comment.loc?.end.line) {
 					return position
 				}
-				if (comment.type == "Line") return comment.range[1]
+				if (comment.type == "Line") {
+					return comment.range[1]
+				}
 				index = comment.range[1]
 			}
 		}
@@ -266,7 +288,9 @@ export default {
 		 */
 		function verify(node) {
 			const sequence = get_sequence(node)
-			if (!sequence) return
+			if (!sequence) {
+				return
+			}
 			const { end, line_indent, start } = sequence
 			const is_sequence_expression = node.type == "SequenceExpression"
 			const items = sequence.items.map(
@@ -275,9 +299,13 @@ export default {
 			const last_index = items.length - 1
 			items.forEach(
 				(before, i) => {
-					if (!before || i == last_index || before.trailing_line_comment || text[before.right] != ",") return
+					if (!before || i == last_index || before.trailing_line_comment || text[before.right] != ",") {
+						return
+					}
 					let next = i + 1
-					while (next <= last_index && !items[next]) next++
+					while (next <= last_index && !items[next]) {
+						next++
+					}
 					const item = items[i + 1]
 					const comma_end = before.right + 1
 					const taken = take_same_line_comments(
@@ -285,11 +313,15 @@ export default {
 						items[next]?.code_start ?? end,
 						next - i - 1
 					)
-					if (taken == comma_end) return
+					if (taken == comma_end) {
+						return
+					}
 					before.after_comma = item ? render(comma_end, taken).trim() : render_comments(comma_end, taken)
 					before.after_comma_comments = source.count_comments(comma_end, taken)
 					before.after_comma_line_comment = true
-					if (!item) return
+					if (!item) {
+						return
+					}
 					item.left = source.skip_left(item.code_start, taken)
 					item.text = render(item.left, item.right).trim()
 				}
@@ -303,7 +335,9 @@ export default {
 					let comment_end = end
 					while (source.is_space(
 						text.charCodeAt(comment_end - 1)
-					)) comment_end--
+					)) {
+						comment_end--
+					}
 					last.after_comma = after_comma.trimStart()
 					last.after_comma_comments = comments
 					last.after_comma_line_comment = source.comment_by_end.get(comment_end)?.type == "Line"
@@ -317,7 +351,9 @@ export default {
 			let length = 0
 			let multiline = false
 			for (const item of items) {
-				if (!item) continue
+				if (!item) {
+					continue
+				}
 				covered_comments += source.count_comments(item.left, item.right) + item.after_comma_comments
 				length += text_width(item.text) + item.after_comma.length
 				if (
@@ -326,11 +362,17 @@ export default {
 					|| item.after_comma.includes("\n")
 					|| item.text.includes("\n")
 					|| item.trailing_line_comment
-				) multiline = true
+				) {
+					multiline = true
+				}
 			}
-			if (covered_comments != source.count_comments(start, end)) return
+			if (covered_comments != source.count_comments(start, end)) {
+				return
+			}
 			const too_long = length > max_length
-			if (too_long) multiline = true
+			if (too_long) {
+				multiline = true
+			}
 			let corrected_text = ""
 			if (multiline) {
 				const item_indent = is_sequence_expression ? line_indent : line_indent + indent
@@ -341,7 +383,9 @@ export default {
 						continue
 					}
 					const add_indent = !is_sequence_expression && source.get_line_start(start) == source.get_line_start(item.node.range[0])
-					if (add_indent && source.has_multiline_literal(item.left, item.right)) return
+					if (add_indent && source.has_multiline_literal(item.left, item.right)) {
+						return
+					}
 					/**
 					 * @param {string} value
 					 * @returns {string}
@@ -364,12 +408,19 @@ export default {
 						corrected_text += indented(item.text) + "," + comment + "\n" + item_indent
 					}
 				}
-				if (!is_sequence_expression) corrected_text = "\n" + item_indent + corrected_text + "\n" + line_indent
+				if (!is_sequence_expression) {
+					corrected_text = "\n" + item_indent + corrected_text + "\n" + line_indent
+				}
 			} else {
 				corrected_text = items.map(item => item ? item.text : "").join(", ")
-				if (last?.after_comma) corrected_text += " " + last.after_comma
-				else if (items[last_index] === null) corrected_text += ","
-				if (length && sequence.spacing) corrected_text = " " + corrected_text + " "
+				if (last?.after_comma) {
+					corrected_text += " " + last.after_comma
+				} else if (items[last_index] === null) {
+					corrected_text += ","
+				}
+				if (length && sequence.spacing) {
+					corrected_text = " " + corrected_text + " "
+				}
 			}
 			const current = render(start, end)
 			const same_structure = to_structure(current) == to_structure(corrected_text)
@@ -411,31 +462,49 @@ export default {
 		/** @type {import("../../private.js").RuleListener} */
 		const listener = {
 			ArrayExpression: node => {
-				if (check_array) push(node)
+				if (check_array) {
+					push(node)
+				}
 			},
 			ArrayPattern: node => {
-				if (check_array) push(node)
+				if (check_array) {
+					push(node)
+				}
 			},
 			ArrowFunctionExpression: node => {
-				if (check_call) push(node)
+				if (check_call) {
+					push(node)
+				}
 			},
 			CallExpression: node => {
-				if (check_call) push(node)
+				if (check_call) {
+					push(node)
+				}
 			},
 			FunctionDeclaration: node => {
-				if (check_call) push(node)
+				if (check_call) {
+					push(node)
+				}
 			},
 			FunctionExpression: node => {
-				if (check_call) push(node)
+				if (check_call) {
+					push(node)
+				}
 			},
 			NewExpression: node => {
-				if (check_call) push(node)
+				if (check_call) {
+					push(node)
+				}
 			},
 			ObjectExpression: node => {
-				if (check_object) push(node)
+				if (check_object) {
+					push(node)
+				}
 			},
 			ObjectPattern: node => {
-				if (check_object) push(node)
+				if (check_object) {
+					push(node)
+				}
 			},
 			"Program:exit": () => {
 				for (let i = nodes.length - 1; i >= 0; i--) {
@@ -445,10 +514,14 @@ export default {
 				}
 			},
 			SequenceExpression: node => {
-				if (check_sequence) push(node)
+				if (check_sequence) {
+					push(node)
+				}
 			},
 			TemplateLiteral: node => {
-				if (node.range[1] > template_end) template_end = node.range[1]
+				if (node.range[1] > template_end) {
+					template_end = node.range[1]
+				}
 			}
 		}
 		return /** @type {import("eslint").Rule.RuleListener} */(/** @type {unknown} */(listener))/**/

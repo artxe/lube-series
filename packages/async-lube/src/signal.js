@@ -14,7 +14,9 @@ export function clamp_delay(ms) {
  * @returns {() => void}
  */
 export function link_signal(controller, signal) {
-	if (!signal) return noop
+	if (!signal) {
+		return noop
+	}
 	if (signal.aborted) {
 		controller.abort(signal.reason)
 		return noop
@@ -38,7 +40,9 @@ export function on_abort(signal, callback) {
 		const callbacks = new Set()
 		function listener() {
 			abort_entries.delete(signal)
-			for (const call of [ ...callbacks ]) call()
+			for (const call of [ ...callbacks ]) {
+				call()
+			}
 		}
 		entry = { callbacks, listener }
 		abort_entries.set(signal, entry)
@@ -47,7 +51,9 @@ export function on_abort(signal, callback) {
 	const current = entry
 	current.callbacks.add(callback)
 	return () => {
-		if (!current.callbacks.delete(callback) || current.callbacks.size || abort_entries.get(signal) != current) return
+		if (!current.callbacks.delete(callback) || current.callbacks.size || abort_entries.get(signal) != current) {
+			return
+		}
 		abort_entries.delete(signal)
 		signal.removeEventListener("abort", current.listener)
 	}
@@ -113,7 +119,9 @@ export function sleep(ms, signal) {
  */
 export function sleep_until(deadline, signal) {
 	const left = deadline - Date.now()
-	if (left <= max_delay) return sleep(left, signal)
+	if (left <= max_delay) {
+		return sleep(left, signal)
+	}
 	return sleep(max_delay, signal)
 		.then(
 			() => sleep_until(deadline, signal)

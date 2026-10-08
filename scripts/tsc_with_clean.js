@@ -20,13 +20,17 @@ function add_public_exports(package_path, manifest) {
 	const parsed = JSON.parse(manifest)
 	for (const entry of Object.values(parsed.exports ?? {})) {
 		const source = entry.default
-		if (!source?.startsWith("./src/")) continue
+		if (!source?.startsWith("./src/")) {
+			continue
+		}
 		const file_path = path.join(
 			package_path,
 			"types",
 			source.slice("./src/".length, -3) + ".d.ts"
 		)
-		if (!existsSync(file_path)) continue
+		if (!existsSync(file_path)) {
+			continue
+		}
 		const declaration = readFileSync(file_path, "utf8")
 		const line = `export * from "${
 			"../".repeat(source.split("/").length - 2)
@@ -54,13 +58,17 @@ function clean_dir(dir_path, start_time) {
 		const stat = statSync(file_path)
 		if (stat.isDirectory()) {
 			clean_dir(file_path, start_time)
-			if (!existsSync(file_path)) length--
+			if (!existsSync(file_path)) {
+				length--
+			}
 		} else if (stat.mtimeMs < start_time) {
 			unlinkSync(file_path)
 			length--
 		}
 	}
-	if (!length) rmdirSync(dir_path)
+	if (!length) {
+		rmdirSync(dir_path)
+	}
 }
 const package_path = fileURLToPath(
 	new URL(
@@ -73,11 +81,19 @@ exec(
 	"tsc",
 	{ cwd: package_path },
 	(error, stdout, stderr) => {
-		if (stdout) console.log(stdout)
-		if (stderr) console.error(stderr)
-		if (error) process.exit(error.code ?? 1)
+		if (stdout) {
+			console.log(stdout)
+		}
+		if (stderr) {
+			console.error(stderr)
+		}
+		if (error) {
+			process.exit(error.code ?? 1)
+		}
 		const types_path = path.join(package_path, "types")
-		if (existsSync(types_path)) clean_dir(types_path, start_time)
+		if (existsSync(types_path)) {
+			clean_dir(types_path, start_time)
+		}
 		const manifest = readFileSync(
 			path.join(package_path, "package.json"),
 			"utf8"

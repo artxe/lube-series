@@ -38,11 +38,14 @@ function create_source_text(source_code) {
 	const enclosers = []
 	/** @type {number[]} */
 	const line_starts = [ 0 ]
-	for (const match of text.matchAll(line_terminator_regex)) line_starts.push(match.index + match[0].length)
+	for (const match of text.matchAll(line_terminator_regex)) {
+		line_starts.push(match.index + match[0].length)
+	}
 	/** @type {[number, number][]} */
 	const multiline_literals = []
 	for (const token of source_code.ast.tokens) {
-		const type = /** @type {string} */(token.type)/**/
+		/** @type {string} */
+		const type = token.type
 		if ((type == "String" || type == "Template" || type == "JSXText" && quote_regex.test(token.value)) && line_break_regex.test(token.value)) {
 			multiline_literals.push(
 				/** @type {[number, number]} */(token.range)/**/
@@ -53,7 +56,9 @@ function create_source_text(source_code) {
 	 * @returns {number[]}
 	 */
 	function build_anchors() {
-		if (anchors) return anchors
+		if (anchors) {
+			return anchors
+		}
 		const tokens = source_code.ast.tokens
 		anchors = []
 		/** @type {number[]} */
@@ -65,10 +70,13 @@ function create_source_text(source_code) {
 				: index
 			let encloser = openers[openers.length - 1]
 			if (token.type == "Punctuator") {
-				if (openers_set.has(token.value)) openers.push(index)
-				else if (closers_set.has(token.value)) {
+				if (openers_set.has(token.value)) {
+					openers.push(index)
+				} else if (closers_set.has(token.value)) {
 					const opener = openers.pop()
-					if (opener != null && anchor != index) anchor = /** @type {number} */(anchors[opener])/**/
+					if (opener != null && anchor != index) {
+						anchor = /** @type {number} */(anchors[opener])/**/
+					}/**/
 					encloser = openers[openers.length - 1]
 				}
 			}
@@ -150,7 +158,9 @@ function create_source_text(source_code) {
 		edit(start, end, value) {
 			const index = lower_bound(edits, get_edit_key, 1 - start)
 			let first = index
-			while (first > 0 && (/** @type {{ end: number }} */(edits[first - 1])/**/).end <= end) first--
+			while (first > 0 && (/** @type {{ end: number }} */(edits[first - 1])/**/).end <= end) {
+				first--
+			}
 			edits.splice(
 				first,
 				index - first,
@@ -179,7 +189,9 @@ function create_source_text(source_code) {
 			const tokens = source_code.ast.tokens
 			build_anchors()
 			const index = lower_bound(tokens, get_token_start, position)
-			if (tokens[index]?.range[0] != position) return -1
+			if (tokens[index]?.range[0] != position) {
+				return -1
+			}
 			const encloser = /** @type {number} */(enclosers[index])/**/
 			return encloser < 0
 				? -1
@@ -192,7 +204,9 @@ function create_source_text(source_code) {
 		get_indent(index) {
 			const line_start = get_line_start(index)
 			let position = line_start
-			while (position < index && (text[position] == " " || text[position] == "\t")) position++
+			while (position < index && (text[position] == " " || text[position] == "\t")) {
+				position++
+			}
 			return text.slice(line_start, position)
 		},
 		/**
@@ -210,7 +224,9 @@ function create_source_text(source_code) {
 				line_start
 			) - 1]
 			let statement = node
-			while (statement.parent && !statement_lists.has(statement.parent.type)) statement = statement.parent
+			while (statement.parent && !statement_lists.has(statement.parent.type)) {
+				statement = statement.parent
+			}
 			const before = source_code.getTokenBefore(
 				/** @type {import("estree").Node} */(statement)/**/
 			)
@@ -232,7 +248,9 @@ function create_source_text(source_code) {
 			}
 			if (comment && comment.range[1] > line_start && comment.range[1] <= position) {
 				let opener = this.get_encloser(position)
-				while (opener >= line_start) opener = this.get_encloser(opener)
+				while (opener >= line_start) {
+					opener = this.get_encloser(opener)
+				}
 				const statement_start = statement.range[0]
 				if (opener > statement_start) {
 					return this.get_line_indent(
@@ -257,7 +275,9 @@ function create_source_text(source_code) {
 				|| !!line_comment && line_comment.range[1] <= statement.range[0] && get_line_start(statement.range[0]) == line_start
 			) {
 				const container = /** @type {import("../../private.js").AstNode & { body: import("../../private.js").AstNode[] } | undefined} */(/** @type {unknown} */(statement.parent))/**/
-				if (!container || container.type == "Program") return ""
+				if (!container || container.type == "Program") {
+					return ""
+				}
 				let opener = container.range[0]
 				/** @type {import("../../private.js").AstNode} */
 				let owner = container
@@ -281,7 +301,9 @@ function create_source_text(source_code) {
 							indent
 						)
 					}
-					if (container.type == "BlockStatement" && !statement_lists.has(container.parent.type)) owner = container.parent
+					if (container.type == "BlockStatement" && !statement_lists.has(container.parent.type)) {
+						owner = container.parent
+					}
 				}
 				const container_indent = this.get_line_indent(owner, owner.range[0], indent)
 				return get_line_start(opener) == line_start
@@ -303,7 +325,8 @@ function create_source_text(source_code) {
 					&& child == parent.right
 					&& parent.range[0] < line_start
 				) {
-					const operator = /** @type {string} */(parent.operator)/**/
+					/** @type {string} */
+					const operator = parent.operator
 					const operator_start = /** @type {import("eslint").AST.Token} */(source_code.getTokenBefore(
 						/** @type {import("estree").Node} */(parent.right)/**/,
 						{
@@ -352,7 +375,9 @@ function create_source_text(source_code) {
 			let result = ""
 			for (let index = lower_bound(edits, get_edit_key, 1 - start) - 1; index >= 0; index--) {
 				const edit = /** @type {{ end: number, start: number, text: string }} */(edits[index])/**/
-				if (edit.end > end) break
+				if (edit.end > end) {
+					break
+				}
 				result += text.slice(position, edit.start) + edit.text
 				position = edit.end
 			}
@@ -365,10 +390,13 @@ function create_source_text(source_code) {
 		 */
 		skip_left(position, limit) {
 			while (position > limit) {
-				if (is_space(text.charCodeAt(position - 1))) position--
-				else {
+				if (is_space(text.charCodeAt(position - 1))) {
+					position--
+				} else {
 					const comment = comment_by_end.get(position)
-					if (!comment || comment.range[0] < limit) break
+					if (!comment || comment.range[0] < limit) {
+						break
+					}
 					position = comment.range[0]
 				}
 			}
@@ -381,10 +409,13 @@ function create_source_text(source_code) {
 		 */
 		skip_right(position, limit) {
 			while (position < limit) {
-				if (is_space(text.charCodeAt(position))) position++
-				else {
+				if (is_space(text.charCodeAt(position))) {
+					position++
+				} else {
 					const comment = comment_by_start.get(position)
-					if (!comment || comment.range[1] > limit) break
+					if (!comment || comment.range[1] > limit) {
+						break
+					}
 					position = comment.range[1]
 				}
 			}
@@ -430,8 +461,11 @@ function lower_bound(array, get, value) {
 		const middle = (low + high) >> 1
 		if (get(
 			/** @type {T} */(array[middle])/**/
-		) < value) low = middle + 1
-		else high = middle
+		) < value) {
+			low = middle + 1
+		} else {
+			high = middle
+		}
 	}
 	return low
 }

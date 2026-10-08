@@ -43,7 +43,9 @@ export function make_context(
 		goto,
 		index: index ?? c.item_index,
 		get key() {
-			if (!run_state) return ""
+			if (!run_state) {
+				return ""
+			}
 			return `${c.run_id}:${record.node.name}${index == null ? "" : "#" + index}:${run_state.serial}`
 		},
 		name: record.node.name,
@@ -52,7 +54,9 @@ export function make_context(
 		skip,
 		/** @param {number} ms */
 		sleep: ms => {
-			if (!run_state) return sleep_until(Date.now() + ms, signal)
+			if (!run_state) {
+				return sleep_until(Date.now() + ms, signal)
+			}
 			const deadline = run_state.waits[run_state.wait++] ??= Date.now() + ms
 			return sleep_until(deadline, signal)
 		},
@@ -79,7 +83,9 @@ export async function run_attempts(c, record, token, parent, unit, run_once) {
 		} catch {
 			return { kind: "stale" }
 		}
-		if (token != record.token) return { kind: "stale" }
+		if (token != record.token) {
+			return { kind: "stale" }
+		}
 		run_state.delay = void 0
 	}
 	const index = unit ? Number(unit) : c.item_index
@@ -95,7 +101,9 @@ export async function run_attempts(c, record, token, parent, unit, run_once) {
 		 * @returns {void}
 		 */
 		function end(type, error, again) {
-			if (!c.trace) return
+			if (!c.trace) {
+				return
+			}
 			const time = Date.now()
 			const base = {
 				attempt,
@@ -109,16 +117,18 @@ export async function run_attempts(c, record, token, parent, unit, run_once) {
 				type == "fail" ? { ...base, error, retry: !!again, type } : { ...base, type }
 			)
 		}
-		if (c.trace) emit(
-			c,
-			{
-				attempt,
-				index,
-				node: record.node.name,
-				time: started,
-				type: "start"
-			}
-		)
+		if (c.trace) {
+			emit(
+				c,
+				{
+					attempt,
+					index,
+					node: record.node.name,
+					time: started,
+					type: "start"
+				}
+			)
+		}
 		const controller = timeout ? new AbortController() : void 0
 		const signal = controller ? controller.signal : parent
 		const unlink = controller ? link_signal(controller, parent) : noop
@@ -133,7 +143,9 @@ export async function run_attempts(c, record, token, parent, unit, run_once) {
 		const pending = Promise.resolve()
 			.then(
 				() => {
-					if (signal.aborted) throw signal.reason
+					if (signal.aborted) {
+						throw signal.reason
+					}
 					return run_once(signal, run_state, first)
 				}
 			)
@@ -203,7 +215,9 @@ export async function run_attempts(c, record, token, parent, unit, run_once) {
 				} finally {
 					record.delaying--
 				}
-				if (token != record.token) return { kind: "stale" }
+				if (token != record.token) {
+					return { kind: "stale" }
+				}
 				run_state.delay = void 0
 			}
 		} finally {
@@ -242,17 +256,19 @@ export function run_single(c, record, token) {
 				}
 				record.gate = void 0
 			}
-			if (!node.sub) return /** @type {Task} */(node.run)/**/(
-				...values,
-				make_context(
-					c,
-					record,
-					signal,
-					run_state.attempt,
-					void 0,
-					run_state
+			if (!node.sub) {
+				return /** @type {Task} */(node.run)/**/(
+					...values,
+					make_context(
+						c,
+						record,
+						signal,
+						run_state.attempt,
+						void 0,
+						run_state
+					)
 				)
-			)
+			}
 			const sub_state = values.length > 1
 				? values
 				: values.length
@@ -277,9 +293,13 @@ export function run_single(c, record, token) {
  */
 function take_run(record, unit) {
 	const current = record.runs.get(unit)
-	if (current) return current
+	if (current) {
+		return current
+	}
 	const saved = record.resume_runs?.[unit]
-	if (saved && record.resume_runs) delete record.resume_runs[unit]
+	if (saved && record.resume_runs) {
+		delete record.resume_runs[unit]
+	}
 	/** @type {RunState} */
 	const run_state = {
 		attempt: saved?.attempt ?? 1,

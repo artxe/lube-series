@@ -64,13 +64,21 @@ describe(
 						/** @type {DynamicOptions} */
 						const options = { name: "n" + i }
 						const roll = random()
-						if (roll < 0.1) options["optional"] = true
-						else if (roll < 0.2) options["retry"] = { count: 1, delay: 1 }
-						else if (roll < 0.25) options["catch"] = (
+						if (roll < 0.1) {
+							options["optional"] = true
+						} else if (roll < 0.2) {
+							options["retry"] = { count: 1, delay: 1 }
+						} else if (roll < 0.25) {
+							options["catch"] = (
 							/** @type {unknown[]} */ ...args
-						) => /** @type {NodeContext} */(args[args.length - 1])/**/.skip()
-						if (deps.length && random() < 0.15) options["join"] = pick([ "any", "race" ])
-						if (random() < 0.1) options["timeout"] = 3
+							) => /** @type {NodeContext} */(args[args.length - 1])/**/.skip()
+						}
+						if (deps.length && random() < 0.15) {
+							options["join"] = pick([ "any", "race" ])
+						}
+						if (random() < 0.1) {
+							options["timeout"] = 3
+						}
 						const kind = random()
 						/** @type {Ref} */
 						let ref
@@ -84,23 +92,29 @@ describe(
 							ref = flow.each(
 								async () => {
 									await sleep(random() * 3)
-									if (random() < 0.1) throw Error("item")
+									if (random() < 0.1) {
+										throw Error("item")
+									}
 									return 1
 								}
 							)
 						} else {
-							if (random() < 0.2) options["overlap"] = pick(
-								[
-									"rerun",
-									"queue",
-									"restart",
-									"ignore"
-								]
-							)
+							if (random() < 0.2) {
+								options["overlap"] = pick(
+									[
+										"rerun",
+										"queue",
+										"restart",
+										"ignore"
+									]
+								)
+							}
 							const fails = random() < 0.15
 							ref = async () => {
 								await sleep(Math.floor(random() * 4))
-								if (fails && random() < 0.7) throw Error("boom")
+								if (fails && random() < 0.7) {
+									throw Error("boom")
+								}
 								return i
 							}
 						}
@@ -109,11 +123,13 @@ describe(
 					}
 					for (const source of refs) {
 						const targets = refs.filter(() => random() < 0.3).slice(0, 2)
-						if (targets.length && random() < 0.25) definition = definition.edge(
-							source,
-							targets,
-							() => random() < 0.5 ? pick(targets) : null
-						)
+						if (targets.length && random() < 0.25) {
+							definition = definition.edge(
+								source,
+								targets,
+								() => random() < 0.5 ? pick(targets) : null
+							)
+						}
 					}
 					const run = definition.run()
 					run.catch(() => {})
@@ -121,15 +137,23 @@ describe(
 					for (let action = 0; action < actions; action++) {
 						await sleep(Math.floor(random() * 6))
 						const roll = random()
-						if (roll < 0.2) run.cancel()
-						else if (roll < 0.4) run.reload(pick(refs))
-						else if (roll < 0.5) run.retry()
-						else if (roll < 0.8 && inputs.length) run.send(pick(inputs), action)
-						else if (roll < 0.9) run.reload()
+						if (roll < 0.2) {
+							run.cancel()
+						} else if (roll < 0.4) {
+							run.reload(pick(refs))
+						} else if (roll < 0.5) {
+							run.retry()
+						} else if (roll < 0.8 && inputs.length) {
+							run.send(pick(inputs), action)
+						} else if (roll < 0.9) {
+							run.reload()
+						}
 						run.catch(() => {})
 					}
 					for (let round = 0; round < 6; round++) {
-						for (const target of inputs) run.send(target, "value")
+						for (const target of inputs) {
+							run.send(target, "value")
+						}
 						run.catch(() => {})
 						await sleep(5)
 					}
@@ -142,15 +166,21 @@ describe(
 					const busy = Object.values(run.nodes).filter(
 						status => status == "running" || status == "pending"
 					)
-					if (outcome == "pending" && run.status != "waiting") problems.push(
-						`${iteration}: hangs while ${run.status}`
-					)
-					if (outcome == "settled" && (run.status == "running" || run.status == "waiting")) problems.push(
-						`${iteration}: settled while ${run.status}`
-					)
-					if (outcome == "settled" && busy.length) problems.push(
-						`${iteration}: settled with busy nodes`
-					)
+					if (outcome == "pending" && run.status != "waiting") {
+						problems.push(
+							`${iteration}: hangs while ${run.status}`
+						)
+					}
+					if (outcome == "settled" && (run.status == "running" || run.status == "waiting")) {
+						problems.push(
+							`${iteration}: settled while ${run.status}`
+						)
+					}
+					if (outcome == "settled" && busy.length) {
+						problems.push(
+							`${iteration}: settled with busy nodes`
+						)
+					}
 					run.cancel()
 				}
 				assert.deepEqual(problems, [])

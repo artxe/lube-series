@@ -93,7 +93,9 @@ function assign_later(clone, value, copies, plain) {
  */
 function copy(value, copies) {
 	let clone = copies.get(value)
-	if (clone !== undefined) return clone
+	if (clone !== undefined) {
+		return clone
+	}
 	/** @type {Prototype | null} */
 	const proto = getPrototypeOf(value)
 	if (proto === object_prototype) {
@@ -126,13 +128,17 @@ function copy(value, copies) {
 			const length = array.length
 			for (let i = 0; i < length; i++) {
 				const item = value[i]
-				if (typeof item == "object" && item !== null) array[i] = copy(item, copies)
+				if (typeof item == "object" && item !== null) {
+					array[i] = copy(item, copies)
+				}
 			}
 		}
 		depth--
 		return array
 	}
-	if (keep && !builtin_prototype(proto)) return value
+	if (keep && !builtin_prototype(proto)) {
+		return value
+	}
 	depth++
 	clone = copy_other(value, proto, copies)
 	depth--
@@ -144,7 +150,9 @@ function copy(value, copies) {
  */
 function copy_buffer(buffer) {
 	const { detached, maxByteLength, resizable } = buffer
-	if (detached) return new ArrayBuffer(0)
+	if (detached) {
+		return new ArrayBuffer(0)
+	}
 	const clone = resizable
 		? new ArrayBuffer(
 			buffer.byteLength,
@@ -205,7 +213,9 @@ function copy_items(clone, value, copies, indices, holey) {
 	}
 	const length = value.length
 	for (let i = 0; i < length; i++) {
-		if (holey && !(i in value)) continue
+		if (holey && !(i in value)) {
+			continue
+		}
 		const item = value[i]
 		if (typeof item == "object" && item !== null) {
 			clone[i] = copy(item, copies)
@@ -296,7 +306,9 @@ function copy_other(value, proto, copies) {
 			copies
 		)
 		const known = copies.get(value)
-		if (known) return known
+		if (known) {
+			return known
+		}
 		clone = adopt(view, proto)
 		break
 	}
@@ -405,7 +417,9 @@ function copy_other(value, proto, copies) {
 			copies
 		)
 		const known = copies.get(value)
-		if (known) return known
+		if (known) {
+			return known
+		}
 		clone = adopt(view, proto)
 		copies.set(value, clone)
 		return clone
@@ -449,7 +463,9 @@ function copy_view(value, constructor, copies) {
 	/** @type {ArrayBufferLike & { detached?: boolean, growable?: boolean, resizable?: boolean }} */
 	const buffer = value.buffer
 	const clone = /** @type {ArrayBufferLike} */(copy(buffer, copies))/**/
-	if (buffer.detached) return new constructor(clone)
+	if (buffer.detached) {
+		return new constructor(clone)
+	}
 	let offset = 0
 	let size = 0
 	try {
@@ -484,7 +500,9 @@ function next_task() {
  * @returns {T}
  */
 function run(value, instances) {
-	if (!value || typeof value != "object") return value
+	if (!value || typeof value != "object") {
+		return value
+	}
 	const outer_depth = depth
 	const outer_keep = keep
 	const outer_pending = pending
@@ -522,7 +540,9 @@ function run(value, instances) {
 export default function(value) {
 	if (drafts.active) {
 		const current = /** @type {T} */(snapshot([ value ])[0])/**/
-		if (current !== value) return run(current, false)
+		if (current !== value) {
+			return run(current, false)
+		}
 	}
 	return run(value, true)
 }

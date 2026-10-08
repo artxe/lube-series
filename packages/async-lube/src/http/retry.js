@@ -25,7 +25,9 @@ const retry_statuses = new Set(
  * @returns {void}
  */
 function check_delay(delay, name) {
-	if (delay == null || typeof delay == "function" || typeof delay == "number" && delay >= 0) return
+	if (delay == null || typeof delay == "function" || typeof delay == "number" && delay >= 0) {
+		return
+	}
 	throw TypeError(
 		`${name} must be non-negative milliseconds or a function`
 	)
@@ -36,20 +38,27 @@ function check_delay(delay, name) {
  * @returns {void}
  */
 export function check_reconnect(reconnect, kind) {
-	if (reconnect == null || typeof reconnect == "boolean") return
-	if (typeof reconnect != "object") throw TypeError(
-		`The reconnect of ${kind}() must be a boolean or { count, delay }`
-	)
+	if (reconnect == null || typeof reconnect == "boolean") {
+		return
+	}
+	if (typeof reconnect != "object") {
+		throw TypeError(
+			`The reconnect of ${kind}() must be a boolean or { count, delay }`
+		)
+	}
 	check_options(
 		reconnect,
 		[ "count", "delay" ],
 		kind,
 		"reconnect."
 	)
-	const { count, delay } = /** @type {import("../../public.js").ReconnectOptions} */(reconnect)/**/
-	if (count != null && !is_count(count)) throw TypeError(
-		`The reconnect count of ${kind}() must be a non-negative integer or Infinity`
-	)
+	/** @type {import("../../public.js").ReconnectOptions} */
+	const { count, delay } = reconnect
+	if (count != null && !is_count(count)) {
+		throw TypeError(
+			`The reconnect count of ${kind}() must be a non-negative integer or Infinity`
+		)
+	}
 	check_delay(
 		delay,
 		`The reconnect delay of ${kind}()`
@@ -61,16 +70,22 @@ export function check_reconnect(reconnect, kind) {
  * @returns {void}
  */
 export function check_retry(retry, kind) {
-	if (retry == null) return
-	if (typeof retry == "number") {
-		if (!is_count(retry)) throw TypeError(
-			`The retry count of ${kind}() must be a non-negative integer or Infinity`
-		)
+	if (retry == null) {
 		return
 	}
-	if (typeof retry != "object") throw TypeError(
-		`The retry of ${kind}() must be a non-negative integer or { count, delay, when }`
-	)
+	if (typeof retry == "number") {
+		if (!is_count(retry)) {
+			throw TypeError(
+				`The retry count of ${kind}() must be a non-negative integer or Infinity`
+			)
+		}
+		return
+	}
+	if (typeof retry != "object") {
+		throw TypeError(
+			`The retry of ${kind}() must be a non-negative integer or { count, delay, when }`
+		)
+	}
 	check_options(
 		retry,
 		[ "count", "delay", "when" ],
@@ -78,16 +93,20 @@ export function check_retry(retry, kind) {
 		"retry."
 	)
 	const { count, delay, when } = /** @type {import("../../public.js").RetryOptions} */(retry)/**/
-	if (!is_count(count)) throw TypeError(
-		`The retry count of ${kind}() must be a non-negative integer or Infinity`
-	)
+	if (!is_count(count)) {
+		throw TypeError(
+			`The retry count of ${kind}() must be a non-negative integer or Infinity`
+		)
+	}
 	check_delay(
 		delay,
 		`The retry delay of ${kind}()`
 	)
-	if (when != null && typeof when != "function") throw TypeError(
-		`The retry when of ${kind}() must be a function`
-	)
+	if (when != null && typeof when != "function") {
+		throw TypeError(
+			`The retry when of ${kind}() must be a function`
+		)
+	}
 }
 /**
  * @param {number} attempt
@@ -131,7 +150,9 @@ export function get_reconnect_wait(reconnect, failures, error) {
  */
 export function get_retry_delay(error, attempt) {
 	const ms = read_retry_after(error)
-	if (ms == null) return get_backoff(attempt)
+	if (ms == null) {
+		return get_backoff(attempt)
+	}
 	return ms <= max_retry_after ? ms : void 0
 }
 /**
@@ -141,7 +162,9 @@ export function get_retry_delay(error, attempt) {
  * @returns {number | undefined}
  */
 export function get_retry_wait(retry, attempt, error) {
-	if (typeof retry.delay == "number") return retry.delay
+	if (typeof retry.delay == "number") {
+		return retry.delay
+	}
 	const fallback = get_retry_delay(error, attempt)
 	return retry.delay ? retry.delay(attempt, error, fallback) : fallback
 }
@@ -174,7 +197,9 @@ export function is_retryable(error) {
  */
 export function read_retry_after(error) {
 	const retry_after = error instanceof HttpError ? error.headers.get("Retry-After") : null
-	if (!retry_after) return
+	if (!retry_after) {
+		return
+	}
 	const ms = /^\s*\d+\s*$/.test(retry_after)
 		? Number(retry_after) * 1000
 		: Date.parse(retry_after) - Date.now()

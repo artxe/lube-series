@@ -5,14 +5,18 @@
  */
 export function absorb(saved) {
 	const { inbox } = saved
-	if (!inbox) return
+	if (!inbox) {
+		return
+	}
 	delete saved.inbox
-	for (const item of inbox) push_event(
-		saved,
-		item.name,
-		item.at,
-		item.value
-	)
+	for (const item of inbox) {
+		push_event(
+			saved,
+			item.name,
+			item.at,
+			item.value
+		)
+	}
 }
 /**
  * When a worker should pick the run up, in milliseconds since the epoch: the end of the lease of a running run, 0 for one
@@ -22,8 +26,12 @@ export function absorb(saved) {
  * @returns {number | undefined}
  */
 export function dueAt(saved) {
-	if (saved.status == "running") return saved.owner ? saved.lease ?? 0 : 0
-	if (saved.status == "sleeping" || saved.status == "waiting") return saved.wake
+	if (saved.status == "running") {
+		return saved.owner ? saved.lease ?? 0 : 0
+	}
+	if (saved.status == "sleeping" || saved.status == "waiting") {
+		return saved.wake
+	}
 	return void 0
 }
 /**
@@ -63,10 +71,14 @@ export function snapshot(saved) {
 	if (saved.events) {
 		/** @type {NonNullable<SavedRun["events"]>} */
 		const events = {}
-		for (const [ name, list ] of Object.entries(saved.events)) events[name] = [ ...list ]
+		for (const [ name, list ] of Object.entries(saved.events)) {
+			events[name] = [ ...list ]
+		}
 		next.events = events
 	}
-	if (saved.inbox) next.inbox = [ ...saved.inbox ]
+	if (saved.inbox) {
+		next.inbox = [ ...saved.inbox ]
+	}
 	return next
 }
 /**
@@ -80,7 +92,9 @@ export function take_event(saved, name) {
 	list.shift()
 	if (!list.length) {
 		delete events[name]
-		if (!Object.keys(events).length) delete saved.events
+		if (!Object.keys(events).length) {
+			delete saved.events
+		}
 	}
 }
 /**

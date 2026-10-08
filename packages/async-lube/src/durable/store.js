@@ -15,7 +15,9 @@ function encode(saved) {
 		let text = entry.done ? encoded.get(entry) : void 0
 		if (text == null) {
 			text = JSON.stringify(entry)
-			if (entry.done) encoded.set(entry, text)
+			if (entry.done) {
+				encoded.set(entry, text)
+			}
 		}
 		json += index ? `,${text}` : text
 	}
@@ -41,17 +43,23 @@ export function memory() {
 			/** @type {string[]} */
 			const keys = []
 			for (const [ key, row ] of rows) {
-				if (keys.length >= limit) break
-				if ((row.due ?? Infinity) <= now) keys.push(key)
+				if (keys.length >= limit) {
+					break
+				}
+				if ((row.due ?? Infinity) <= now) {
+					keys.push(key)
+				}
 			}
 			return keys
 		},
 		get(key) {
 			const row = rows.get(key)
-			return row && /** @type {SavedRun} */(JSON.parse(row.data))/**/
+			return row && JSON.parse(row.data)
 		},
 		put(key, saved, expected) {
-			if (rows.get(key)?.version !== expected) return false
+			if (rows.get(key)?.version !== expected) {
+				return false
+			}
 			rows.set(
 				key,
 				{
@@ -71,9 +79,11 @@ export function memory() {
  * @returns {DurableStore}
  */
 export function sqlite(db, table = "durable_runs") {
-	if (!/^[a-z_]\w*$/i.test(table)) throw TypeError(
-		`The table name must be an identifier: ${table}`
-	)
+	if (!/^[a-z_]\w*$/i.test(table)) {
+		throw TypeError(
+			`The table name must be an identifier: ${table}`
+		)
+	}
 	db.exec(
 		`create table if not exists ${table} (key text primary key, version integer not null, due integer, data text not null)`
 	)

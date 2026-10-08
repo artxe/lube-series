@@ -16,16 +16,20 @@ import { noop, on_abort } from "./signal.js"
  * @returns {import("../public.js").Offloaded<A, R>}
  */
 export function offload(fn, options = {}) {
-	if (typeof fn != "function") throw TypeError("offload() needs a function")
+	if (typeof fn != "function") {
+		throw TypeError("offload() needs a function")
+	}
 	check_options(
 		options,
 		[ "concurrency" ],
 		"offload"
 	)
 	const concurrency = options.concurrency ?? 1
-	if (!(concurrency === Infinity || Number.isInteger(concurrency) && concurrency >= 1)) throw TypeError(
-		"The concurrency of offload() must be a positive integer or Infinity"
-	)
+	if (!(concurrency === Infinity || Number.isInteger(concurrency) && concurrency >= 1)) {
+		throw TypeError(
+			"The concurrency of offload() must be a positive integer or Infinity"
+		)
+	}
 	const source = String(fn)
 	/** @type {OffloadJob[]} */
 	const queue = []
@@ -41,7 +45,9 @@ export function offload(fn, options = {}) {
 	function call(...args) {
 		const last = args.at(-1)
 		const signal = last instanceof AbortSignal ? last : void 0
-		if (signal) args.pop()
+		if (signal) {
+			args.pop()
+		}
 		let unlink = noop
 		/** @type {OffloadJob} */
 		const job = {
@@ -62,12 +68,15 @@ export function offload(fn, options = {}) {
 				}
 			}
 		)
-		if (signal?.aborted) job.reject(new CancelError(signal.reason))
-		else {
-			if (signal) unlink = on_abort(
-				signal,
-				() => cancel_job(job, signal.reason)
-			)
+		if (signal?.aborted) {
+			job.reject(new CancelError(signal.reason))
+		} else {
+			if (signal) {
+				unlink = on_abort(
+					signal,
+					() => cancel_job(job, signal.reason)
+				)
+			}
 			queue.push(job)
 			dispatch()
 		}
@@ -86,9 +95,13 @@ export function offload(fn, options = {}) {
 	 */
 	function cancel_job(job, reason) {
 		const index = queue.indexOf(job)
-		if (index >= 0) queue.splice(index, 1)
+		if (index >= 0) {
+			queue.splice(index, 1)
+		}
 		for (const worker of workers) {
-			if (worker.job != job) continue
+			if (worker.job != job) {
+				continue
+			}
 			worker.job = void 0
 			worker.stop()
 			workers.delete(worker)
@@ -105,11 +118,15 @@ export function offload(fn, options = {}) {
 		while (queue.length) {
 			let worker = [ ...workers ].find(item => !item.job)
 			if (!worker) {
-				if (workers.size >= concurrency) return
+				if (workers.size >= concurrency) {
+					return
+				}
 				try {
 					worker = spawn()
 				} catch (error) {
-					for (const job of queue.splice(0)) job.reject(error)
+					for (const job of queue.splice(0)) {
+						job.reject(error)
+					}
 					return
 				}
 			}
@@ -161,10 +178,15 @@ export function offload(fn, options = {}) {
 		 */
 		function receive([ id, ok, value ]) {
 			const { job } = worker
-			if (!job || job.id != id) return
+			if (!job || job.id != id) {
+				return
+			}
 			worker.job = void 0
-			if (ok) job.resolve(value)
-			else job.reject(to_error(value))
+			if (ok) {
+				job.resolve(value)
+			} else {
+				job.reject(to_error(value))
+			}
 			finish(worker)
 		}
 		if (threads) {
@@ -201,17 +223,21 @@ export function offload(fn, options = {}) {
 			}
 			worker.send = message => thread.postMessage(message)
 			worker.stop = () => thread.terminate()
-		} else throw TypeError(
-			"offload() needs Worker, or worker_threads of Node.js 20.16 or later"
-		)
+		} else {
+			throw TypeError(
+				"offload() needs Worker, or worker_threads of Node.js 20.16 or later"
+			)
+		}
 		workers.add(worker)
 		return worker
 	}
 	const run = /** @type {import("../public.js").Offloaded<never[], unknown>} */(/** @type {unknown} */(call))/**/
 	run.close = () => {
-		for (const job of queue.splice(0)) job.reject(
-			new CancelError("The offload was closed")
-		)
+		for (const job of queue.splice(0)) {
+			job.reject(
+				new CancelError("The offload was closed")
+			)
+		}
 		for (const worker of workers) {
 			worker.job?.reject(
 				new CancelError("The offload was closed")
@@ -219,7 +245,9 @@ export function offload(fn, options = {}) {
 			worker.stop()
 		}
 		workers.clear()
-		if (url) URL.revokeObjectURL(url)
+		if (url) {
+			URL.revokeObjectURL(url)
+		}
 		url = void 0
 	}
 	return /** @type {import("../public.js").Offloaded<A, R>} */(/** @type {unknown} */(run))/**/
@@ -246,7 +274,9 @@ function reply(post) {
  * @returns {unknown}
  */
 function to_error(value) {
-	if (value instanceof Error || value == null || typeof value != "object" || !("message" in value)) return value
+	if (value instanceof Error || value == null || typeof value != "object" || !("message" in value)) {
+		return value
+	}
 	const error = Error(String(value.message))
 	error.name = String(
 		/** @type {{ name?: unknown }} */(value)/**/.name ?? "Error"

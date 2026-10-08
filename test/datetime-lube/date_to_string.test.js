@@ -123,7 +123,9 @@ describe(
 						let rest = bits
 						return [ ...zone ].map(
 							letter => {
-								if (letter.toUpperCase() == letter.toLowerCase()) return letter
+								if (letter.toUpperCase() == letter.toLowerCase()) {
+									return letter
+								}
 								const upper = rest & 1
 								rest >>= 1
 								return upper

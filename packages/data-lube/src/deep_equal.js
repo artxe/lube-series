@@ -55,7 +55,9 @@ function augment(group, start) {
 			const index = /** @type {number} */(cursors[level])/**/
 			cursors[level] = index + 1
 			const edge = /** @type {BisimGroup["edges"][number][number]} */(options[index])/**/
-			if (seen[edge.j] === stamp || !edge.needs.every(need => need.alive)) continue
+			if (seen[edge.j] === stamp || !edge.needs.every(need => need.alive)) {
+				continue
+			}
 			seen[edge.j] = stamp
 			const owner = /** @type {number} */(owners[edge.j])/**/
 			if (owner < 0) {
@@ -95,15 +97,23 @@ function bisimilar(a, b) {
 	const root = pair_node(a, b, pairs, nodes)
 	for (let i = 0; i < nodes.length; i++) {
 		const node = /** @type {BisimNode} */(nodes[i])/**/
-		if (!expand_pair(node, pairs, nodes)) kill(node, dead)
+		if (!expand_pair(node, pairs, nodes)) {
+			kill(node, dead)
+		}
 	}
 	for (const node of nodes) {
-		if (node.alive && node.owned.some(group => !has_matching(group))) kill(node, dead)
+		if (node.alive && node.owned.some(group => !has_matching(group))) {
+			kill(node, dead)
+		}
 	}
 	for (let node = dead.pop(); node; node = dead.pop()) {
-		for (const parent of node.parents) kill(parent, dead)
+		for (const parent of node.parents) {
+			kill(parent, dead)
+		}
 		for (const group of node.groups) {
-			if (group.owner.alive && !has_matching(group)) kill(group.owner, dead)
+			if (group.owner.alive && !has_matching(group)) {
+				kill(group.owner, dead)
+			}
 		}
 	}
 	return root.alive
@@ -116,7 +126,9 @@ function bisimilar(a, b) {
  * @returns {boolean}
  */
 function compare_objects(a, b, proto, memo) {
-	if (memo.tentative && ++memo.attempts > 20000 + memo.matched * 16) throw restart
+	if (memo.tentative && ++memo.attempts > 20000 + memo.matched * 16) {
+		throw restart
+	}
 	const assumed = memo.assumed
 	memo.depth++
 	const result = proto === object_prototype
@@ -174,12 +186,16 @@ function depend(node, children, pairs, nodes) {
  */
 function drain(memo) {
 	const pending = memo.pending
-	if (!pending) return true
+	if (!pending) {
+		return true
+	}
 	while (pending.length) {
 		const b = /** @type {WeakKey} */(pending.pop())/**/
 		const a = /** @type {WeakKey} */(pending.pop())/**/
 		memo.depth = 0
-		if (!compare_objects(a, b, getPrototypeOf(a), memo)) return false
+		if (!compare_objects(a, b, getPrototypeOf(a), memo)) {
+			return false
+		}
 	}
 	return true
 }
@@ -205,13 +221,19 @@ function equal(a, b, memo) {
  */
 function equal_arrays(a, b, memo) {
 	let length = a.length
-	if (length !== b.length) return false
+	if (length !== b.length) {
+		return false
+	}
 	const indices = sparse_indices(a)
 	if (indices) {
 		const others = sparse_indices(b)
-		if (others?.length !== indices.length) return false
+		if (others?.length !== indices.length) {
+			return false
+		}
 		for (let i = 0; i < indices.length; i++) {
-			if (indices[i] !== others[i]) return false
+			if (indices[i] !== others[i]) {
+				return false
+			}
 		}
 		length = indices.length
 	}
@@ -223,13 +245,17 @@ function equal_arrays(a, b, memo) {
 		const x = a[i]
 		const y = b[i]
 		if (x === y) {
-			if (x === undefined && (i in a) != (i in b)) return false
+			if (x === undefined && (i in a) != (i in b)) {
+				return false
+			}
 		} else if (typeof x == "object" && typeof y == "object" && x !== null && y !== null) {
 			if (!registered) {
 				registered = true
 				register(a, b, memo)
 			}
-			if (!equal_objects(x, y, memo)) return false
+			if (!equal_objects(x, y, memo)) {
+				return false
+			}
 		} else if (!Number.isNaN(x) || !Number.isNaN(y)) {
 			return false
 		}
@@ -243,19 +269,25 @@ function equal_arrays(a, b, memo) {
  */
 function equal_bytes(a, b) {
 	const length = a.length
-	if (length !== b.length) return false
+	if (length !== b.length) {
+		return false
+	}
 	let i = 0
 	if (length >= 64 && a.byteOffset % 4 == 0 && b.byteOffset % 4 == 0) {
 		const words = length >>> 2
 		const a_words = new Uint32Array(a.buffer, a.byteOffset, words)
 		const b_words = new Uint32Array(b.buffer, b.byteOffset, words)
 		for (; i < words; i++) {
-			if (a_words[i] !== b_words[i]) return false
+			if (a_words[i] !== b_words[i]) {
+				return false
+			}
 		}
 		i = words << 2
 	}
 	for (; i < length; i++) {
-		if (a[i] !== b[i]) return false
+		if (a[i] !== b[i]) {
+			return false
+		}
 	}
 	return true
 }
@@ -278,20 +310,28 @@ function equal_keys(a, b, memo) {
 	const names = keys(a)
 	const others = keys(b)
 	const length = names.length
-	if (length !== others.length) return false
+	if (length !== others.length) {
+		return false
+	}
 	let registered = false
 	for (let i = 0; i < length; i++) {
 		const key = /** @type {string} */(names[i])/**/
-		if (key !== others[i] && !property_is_enumerable.call(b, key)) return false
+		if (key !== others[i] && !property_is_enumerable.call(b, key)) {
+			return false
+		}
 		const x = /** @type {Record<PropertyKey, unknown>} */(a)/**/[key]
 		const y = /** @type {Record<PropertyKey, unknown>} */(b)/**/[key]
-		if (x === y) continue
+		if (x === y) {
+			continue
+		}
 		if (typeof x == "object" && typeof y == "object" && x !== null && y !== null) {
 			if (!registered) {
 				registered = true
 				register(a, b, memo)
 			}
-			if (!equal_objects(x, y, memo)) return false
+			if (!equal_objects(x, y, memo)) {
+				return false
+			}
 		} else if (!Number.isNaN(x) || !Number.isNaN(y)) {
 			return false
 		}
@@ -305,14 +345,18 @@ function equal_keys(a, b, memo) {
  * @returns {boolean}
  */
 function equal_maps(a, b, memo) {
-	if (a.size !== b.size) return false
+	if (a.size !== b.size) {
+		return false
+	}
 	/** @type {unknown[] | undefined} */
 	let unmatched
 	/** @type {Set<unknown> | undefined} */
 	let mismatched
 	for (const [ key, value ] of a) {
 		if (typeof key != "object" || key === null) {
-			if (!b.has(key) || !equal(value, b.get(key), memo)) return false
+			if (!b.has(key) || !equal(value, b.get(key), memo)) {
+				return false
+			}
 		} else if (!b.has(key)) {
 			unmatched ??= []
 			unmatched.push(key)
@@ -328,11 +372,15 @@ function equal_maps(a, b, memo) {
 			mismatched.add(key)
 		}
 	}
-	if (!unmatched) return true
+	if (!unmatched) {
+		return true
+	}
 	/** @type {unknown[]} */
 	const others = []
 	for (const key of b.keys()) {
-		if (!a.has(key) || mismatched?.has(key)) others.push(key)
+		if (!a.has(key) || mismatched?.has(key)) {
+			others.push(key)
+		}
 	}
 	return match_all(
 		unmatched,
@@ -350,7 +398,9 @@ function equal_maps(a, b, memo) {
 function equal_objects(a, b, memo) {
 	/** @type {Prototype | null} */
 	const proto = getPrototypeOf(a)
-	if (proto !== getPrototypeOf(b)) return false
+	if (proto !== getPrototypeOf(b)) {
+		return false
+	}
 	const pairs = memo.pairs
 	if (pairs) {
 		const collect = memo.collect
@@ -358,15 +408,21 @@ function equal_objects(a, b, memo) {
 			collect.push(a, b)
 			return true
 		}
-		if (memo.proven?.get(a)?.has(b)) return true
+		if (memo.proven?.get(a)?.has(b)) {
+			return true
+		}
 		const known = pairs.get(a)
 		if (known === b || known instanceof Candidates && known.has(b)) {
 			memo.assumed++
 			return true
 		}
-		if (memo.unequal?.get(a)?.has(b)) return false
+		if (memo.unequal?.get(a)?.has(b)) {
+			return false
+		}
 		if (memo.depth > 200) {
-			if (memo.tentative) throw restart
+			if (memo.tentative) {
+				throw restart
+			}
 			memo.assumed++
 			register(a, b, memo)
 			memo.pending ??= []
@@ -387,7 +443,9 @@ function equal_objects(a, b, memo) {
  */
 function equal_other(a, b, proto, memo) {
 	const kind = kind_pair(a, b, proto)
-	if (kind === undefined) return false
+	if (kind === undefined) {
+		return false
+	}
 	switch (kind) {
 	case "Array":
 		return equal_arrays(
@@ -503,7 +561,9 @@ function equal_root(a, b) {
 	try {
 		return equal_objects(a, b, memo) && drain(memo)
 	} catch (error) {
-		if (error !== restart) throw error
+		if (error !== restart) {
+			throw error
+		}
 		return bisimilar(a, b)
 	}
 }
@@ -514,20 +574,30 @@ function equal_root(a, b) {
  * @returns {boolean}
  */
 function equal_sets(a, b, memo) {
-	if (a.size !== b.size) return false
+	if (a.size !== b.size) {
+		return false
+	}
 	/** @type {unknown[] | undefined} */
 	let unmatched
 	for (const value of a) {
-		if (b.has(value)) continue
-		if (!value || typeof value != "object") return false
+		if (b.has(value)) {
+			continue
+		}
+		if (!value || typeof value != "object") {
+			return false
+		}
 		unmatched ??= []
 		unmatched.push(value)
 	}
-	if (!unmatched) return true
+	if (!unmatched) {
+		return true
+	}
 	/** @type {unknown[]} */
 	const others = []
 	for (const value of b) {
-		if (!a.has(value)) others.push(value)
+		if (!a.has(value)) {
+			others.push(value)
+		}
 	}
 	return match_all(
 		unmatched,
@@ -543,7 +613,9 @@ function equal_sets(a, b, memo) {
  */
 function equal_typed_arrays(a, b) {
 	const length = a.length
-	if (length !== b.length) return false
+	if (length !== b.length) {
+		return false
+	}
 	if (
 		!length || equal_bytes(
 			new Uint8Array(
@@ -557,11 +629,15 @@ function equal_typed_arrays(a, b) {
 				b.byteLength
 			)
 		)
-	) return true
+	) {
+		return true
+	}
 	for (let i = 0; i < length; i++) {
 		const x = a[i]
 		const y = b[i]
-		if (x !== y && (!Number.isNaN(x) || !Number.isNaN(y))) return false
+		if (x !== y && (!Number.isNaN(x) || !Number.isNaN(y))) {
+			return false
+		}
 	}
 	return true
 }
@@ -575,7 +651,9 @@ function expand_pair(node, pairs, nodes) {
 	const { a, b } = node
 	/** @type {Prototype | null} */
 	const proto = getPrototypeOf(a)
-	if (proto !== getPrototypeOf(b)) return false
+	if (proto !== getPrototypeOf(b)) {
+		return false
+	}
 	const kind = proto === object_prototype || proto === array_prototype
 		? "Object"
 		: kind_pair(a, b, proto)
@@ -584,13 +662,19 @@ function expand_pair(node, pairs, nodes) {
 	/** @type {WeakKey[]} */
 	const collect = memo.collect = []
 	if (kind != "Map" && kind != "Set") {
-		if (!compare_objects(a, b, proto, memo)) return false
+		if (!compare_objects(a, b, proto, memo)) {
+			return false
+		}
 		depend(node, collect, pairs, nodes)
 		return true
 	}
-	if (/** @type {Set<unknown>} */(a)/**/.size !== /** @type {Set<unknown>} */(b)/**/.size) return false
+	if (/** @type {Set<unknown>} */(a)/**/.size !== /** @type {Set<unknown>} */(b)/**/.size) {
+		return false
+	}
 	memo.depth = 1
-	if (!equal_keys(a, b, memo)) return false
+	if (!equal_keys(a, b, memo)) {
+		return false
+	}
 	/** @type {[ unknown, unknown ][]} */
 	const left = []
 	/** @type {[ unknown, unknown ][]} */
@@ -604,7 +688,9 @@ function expand_pair(node, pairs, nodes) {
 			}
 		}
 		for (const value of /** @type {Set<unknown>} */(b)/**/) {
-			if (typeof value == "object" && value !== null) right.push([ value, undefined ])
+			if (typeof value == "object" && value !== null) {
+				right.push([ value, undefined ])
+			}
 		}
 	} else {
 		for (const [ key, value ] of /** @type {Map<unknown, unknown>} */(a)/**/) {
@@ -619,10 +705,14 @@ function expand_pair(node, pairs, nodes) {
 			}
 		}
 		for (const [ key, value ] of /** @type {Map<unknown, unknown>} */(b)/**/) {
-			if (typeof key == "object" && key !== null) right.push([ key, value ])
+			if (typeof key == "object" && key !== null) {
+				right.push([ key, value ])
+			}
 		}
 	}
-	if (left.length !== right.length) return false
+	if (left.length !== right.length) {
+		return false
+	}
 	depend(node, collect, pairs, nodes)
 	const groups = hash_groups(right.map(entry => entry[0]))
 	/** @type {BisimGroup} */
@@ -654,7 +744,9 @@ function expand_pair(node, pairs, nodes) {
 					continue
 				}
 			}
-			for (const need of needs) need.groups.push(group)
+			for (const need of needs) {
+				need.groups.push(group)
+			}
 			edges.push({ j, needs })
 		}
 		group.edges.push(edges)
@@ -673,7 +765,9 @@ function has_matching(group) {
 		group.seen = new Uint32Array(count)
 		group.stamp = 0
 		for (let left = 0; left < count; left++) {
-			if (!augment(group, left)) return false
+			if (!augment(group, left)) {
+				return false
+			}
 		}
 		return true
 	}
@@ -682,9 +776,13 @@ function has_matching(group) {
 	const broken = []
 	for (let left = 0; left < count; left++) {
 		const index = /** @type {number} */(chosen[left])/**/
-		if (index < 0) continue
+		if (index < 0) {
+			continue
+		}
 		const edge = /** @type {BisimGroup["edges"][number][number]} */(/** @type {BisimGroup["edges"][number]} */(edges[left])/**/[index])/**/
-		if (edge.needs.every(need => need.alive)) continue
+		if (edge.needs.every(need => need.alive)) {
+			continue
+		}
 		owners[edge.j] = -1
 		chosen[left] = -1
 		broken.push(left)
@@ -697,7 +795,9 @@ function has_matching(group) {
  * @returns {void}
  */
 function kill(node, dead) {
-	if (!node.alive) return
+	if (!node.alive) {
+		return
+	}
 	node.alive = false
 	dead.push(node)
 }
@@ -715,7 +815,9 @@ function kind_pair(a, b, proto) {
 			? foreign
 			: undefined
 	}
-	if (kind == "Object") return kind
+	if (kind == "Object") {
+		return kind
+	}
 	const resolved = resolve(a, kind)
 	return resolved === resolve(b, kind)
 		? resolved
@@ -730,8 +832,12 @@ function kind_pair(a, b, proto) {
  */
 function match_all(values, others, match, memo) {
 	const length = others.length
-	if (length == 1) return match(values[0], others[0])
-	if (!memo.tentative) memo.matched += length
+	if (length == 1) {
+		return match(values[0], others[0])
+	}
+	if (!memo.tentative) {
+		memo.matched += length
+	}
 	const deep = memo.tentative > 0 || memo.depth > 64
 	/** @type {HashGroups | undefined} */
 	let groups
@@ -742,22 +848,30 @@ function match_all(values, others, match, memo) {
 	 */
 	function take(value, i) {
 		const other = others[i]
-		if (other === taken || !attempt(memo, () => match(value, other))) return false
+		if (other === taken || !attempt(memo, () => match(value, other))) {
+			return false
+		}
 		others[i] = taken
 		return true
 	}
 	for (let k = 0; k < length; k++) {
 		const value = values[k]
 		const mirror = length - 1 - k
-		if (!deep && (take(value, k) || mirror !== k && take(value, mirror))) continue
+		if (!deep && (take(value, k) || mirror !== k && take(value, mirror))) {
+			continue
+		}
 		groups ??= hash_groups(others.slice())
 		const candidates = hash_candidates(groups, value).filter(
 			i => others[i] !== taken && (deep || i !== k && i !== mirror)
 		)
-		if (!candidates.length) return false
+		if (!candidates.length) {
+			return false
+		}
 		if (candidates.length == 1) {
 			const i = /** @type {number} */(candidates[0])/**/
-			if (!match(value, others[i])) return false
+			if (!match(value, others[i])) {
+				return false
+			}
 			others[i] = taken
 		} else if (!candidates.some(i => take(value, i))) {
 			return false
@@ -801,9 +915,13 @@ function pair_node(a, b, pairs, nodes) {
  */
 function register(a, b, memo) {
 	const pairs = memo.pairs
-	if (!pairs) return
+	if (!pairs) {
+		return
+	}
 	const known = pairs.get(a)
-	if (known === b || known instanceof Candidates && known.has(b)) return
+	if (known === b || known instanceof Candidates && known.has(b)) {
+		return
+	}
 	if (known === undefined) {
 		pairs.set(a, b)
 	} else if (known instanceof Candidates) {
@@ -811,7 +929,9 @@ function register(a, b, memo) {
 	} else {
 		pairs.set(a, new Candidates([ known, b ]))
 	}
-	if (memo.tentative) memo.trail?.push(a, b, known)
+	if (memo.tentative) {
+		memo.trail?.push(a, b, known)
+	}
 }
 /**
  * @param {Memo} memo

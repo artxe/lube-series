@@ -55,8 +55,12 @@ describe(
 			 * @returns {boolean}
 			 */
 			function visit(item) {
-				if (!item || typeof item != "object" || seen.has(item)) return false
-				if (types.isProxy(item)) return true
+				if (!item || typeof item != "object" || seen.has(item)) {
+					return false
+				}
+				if (types.isProxy(item)) {
+					return true
+				}
 				seen.add(item)
 				const children = item instanceof Map
 					? [ ...item.keys(), ...item.values() ]
@@ -118,8 +122,12 @@ describe(
 								other: draft.other
 							}
 						)
-						for (const item of draft.map.keys()) draft.list.push(item)
-						for (const item of draft.set) draft.list.push({ item })
+						for (const item of draft.map.keys()) {
+							draft.list.push(item)
+						}
+						for (const item of draft.set) {
+							draft.list.push({ item })
+						}
 					}
 				)
 				assert.isTrue(Object.isFrozen(next.list[0]))
@@ -195,7 +203,9 @@ describe(
 				const looped = deepUpdate(
 					base,
 					draft => {
-						for (const item of draft.list) item.done = true
+						for (const item of draft.list) {
+							item.done = true
+						}
 					}
 				)
 				assert.isTrue(
@@ -567,7 +577,9 @@ describe(
 							outer,
 							inner => {
 								inner.map.set("c", { n: 3 })
-								for (const member of inner.set) member.n = 5
+								for (const member of inner.set) {
+									member.n = 5
+								}
 								const copy = deepCopy(inner)
 								assert.isFalse(has_proxy(copy))
 								assert.deepEqual(
@@ -645,7 +657,8 @@ describe(
 			"drafts read by the other functions keep sparse arrays and subclasses",
 			() => {
 				class List extends Array {}
-				const sparse = /** @type {unknown[]} */([])/**/
+				/** @type {unknown[]} */
+				const sparse = []
 				sparse[9000] = { n: 1 }
 				const list = new List()
 				list.push({ n: 1 })
@@ -655,7 +668,8 @@ describe(
 					draft => {
 						const item = /** @type {{ n: number }} */(draft.sparse[9000])/**/
 						item.n = 2
-						const first = /** @type {{ n: number }} */(draft.list[0])/**/
+						/** @type {{ n: number }} */
+						const first = draft.list[0]
 						first.n = 2
 						const copy = deepCopy(draft)
 						assert.isFalse(has_proxy(copy))
@@ -748,7 +762,9 @@ describe(
 						map.meta.count = 1
 						set.meta.count = 2
 						const first = map.first
-						if (first) first.value = 2
+						if (first) {
+							first.value = 2
+						}
 					}
 				)
 				assert.equal(base.map.meta.count, 0)
@@ -1202,7 +1218,9 @@ describe(
 						)
 						assert.deepEqual(seen, [ "a", "b" ])
 						for (const [ key, value ] of map.entries()) {
-							if (key == "a") value.value = 5
+							if (key == "a") {
+								value.value = 5
+							}
 						}
 						const set = draft.set
 						assert.isTrue(set.has(member))
@@ -1210,7 +1228,9 @@ describe(
 						assert.lengthOf([ ...set.keys() ], 2)
 						set.forEach(
 							value => {
-								if (typeof value == "object") value.done = true
+								if (typeof value == "object") {
+									value.done = true
+								}
 							}
 						)
 						assert.deepEqual(
@@ -1290,7 +1310,9 @@ describe(
 						assert.isTrue(draft.set.has(draft.member))
 						assert.isTrue(draft.map.has(draft.member))
 						assert.equal(draft.map.get(draft.member), "v")
-						for (const value of draft.set) value.x = 2
+						for (const value of draft.set) {
+							value.x = 2
+						}
 						assert.isTrue(draft.set.has(draft.member))
 						assert.isTrue(draft.set.has(member))
 					}
@@ -1369,7 +1391,9 @@ describe(
 						(draft, seen) => {
 							for (const value of draft.values()) {
 								seen.push(String(value))
-								if (value == 1) draft.set("c", 3)
+								if (value == 1) {
+									draft.set("c", 3)
+								}
 							}
 						}
 					),
@@ -1434,7 +1458,7 @@ describe(
 					deepUpdate(
 						base,
 						draft => {
-							for (const _entry of draft);
+							for (const _entry of draft) { }
 						}
 					),
 					base
@@ -1451,7 +1475,9 @@ describe(
 						/** @type {{ seen?: boolean, value: number }} */(draft.map.get("a"))/**/.value = 10
 						draft.map.set("c", { value: 3 })
 						draft.map.delete("b")
-						for (const [ , item ] of draft.map) item.seen = true
+						for (const [ , item ] of draft.map) {
+							item.seen = true
+						}
 					}
 				)
 				assert.instanceOf(next.map, Map)
@@ -1758,7 +1784,9 @@ describe(
 						draft => {
 							draft.user.name = "Kim"
 							void draft.list[0].done
-							for (const item of draft.set) void item.id
+							for (const item of draft.set) {
+								void item.id
+							}
 						}
 					),
 					base
@@ -2014,15 +2042,13 @@ describe(
 				const next = deepUpdate(
 					{ map },
 					draft => {
-						const item = /** @type {{ v: number }} */(draft.map.get("a"))/**/
+						/** @type {{ v: number }} */
+						const item = draft.map.get("a")
 						item.v = 2
 					}
 				)
 				assert.equal(next.map.writes, 0)
-				assert.equal(
-					/** @type {{ v: number }} */(next.map.get("a"))/**/.v,
-					2
-				)
+				assert.equal(next.map.get("a").v, 2)
 				const hidden = { a: 1 }
 				Object.defineProperty(
 					hidden,
@@ -2033,7 +2059,8 @@ describe(
 						writable: true
 					}
 				)
-				const proto = /** @type {{ polluted?: number }} */(Object.prototype)/**/
+				/** @type {{ polluted?: number }} */
+				const proto = Object.prototype
 				proto.polluted = 1
 				try {
 					const kept = deepUpdate(
@@ -2128,7 +2155,9 @@ describe(
 						void [ ...draft ]
 						draft.add(member)
 						for (const value of draft) {
-							if (typeof value == "object") value.id = 2
+							if (typeof value == "object") {
+								value.id = 2
+							}
 						}
 					}
 				)
@@ -2140,7 +2169,9 @@ describe(
 						draft.add(member)
 						assert.isTrue(draft.has(member))
 						for (const value of draft) {
-							if (typeof value == "object") value.id = 3
+							if (typeof value == "object") {
+								value.id = 3
+							}
 						}
 					}
 				)
@@ -2148,11 +2179,15 @@ describe(
 					base,
 					draft => {
 						const [ value ] = draft
-						if (typeof value == "object") value.id = 4
+						if (typeof value == "object") {
+							value.id = 4
+						}
 						draft.delete(member)
 						draft.add(member)
 						for (const item of draft) {
-							if (typeof item == "object") assert.equal(item.id, 1)
+							if (typeof item == "object") {
+								assert.equal(item.id, 1)
+							}
 						}
 					}
 				)
@@ -2178,7 +2213,9 @@ describe(
 						assert.isFalse(draft.isDisjointFrom(set))
 						assert.equal(draft.intersection(set).size, 1)
 						assert.equal(draft.difference(set).size, 0)
-						for (const item of draft) item.n = 1
+						for (const item of draft) {
+							item.n = 1
+						}
 						assert.equal(draft.union(set).size, 1)
 						assert.equal(
 							draft.symmetricDifference(set).size,
@@ -2213,7 +2250,9 @@ describe(
 					 */
 					* [Symbol.iterator]() {
 						for (const entry of super.entries()) {
-							if (entry[0] !== "secret") yield entry
+							if (entry[0] !== "secret") {
+								yield entry
+							}
 						}
 					}
 				}
@@ -2250,7 +2289,8 @@ describe(
 					original,
 					draft => {
 						draft.set("z", 1)
-						const item = /** @type {{ n: number }} */(draft.get("a"))/**/
+						/** @type {{ n: number }} */
+						const item = draft.get("a")
 						item.n = 1
 					}
 				)
@@ -2272,7 +2312,9 @@ describe(
 					base,
 					draft => {
 						for (const item of draft.set) {
-							if (item.id == 1) item.done = true
+							if (item.id == 1) {
+								item.done = true
+							}
 						}
 						draft.set.add({ id: 3 })
 						const [ , second ] = draft.set
@@ -2304,7 +2346,9 @@ describe(
 						)
 						assert.equal(draft.set.size, 3)
 						for (const item of draft.set) {
-							if (item.id == 1) item.done = true
+							if (item.id == 1) {
+								item.done = true
+							}
 						}
 						assert.isTrue(
 							draft.set.has(
@@ -2342,7 +2386,9 @@ describe(
 				const unioned = deepUpdate(
 					{ set: new Set([ { id: 1 } ]) },
 					draft => {
-						for (const item of draft.set.union(new Set())) /** @type {{ id: number, seen?: boolean }} */(item)/**/.seen = true
+						for (const item of draft.set.union(new Set())) {
+							item.seen = true
+						}
 					}
 				)
 				assert.deepEqual(
@@ -2352,7 +2398,9 @@ describe(
 				const owned = deepUpdate(
 					{ set: new Set([ { id: 1 } ]) },
 					draft => {
-						for (const item of draft.set) /** @type {{ id: number, owner?: Set<{ id: number }> }} */(item)/**/.owner = draft.set
+						for (const item of draft.set) {
+							/** @type {{ id: number, owner?: Set<{ id: number }> }} */(item)/**/.owner = draft.set
+						}
 					}
 				)
 				assert.equal(
@@ -2490,7 +2538,9 @@ describe(
 					const priced = deepUpdate(
 						catalog,
 						draft => {
-							for (const item of draft.all) item.price++
+							for (const item of draft.all) {
+								item.price++
+							}
 							const featured = /** @type {{ name: string }} */(draft.featured[0])/**/
 							featured.name = "featured"
 							assert.equal(featured, draft.all[0])
@@ -2515,7 +2565,9 @@ describe(
 							featured: [ fresh_items[0] ]
 						},
 						draft => {
-							for (const item of draft.all) item.price++
+							for (const item of draft.all) {
+								item.price++
+							}
 							draft.all[0] = /** @type {typeof items[0]} */(fresh_items[0])/**/
 							const featured = /** @type {{ name: string }} */(draft.featured[0])/**/
 							featured.name = "featured"
@@ -2529,7 +2581,9 @@ describe(
 							set: new Set([ member ])
 						},
 						draft => {
-							for (const item of draft.items) item.price++
+							for (const item of draft.items) {
+								item.price++
+							}
 							draft.set.clear()
 							draft.set.add(member)
 							draft.other.member.n = 5
@@ -2885,7 +2939,8 @@ describe(
 				assert.equal(thawed.c?.two, thawed.c?.one)
 				assert.equal(thawed.c?.two?.v, 2)
 				assert.equal(inner.v, 1)
-				const self = /** @type {{ n: number, self?: unknown }} */({ n: 1 })/**/
+				/** @type {{ n: number, self?: unknown }} */
+				const self = { n: 1 }
 				self.self = self
 				const cycled = deepUpdate(
 					self,

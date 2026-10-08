@@ -20,10 +20,16 @@ export default function(letter, gap, last) {
 	}
 	const consonant = first_consonant_letters[letter]
 	const growth = letter_growths[letter]
-	if (consonant || growth) return `[${letter}${growth ?? ""}${consonant ?? ""}]`
+	if (consonant || growth) {
+		return `[${letter}${growth ?? ""}${consonant ?? ""}]`
+	}
 	const code = letter.charCodeAt(0)
-	if (code < 0xAC00 || code > 0xD7A3) return special_character_regex.test(letter) ? "\\" + letter : letter
-	if (!last) return letter
+	if (code < 0xAC00 || code > 0xD7A3) {
+		return special_character_regex.test(letter) ? "\\" + letter : letter
+	}
+	if (!last) {
+		return letter
+	}
 	const syllable = code - 0xAC00
 	const final = syllable % 28
 	if (!final) {

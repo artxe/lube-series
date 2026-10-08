@@ -22,22 +22,30 @@ const zone_regex = /(?<![a-z])(?:[cemp][ds]t|gmt|utc?|z)(?![a-z])|(?:\s|[ap]m|\d
  */
 function compile(format) {
 	let parts = formats.get(format)
-	if (parts) return parts
+	if (parts) {
+		return parts
+	}
 	parts = []
 	let last = 0
 	for (const { 0: token, index = 0 } of format.matchAll(token_regex)) {
-		if (index > last) parts.push(
-			[ ...format.slice(last, index) ].length
-		)
+		if (index > last) {
+			parts.push(
+				[ ...format.slice(last, index) ].length
+			)
+		}
 		parts.push(
 			/** @type {number[]} */(tokens[token])/**/
 		)
 		last = index + token.length
 	}
-	if (last < format.length) parts.push(
-		[ ...format.slice(last) ].length
-	)
-	if (formats.size >= 1000) formats.clear()
+	if (last < format.length) {
+		parts.push(
+			[ ...format.slice(last) ].length
+		)
+	}
+	if (formats.size >= 1000) {
+		formats.clear()
+	}
 	formats.set(format, parts)
 	return parts
 }
@@ -47,7 +55,9 @@ function compile(format) {
  */
 function out_of_range(match) {
 	const [ , year, month, day, hour, minute, second ] = match
-	if (month === undefined) return false
+	if (month === undefined) {
+		return false
+	}
 	const index = +month - 1
 	return index < 0 || index > 11 || day !== undefined && (+day < 1 || +day > last_day(+(year ?? 0), index)) || +(hour ?? 0) > (+(minute ?? 0) || +(second ?? 0) || +(match[7] ?? 0)
 		? 23
@@ -88,22 +98,32 @@ function out_of_range(match) {
  * @example stringToDate("2024-07-15 09:00", "YYYY-MM-DD HH:mm", "Asia/Seoul")
  */
 export default function(date, format, zone) {
-	if (typeof date != "string") throw new TypeError(
-		`stringToDate: Expected a string, got ${date === null ? "null" : typeof date}`
-	)
+	if (typeof date != "string") {
+		throw new TypeError(
+			`stringToDate: Expected a string, got ${date === null ? "null" : typeof date}`
+		)
+	}
 	check_zone("stringToDate", zone)
 	if (format === undefined) {
 		const native = new Date(date)
 		const valid = !isNaN(native.getTime())
-		if (!valid && zone === undefined) return native
+		if (!valid && zone === undefined) {
+			return native
+		}
 		const match = iso_regex.exec(date)
-		if (match && out_of_range(match)) return new Date(NaN)
+		if (match && out_of_range(match)) {
+			return new Date(NaN)
+		}
 		const parsed = match?.[8] === ""
 			? match
 			: null
 		if (parsed) {
-			if (zone === undefined && parsed[4] !== undefined) return native
-			if (!valid && isNaN(Date.parse(`${date}Z`))) return native
+			if (zone === undefined && parsed[4] !== undefined) {
+				return native
+			}
+			if (!valid && isNaN(Date.parse(`${date}Z`))) {
+				return native
+			}
 			const fraction = parsed[7]
 			return date_of(
 				[
@@ -120,11 +140,17 @@ export default function(date, format, zone) {
 				zone
 			)
 		}
-		if (zone === undefined) return native
+		if (zone === undefined) {
+			return native
+		}
 		const text = date.replace(comment_regex, "")
-		if (zone_regex.test(text)) return native
+		if (zone_regex.test(text)) {
+			return native
+		}
 		const wall = new Date(`${text} GMT`)
-		if (!valid && isNaN(wall.getTime())) return native
+		if (!valid && isNaN(wall.getTime())) {
+			return native
+		}
 		return date_of(
 			isNaN(wall.getTime())
 				? fields_of(native)
@@ -157,15 +183,23 @@ export default function(date, format, zone) {
 			length = 6
 			min = -271821
 		}
-		while (text.length < length && date.charCodeAt(index) > 47 && date.charCodeAt(index) < 58) text += date[index++]
-		if (!text || sign && (text.length < 6 || sign == "-" && !+text)) return new Date(NaN)
+		while (text.length < length && date.charCodeAt(index) > 47 && date.charCodeAt(index) < 58) {
+			text += date[index++]
+		}
+		if (!text || sign && (text.length < 6 || sign == "-" && !+text)) {
+			return new Date(NaN)
+		}
 		if (part[0] == 6) {
-			while (date.charCodeAt(index) > 47 && date.charCodeAt(index) < 58) index++
+			while (date.charCodeAt(index) > 47 && date.charCodeAt(index) < 58) {
+				index++
+			}
 		}
 		const value = part[0] == 6
 			? +text.padEnd(3, "0")
 			: +(sign + text)
-		if (value > /** @type {number} */(part[3])/**/ || value < min) return new Date(NaN)
+		if (value > /** @type {number} */(part[3])/**/ || value < min) {
+			return new Date(NaN)
+		}
 		fields[/** @type {number} */(part[0])/**/] = /** @type {number} */(part[0])/**/ == 1
 			? value - 1
 			: value
@@ -173,6 +207,8 @@ export default function(date, format, zone) {
 	if (index != date.length || /** @type {number} */(fields[2])/**/ > last_day(
 		/** @type {number} */(fields[0])/**/,
 		/** @type {number} */(fields[1])/**/
-	)) return new Date(NaN)
+	)) {
+		return new Date(NaN)
+	}
 	return date_of(fields, zone)
 }

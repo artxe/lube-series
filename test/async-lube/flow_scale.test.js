@@ -15,14 +15,16 @@ describe(
 			/** @type {DynamicFlow} */
 			let definition = flow()
 			const order = reverse ? [ ...nodes.keys() ].reverse() : [ ...nodes.keys() ]
-			for (const i of order) definition = i
-				? definition.add(
+			for (const i of order) {
+				definition = i
+					? definition.add(
 					/** @type {Ref} */(nodes[i])/**/,
-					/** @type {Ref} */(nodes[i - 1])/**/
-				)
-				: definition.add(
+						/** @type {Ref} */(nodes[i - 1])/**/
+					)
+					: definition.add(
 					/** @type {Ref} */(nodes[i])/**/
-				)
+					)
+			}
 			return /** @type {import("async-lube").Flow<unknown, number>} */(/** @type {unknown} */(definition))/**/
 		}
 		/**
@@ -139,7 +141,9 @@ describe(
 				}
 				/** @type {DynamicFlow} */
 				let wide = flow().add(root)
-				for (const node of steps(20000)) wide = wide.add(node, root)
+				for (const node of steps(20000)) {
+					wide = wide.add(node, root)
+				}
 				const spread = Date.now()
 				const fanned = wide.run(
 					void 0,
@@ -174,7 +178,9 @@ describe(
 					)
 					.run()
 				const started = Date.now()
-				for (let i = 0; i < 40000; i++) queued.send(message, i)
+				for (let i = 0; i < 40000; i++) {
+					queued.send(message, i)
+				}
 				assert.equal(await queued, 39999)
 				assert.isBelow(Date.now() - started, 1500)
 				const approve = flow.input("approve")
@@ -199,10 +205,12 @@ describe(
 				await nested.idle()
 				assert.equal(nested.status, "waiting")
 				const sending = Date.now()
-				for (let i = 0; i < 4000; i++) nested.send(
-					`batch.review.${i}.approve`,
-					true
-				)
+				for (let i = 0; i < 4000; i++) {
+					nested.send(
+						`batch.review.${i}.approve`,
+						true
+					)
+				}
 				await nested
 				assert.isBelow(Date.now() - sending, 500)
 				function root() {
@@ -210,7 +218,9 @@ describe(
 				}
 				/** @type {DynamicFlow} */
 				let wide = flow().add(root)
-				for (const node of steps(200000)) wide = wide.add(node, root)
+				for (const node of steps(200000)) {
+					wide = wide.add(node, root)
+				}
 				const fanned = wide.run()
 				await fanned
 				fanned.reload(root)

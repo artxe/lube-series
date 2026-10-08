@@ -14,10 +14,10 @@ says otherwise, and keep going only while the step is clean.
    `TZ` set to `America/New_York`, `Australia/Lord_Howe` and `America/Santiago` (a DST zone finds what
    the local zone hides). On Windows a `TZ=...` prefix in Git Bash never reaches node; run
    `$env:TZ = 'America/New_York'; npx vitest run test/datetime-lube` in PowerShell instead.
-2. **Browser tests.** `pnpm test:browser` (Playwright Chromium, `test/browser/`) for anything in
+2. **Browser tests.** `pnpm test` also runs the browser project (`vitest.browser.config.js`, Playwright
+   Chromium, `test/browser/`); it matters for anything in
    `src/http/xhr.js`, `src/http/socket.js`, upload or download progress, `as: "file"` or CORS. They are
-   the only run with a real `XMLHttpRequest`, `WebSocket` and cross-origin `fetch`, and the default run
-   excludes them. `test/browser/server.js` starts `test/async-lube/server.js` in Node and hands the tests
+   the only run with a real `XMLHttpRequest`, `WebSocket` and cross-origin `fetch`. `test/browser/server.js` starts `test/async-lube/server.js` in Node and hands the tests
    its URL with `provide`/`inject`; that server sends CORS headers, and `/no-cors` deliberately does not.
    Vitest calls the global setup once per project, so the teardown closes every server it started, or
    the run hangs for 10 seconds on the listening socket it left behind.
@@ -46,7 +46,7 @@ says otherwise, and keep going only while the step is clean.
    - data-lube: `test/data-lube/oracle.test.js` has its own variables:
      `$env:DATA_LUBE_SEEDS = '5000'; $env:DATA_LUBE_SEED = '2'` (`DATA_LUBE_SEED` changes the seed
      base, `DATA_LUBE_CASE=<seed>` replays one case). Copy `test/data-lube/properties.test.js` into
-     the scratchpad with larger counts.
+     `.scratch/` with larger counts.
 4. **Lint.** `npx eslint --fix <changed paths>`, then run it again without `--fix` and expect no
    output. The `pretty-*` rules rewrite formatting, so never hand-format code first; write it, then
    let `--fix` settle it.
@@ -58,7 +58,7 @@ says otherwise, and keep going only while the step is clean.
    level ```ts and ```js block of every README, counting the blocks it checked against the fences so one
    can never drop out unnoticed.
 6. **Published tarball.** `prepack` rebuilds the gitignored `types/`.
-   `pnpm pack --pack-destination <scratchpad dir>` inside the package, extract the tarball into an
+   `pnpm pack --pack-destination .scratch` inside the package, extract the tarball into an
    empty directory as `node_modules/<name>`, and from there check an ESM `import` and a CommonJS
    `require` (Node.js `require(esm)`), and the types: a `.mts` file importing the package and its
    subpaths (`./durable`), values and types, compiled with

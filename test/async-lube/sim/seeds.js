@@ -19,7 +19,9 @@ export function catch_unhandled(list) {
 	process.on("unhandledRejection", collect)
 	return () => {
 		process.off("unhandledRejection", collect)
-		for (const listener of listeners) process.on("unhandledRejection", listener)
+		for (const listener of listeners) {
+			process.on("unhandledRejection", listener)
+		}
 	}
 }
 /**
@@ -34,8 +36,12 @@ export function sim_seeds(mode, count) {
 		SIM_SEED,
 		SIM_SEEDS
 	} = process.env
-	if (SIM_MODE && SIM_MODE != mode) return []
-	if (SIM_SEED) return [ Number(SIM_SEED) ]
+	if (SIM_MODE && SIM_MODE != mode) {
+		return []
+	}
+	if (SIM_SEED) {
+		return [ Number(SIM_SEED) ]
+	}
 	const from = Number(SIM_FROM ?? 1)
 	return Array.from(
 		{
@@ -54,7 +60,9 @@ export function within(label, work) {
 	const ms = Number(
 		process.env["SIM_TIMEOUT"] ?? 60000
 	)
-	if (!(ms > 0)) return work
+	if (!(ms > 0)) {
+		return work
+	}
 	/** @type {ReturnType<typeof setTimeout>} */
 	let timer
 	return Promise.race(

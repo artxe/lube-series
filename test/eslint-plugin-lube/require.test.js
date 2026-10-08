@@ -7,7 +7,8 @@ describe(
 		it(
 			"returns the plugin itself to a CommonJS config",
 			() => {
-				const required = /** @type {typeof lube} */(createRequire(import.meta.url)("eslint-plugin-lube"))/**/
+				/** @type {typeof lube} */
+				const required = createRequire(import.meta.url)("eslint-plugin-lube")
 				assert.notProperty(required, "default")
 				assert.deepEqual(required.meta, lube.meta)
 				assert.hasAllKeys(

@@ -25,15 +25,21 @@ export async function serve(d, serve_options = {}) {
 		interval = 1000,
 		onError = noop
 	} = serve_options
-	if (!(Number.isInteger(batch) && batch > 0)) throw TypeError(
-		"The batch of serve() must be a positive integer"
-	)
-	if (!(Number.isFinite(interval) && interval > 0)) throw TypeError(
-		"The interval of serve() must be a positive number of milliseconds"
-	)
-	if (typeof onError != "function") throw TypeError(
-		"The onError of serve() must be a function"
-	)
+	if (!(Number.isInteger(batch) && batch > 0)) {
+		throw TypeError(
+			"The batch of serve() must be a positive integer"
+		)
+	}
+	if (!(Number.isFinite(interval) && interval > 0)) {
+		throw TypeError(
+			"The interval of serve() must be a positive number of milliseconds"
+		)
+	}
+	if (typeof onError != "function") {
+		throw TypeError(
+			"The onError of serve() must be a function"
+		)
+	}
 	check_halted(d)
 	const controller = new AbortController()
 	const unlink = link_signal(controller, serve_options.signal)
@@ -56,7 +62,9 @@ export async function serve(d, serve_options = {}) {
 	try {
 		while (!controller.signal.aborted) {
 			try {
-				for (const key of await d.store.due(Date.now(), batch)) void resume(d, key).catch(error => reporter(error, key))
+				for (const key of await d.store.due(Date.now(), batch)) {
+					void resume(d, key).catch(error => reporter(error, key))
+				}
 			} catch (error) {
 				reporter(error)
 			}

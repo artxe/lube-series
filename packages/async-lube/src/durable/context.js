@@ -20,12 +20,16 @@ import { take_event, unclaim, wake_if_sent } from "./state.js"
  * @returns {void}
  */
 function check_idle(d, execution) {
-	if (!execution.blocked.length || execution.flights || execution.suspending) return
+	if (!execution.blocked.length || execution.flights || execution.suspending) {
+		return
+	}
 	execution.suspending = true
 	setTimeout(
 		() => {
 			execution.suspending = false
-			if (!execution.blocked.length || execution.flights || execution.lost || execution.finished) return
+			if (!execution.blocked.length || execution.flights || execution.lost || execution.finished) {
+				return
+			}
 			const wakes = execution.blocked.flatMap(
 				item => item.wake == null ? [] : [ item.wake ]
 			)
@@ -36,7 +40,9 @@ function check_idle(d, execution) {
 				? "waiting"
 				: "sleeping"
 			unclaim(saved)
-			if (wakes.length) saved.wake = Math.min(...wakes)
+			if (wakes.length) {
+				saved.wake = Math.min(...wakes)
+			}
 			wake_if_sent(saved)
 			execution.finished = true
 			void persist(d, execution).then(
@@ -49,7 +55,9 @@ function check_idle(d, execution) {
 						return
 					}
 					execution.interrupt(SUSPENDED)
-					if (saved.status == "running") void execution.gone.then(() => resume(d, execution.key)).catch(noop)
+					if (saved.status == "running") {
+						void execution.gone.then(() => resume(d, execution.key)).catch(noop)
+					}
 				}
 			)
 		},
@@ -68,22 +76,30 @@ export function context_of(d, execution) {
 		key,
 		signal,
 		sleep(name, ms) {
-			if (!(Number.isFinite(ms) && ms >= 0)) return Promise.reject(
-				TypeError(
-					"The ms of sleep() must be a non-negative number of milliseconds"
+			if (!(Number.isFinite(ms) && ms >= 0)) {
+				return Promise.reject(
+					TypeError(
+						"The ms of sleep() must be a non-negative number of milliseconds"
+					)
 				)
-			)
+			}
 			const refused = refuse(execution)
-			if (refused) return refused
+			if (refused) {
+				return refused
+			}
 			const entry = entry_of(execution, name, "sleep")
-			if (entry.done) return Promise.resolve()
+			if (entry.done) {
+				return Promise.resolve()
+			}
 			if (entry.until == null) {
 				entry.until = Date.now() + ms
 				void persist(d, execution)
 			}
 			const until = entry.until
 			const left = until - Date.now()
-			if (left > d.idle_ms) return suspend(d, execution, until, "sleeping")
+			if (left > d.idle_ms) {
+				return suspend(d, execution, until, "sleeping")
+			}
 			execution.flights++
 			return sleep_until(until, signal)
 				.then(
@@ -101,7 +117,9 @@ export function context_of(d, execution) {
 		},
 		step(name, work) {
 			const refused = refuse(execution)
-			if (refused) return refused
+			if (refused) {
+				return refused
+			}
 			const index = execution.cursor
 			const entry = entry_of(execution, name, "step")
 			if (entry.done) {
@@ -121,7 +139,9 @@ export function context_of(d, execution) {
 			 * @returns {Promise<never>}
 			 */
 			function failed(error) {
-				if (signal.aborted || execution.lost || execution.finished) throw error
+				if (signal.aborted || execution.lost || execution.finished) {
+					throw error
+				}
 				entry.done = true
 				entry.error = saved_error(error)
 				void persist(d, execution)
@@ -139,11 +159,13 @@ export function context_of(d, execution) {
 				.then(
 					value => {
 						const problem = json_problem(value)
-						if (problem) return failed(
-							TypeError(
-								`The result of step "${name}" of run "${key}" is not a JSON value: ${problem}`
+						if (problem) {
+							return failed(
+								TypeError(
+									`The result of step "${name}" of run "${key}" is not a JSON value: ${problem}`
+								)
 							)
-						)
+						}
 						entry.done = true
 						entry.value = copy(value)
 						void persist(d, execution)
@@ -166,17 +188,23 @@ export function context_of(d, execution) {
 					"wait"
 				)
 				const { timeout, until } = wait_options
-				if (!(timeout == null || Number.isFinite(timeout) && timeout >= 0)) throw TypeError(
-					"The timeout of wait() must be a non-negative number of milliseconds"
-				)
-				if (!(until == null || Math.abs(until) <= 8640000000000000)) throw TypeError(
-					"The until of wait() must be a time in milliseconds since the epoch"
-				)
+				if (!(timeout == null || Number.isFinite(timeout) && timeout >= 0)) {
+					throw TypeError(
+						"The timeout of wait() must be a non-negative number of milliseconds"
+					)
+				}
+				if (!(until == null || Math.abs(until) <= 8640000000000000)) {
+					throw TypeError(
+						"The until of wait() must be a time in milliseconds since the epoch"
+					)
+				}
 			} catch (error) {
 				return Promise.reject(error)
 			}
 			const refused = refuse(execution)
-			if (refused) return refused
+			if (refused) {
+				return refused
+			}
 			const entry = entry_of(execution, name, "wait")
 			const { timeout } = wait_options
 			if (entry.done) {
@@ -192,11 +220,15 @@ export function context_of(d, execution) {
 			}
 			const fresh = entry.until == null
 			if (fresh) {
-				if (timeout != null) entry.until = Date.now() + timeout
-				if (wait_options.until != null) entry.until = Math.min(
-					entry.until ?? Infinity,
-					wait_options.until
-				)
+				if (timeout != null) {
+					entry.until = Date.now() + timeout
+				}
+				if (wait_options.until != null) {
+					entry.until = Math.min(
+						entry.until ?? Infinity,
+						wait_options.until
+					)
+				}
 			}
 			const event = execution.saved.events?.[name]?.[0]
 			if (event && !execution.unsaved.has(event) && (entry.until == null || event.at <= entry.until)) {
@@ -208,7 +240,9 @@ export function context_of(d, execution) {
 					/** @type {never} */(copy(event.value))/**/
 				)
 			}
-			if (fresh && entry.until != null) void persist(d, execution)
+			if (fresh && entry.until != null) {
+				void persist(d, execution)
+			}
 			const until = entry.until
 			return new Promise(
 				(resolve, reject) => {
@@ -221,7 +255,9 @@ export function context_of(d, execution) {
 						resolve: /** @type {(value: unknown) => void} */(resolve)/**/
 					}
 					const list = execution.waiters.get(name) ?? []
-					if (!list.length) execution.waiters.set(name, list)
+					if (!list.length) {
+						execution.waiters.set(name, list)
+					}
 					list.push(waiter)
 					watch_inbox(d, execution)
 					/** @type {ReturnType<typeof setTimeout>} */
@@ -230,13 +266,19 @@ export function context_of(d, execution) {
 					 * @returns {void}
 					 */
 					function expire() {
-						if (execution.finished || execution.lost || !list.includes(waiter)) return
+						if (execution.finished || execution.lost || !list.includes(waiter)) {
+							return
+						}
 						if (until != null && until <= Date.now()) {
 							void inbox_read(d, execution).then(
 								read => {
-									if (execution.finished || execution.lost) return
+									if (execution.finished || execution.lost) {
+										return
+									}
 									const index = list.indexOf(waiter)
-									if (index < 0) return
+									if (index < 0) {
+										return
+									}
 									if (!read) {
 										timer = setTimeout(expire, d.poll_ms)
 										return
@@ -251,10 +293,12 @@ export function context_of(d, execution) {
 							execution.blocked.push(waiter.block)
 							check_idle(d, execution)
 						}
-						if (until != null) timer = setTimeout(
-							expire,
-							clamp_delay(until - Date.now())
-						)
+						if (until != null) {
+							timer = setTimeout(
+								expire,
+								clamp_delay(until - Date.now())
+							)
+						}
 					}
 					/**
 					 * @param {number} index
@@ -273,8 +317,9 @@ export function context_of(d, execution) {
 						)
 						reject(error)
 					}
-					if (until != null && until <= Date.now()) expire()
-					else {
+					if (until != null && until <= Date.now()) {
+						expire()
+					} else {
 						timer = setTimeout(
 							expire,
 							clamp_delay(

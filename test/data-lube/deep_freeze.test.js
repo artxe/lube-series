@@ -10,10 +10,14 @@ describe(
 		 * @returns {boolean}
 		 */
 		function is_deep_frozen(obj) {
-			if (!Object.isFrozen(obj)) return false
+			if (!Object.isFrozen(obj)) {
+				return false
+			}
 			for (const key in /** @type {Readonly<Record<string, unknown>>} */(obj)/**/) {
 				const o = /** @type {Readonly<Record<string, unknown>>} */(obj)/**/[key]
-				if (o && typeof o == "object" && !ArrayBuffer.isView(o) && !is_deep_frozen(o)) return false
+				if (o && typeof o == "object" && !ArrayBuffer.isView(o) && !is_deep_frozen(o)) {
+					return false
+				}
 			}
 			return true
 		}
@@ -125,7 +129,9 @@ describe(
 			() => {
 				/** @type {{ leaf?: Record<string, never>, left?: typeof tree, right?: typeof tree }} */
 				let tree = { leaf: {} }
-				for (let i = 0; i < 40; i++) tree = { left: tree, right: tree }
+				for (let i = 0; i < 40; i++) {
+					tree = { left: tree, right: tree }
+				}
 				deepFreeze(tree)
 				assert.isTrue(
 					Object.isFrozen(
@@ -136,7 +142,9 @@ describe(
 				const bottom = {}
 				/** @type {{ [Symbol.iterator]?: typeof chain, next?: typeof chain }} */
 				let chain = bottom
-				for (let i = 0; i < 100; i++) chain = { [Symbol.iterator]: chain }
+				for (let i = 0; i < 100; i++) {
+					chain = { [Symbol.iterator]: chain }
+				}
 				bottom.next = chain
 				deepFreeze(chain)
 				assert.isTrue(Object.isFrozen(bottom))

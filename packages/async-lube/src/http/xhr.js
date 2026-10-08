@@ -51,15 +51,19 @@ export function send_with_xhr(url, init, on_upload) {
 			xhr.ontimeout = xhr.onerror
 			xhr.onload = finish(
 				() => {
-					if (!xhr.status) throw TypeError("Network request failed")
+					if (!xhr.status) {
+						throw TypeError("Network request failed")
+					}
 					/** @type {Headers} */
 					const headers = new Headers()
 					for (const line of xhr.getAllResponseHeaders().split(header_line_regex)) {
 						const index = line.indexOf(":")
-						if (index > 0) headers.append(
-							line.slice(0, index).trim(),
-							line.slice(index + 1).trim()
-						)
+						if (index > 0) {
+							headers.append(
+								line.slice(0, index).trim(),
+								line.slice(index + 1).trim()
+							)
+						}
 					}
 					resolve(
 						new Response(

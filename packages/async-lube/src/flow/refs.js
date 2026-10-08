@@ -33,10 +33,18 @@ export const settled_statuses = new Set(
  * @returns {string}
  */
 export function describe(ref) {
-	if (typeof ref == "string") return `"${ref}"`
-	if (typeof ref == "function") return `function "${ref.name || "anonymous"}"`
-	if (/** @type {RefProbe} */(ref)/**/?.[INPUT]) return `input "${/** @type {InputRef} */(ref)/**/.name}"`
-	if (is_stream(ref)) return "a stream"
+	if (typeof ref == "string") {
+		return `"${ref}"`
+	}
+	if (typeof ref == "function") {
+		return `function "${ref.name || "anonymous"}"`
+	}
+	if (/** @type {RefProbe} */(ref)/**/?.[INPUT]) {
+		return `input "${/** @type {InputRef} */(ref)/**/.name}"`
+	}
+	if (is_stream(ref)) {
+		return "a stream"
+	}
 	return /** @type {RefProbe} */(ref)/**/?.[DEFINITION] ? "a flow" : String(ref)
 }
 /**
@@ -75,9 +83,15 @@ export function is_ref(value) {
  * @returns {boolean}
  */
 export function is_retry(value) {
-	if (typeof value == "number") return Number.isInteger(value) && value >= 0
-	if (!value || typeof value != "object" || !Number.isInteger(value.count) || value.count < 0) return false
-	if (value.when != null && typeof value.when != "function") return false
+	if (typeof value == "number") {
+		return Number.isInteger(value) && value >= 0
+	}
+	if (!value || typeof value != "object" || !Number.isInteger(value.count) || value.count < 0) {
+		return false
+	}
+	if (value.when != null && typeof value.when != "function") {
+		return false
+	}
 	return value.delay == null || typeof value.delay == "function" || typeof value.delay == "number" && value.delay >= 0
 }
 /**
@@ -121,9 +135,11 @@ export function to_array(value) {
  * @returns {NodeRef}
  */
 export function to_arriving(dependency, policy) {
-	if (!is_ref(to_ref(dependency))) throw TypeError(
-		`flow.${policy}() needs a function, an input, a flow or a stream`
-	)
+	if (!is_ref(to_ref(dependency))) {
+		throw TypeError(
+			`flow.${policy}() needs a function, an input, a flow or a stream`
+		)
+	}
 	return /** @type {NodeRef} */(/** @type {unknown} */({
 		[ARRIVE]: to_ref(dependency),
 		policy

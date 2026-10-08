@@ -3,7 +3,9 @@
  * @returns {string | undefined}
  */
 function get_message(data) {
-	if (!data || typeof data != "object") return
+	if (!data || typeof data != "object") {
+		return
+	}
 	for (const key of [
 		"message",
 		"error",
@@ -11,8 +13,12 @@ function get_message(data) {
 		"title"
 	]) {
 		const value = /** @type {Record<string, unknown>} */(data)/**/[key]
-		if (typeof value == "string" && value) return value
-		if (value && typeof value == "object" && typeof /** @type {{ message?: unknown }} */(value)/**/.message == "string") return /** @type {{ message: string }} */(value)/**/.message
+		if (typeof value == "string" && value) {
+			return value
+		}
+		if (value && typeof value == "object" && typeof /** @type {{ message?: unknown }} */(value)/**/.message == "string") {
+			return /** @type {{ message: string }} */(value)/**/.message
+		}
 	}
 	return undefined
 }

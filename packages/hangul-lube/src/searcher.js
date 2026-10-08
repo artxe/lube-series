@@ -21,10 +21,16 @@ function gap(letters) {
  * @returns {string}
  */
 function separator(letter) {
-	if (!non_word_letter_regex.test(letter)) return non_word_separator
-	if (letter.length > 1) return `(?:(?!${letter})[${non_word_class}])*?`
+	if (!non_word_letter_regex.test(letter)) {
+		return non_word_separator
+	}
+	if (letter.length > 1) {
+		return `(?:(?!${letter})[${non_word_class}])*?`
+	}
 	const compound = compound_consonant_letters[letter]
-	if (compound) return gap(letter + compound[0])
+	if (compound) {
+		return gap(letter + compound[0])
+	}
 	return gap(
 		`${class_special_character_regex.test(letter) ? "\\" : ""}${letter}${letter_growths[letter] ?? ""}`
 	)
@@ -52,11 +58,15 @@ export default function(text) {
 	const letters = letters_of(text).filter(
 		letter => !ignored_regex.test(letter)
 	)
-	if (letters.length > max_letters) return RegExp(never_source, "i")
+	if (letters.length > max_letters) {
+		return RegExp(never_source, "i")
+	}
 	const last = letters.length - 1
 	let source = ""
 	for (const [ index, letter ] of letters.entries()) {
-		if (index) source += separator(letter)
+		if (index) {
+			source += separator(letter)
+		}
 		source += get_letter_range(letter, gap, index == last)
 	}
 	return source ? RegExp(source, "i") : null

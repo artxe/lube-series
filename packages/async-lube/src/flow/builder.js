@@ -97,7 +97,9 @@ export function create_builder(definition) {
 					builder = builder.add(dep)
 					const added_definition = builder[DEFINITION]
 					const auto_entry = added_definition.list[added_definition.count - 1]
-					if (auto_entry) auto_entry.auto = true
+					if (auto_entry) {
+						auto_entry.auto = true
+					}
 				}
 				return builder.add(ref, ...args)
 			}
@@ -109,109 +111,167 @@ export function create_builder(definition) {
 					: typeof target == "function"
 						? "task"
 						: void 0
-			if (!kind) throw TypeError(
-				"A flow node must be a function, an input, a flow or a stream"
-			)
+			if (!kind) {
+				throw TypeError(
+					"A flow node must be a function, an input, a flow or a stream"
+				)
+			}
 			const base = options.name ?? (is_stream(ref)
 				? "stream"
 				: kind == "flow"
 					? "flow"
 					: ref.name || (kind == "task" ? "node" : "input"))
-			if (typeof base != "string" || !base || base.includes(".") || base == "__proto__") throw TypeError(
-				`Flow node name must be a non-empty string without ".", other than "__proto__": ${String(base)}`
-			)
+			if (typeof base != "string" || !base || base.includes(".") || base == "__proto__") {
+				throw TypeError(
+					`Flow node name must be a non-empty string without ".", other than "__proto__": ${String(base)}`
+				)
+			}
 			const added = refs.get(ref)
 			const replacing = added != null && added < count && /** @type {DefinitionNode} */(list[added])/**/.auto
 				? added
 				: void 0
-			if (options.name != null && is_taken(base, replacing)) throw Error(
-				`Flow node "${base}" is already defined`
-			)
+			if (options.name != null && is_taken(base, replacing)) {
+				throw Error(
+					`Flow node "${base}" is already defined`
+				)
+			}
 			let name = base
-			for (let i = 2; is_taken(name, replacing); i++) name = base + "_" + i
-			if (added != null && added < count && replacing == null) throw Error(
-				`${describe(ref)} is already added as flow node "${/** @type {DefinitionNode} */(list[added])/**/.name}"`
-			)
+			for (let i = 2; is_taken(name, replacing); i++) {
+				name = base + "_" + i
+			}
+			if (added != null && added < count && replacing == null) {
+				throw Error(
+					`${describe(ref)} is already added as flow node "${/** @type {DefinitionNode} */(list[added])/**/.name}"`
+				)
+			}
 			for (const dep of deps) {
-				if (Array.isArray(dep)) throw TypeError(
-					`Pass the dependencies of flow node "${name}" as separate arguments, not as an array: add(node, a, b)`
-				)
-				if (!is_ref(to_ref(dep))) throw TypeError(
-					`The dependencies of flow node "${name}" must be functions, inputs, flows or streams`
-				)
+				if (Array.isArray(dep)) {
+					throw TypeError(
+						`Pass the dependencies of flow node "${name}" as separate arguments, not as an array: add(node, a, b)`
+					)
+				}
+				if (!is_ref(to_ref(dep))) {
+					throw TypeError(
+						`The dependencies of flow node "${name}" must be functions, inputs, flows or streams`
+					)
+				}
 			}
 			const allowed = kind == "input" ? input_option_keys : node_option_keys
 			for (const key of Object.keys(options)) {
-				if (!allowed.has(key)) throw TypeError(
-					`Unknown option "${key}" for ${kind == "input" ? "input" : "flow"} node "${name}"`
+				if (!allowed.has(key)) {
+					throw TypeError(
+						`Unknown option "${key}" for ${kind == "input" ? "input" : "flow"} node "${name}"`
+					)
+				}
+			}
+			if (options.catch != null && typeof options.catch != "function") {
+				throw TypeError(
+					`The catch of flow node "${name}" must be a function`
 				)
 			}
-			if (options.catch != null && typeof options.catch != "function") throw TypeError(
-				`The catch of flow node "${name}" must be a function`
-			)
-			if (options.release != null && typeof options.release != "function") throw TypeError(
-				`The release of flow node "${name}" must be a function`
-			)
-			if (options.when != null && typeof options.when != "function") throw TypeError(
-				`The when of flow node "${name}" must be a function`
-			)
-			if (options.finish != null && typeof options.finish != "boolean") throw TypeError(
-				`The finish of flow node "${name}" must be a boolean`
-			)
-			if (options.optional != null && typeof options.optional != "boolean") throw TypeError(
-				`The optional of flow node "${name}" must be a boolean`
-			)
-			if (options.catch != null && options.fallback != null) throw TypeError(
-				`Flow node "${name}" cannot have both catch and fallback`
-			)
-			if (options.optional && (options.catch != null || options.fallback != null)) throw TypeError(
-				`Flow node "${name}" cannot be optional with catch or fallback, which handle the failure instead`
-			)
-			if (!to_array(options.fallback).every(is_ref)) throw TypeError(
-				`The fallback of flow node "${name}" must be functions, inputs, flows or streams`
-			)
-			if (to_array(options.fallback).includes(ref)) throw TypeError(
-				`The fallback of flow node "${name}" cannot be the node itself, which would fail again`
-			)
-			if (options.join != null && !joins.has(options.join)) throw TypeError(
-				`The join of flow node "${name}" must be "all", "any" or "race"`
-			)
-			if (options.join != null && !deps.length) throw TypeError(
-				`The join of flow node "${name}" needs dependencies to join`
-			)
-			if (options.concurrency != null && !ref[EACH]) throw TypeError(
-				`The concurrency of flow node "${name}" applies only to flow.each(): use flow({ concurrency }) for nodes`
-			)
-			if (options.concurrency != null && !is_count(options.concurrency)) throw TypeError(
-				`The concurrency of flow node "${name}" must be a positive integer or Infinity`
-			)
-			if (options.retry != null && !is_retry(options.retry)) throw TypeError(
-				`The retry of flow node "${name}" must be a count or { count, delay, when }`
-			)
-			if (options.overlap != null && !overlaps.has(options.overlap)) throw TypeError(
-				`The overlap of flow node "${name}" must be "restart", "ignore", "rerun" or "queue"`
-			)
+			if (options.release != null && typeof options.release != "function") {
+				throw TypeError(
+					`The release of flow node "${name}" must be a function`
+				)
+			}
+			if (options.when != null && typeof options.when != "function") {
+				throw TypeError(
+					`The when of flow node "${name}" must be a function`
+				)
+			}
+			if (options.finish != null && typeof options.finish != "boolean") {
+				throw TypeError(
+					`The finish of flow node "${name}" must be a boolean`
+				)
+			}
+			if (options.optional != null && typeof options.optional != "boolean") {
+				throw TypeError(
+					`The optional of flow node "${name}" must be a boolean`
+				)
+			}
+			if (options.catch != null && options.fallback != null) {
+				throw TypeError(
+					`Flow node "${name}" cannot have both catch and fallback`
+				)
+			}
+			if (options.optional && (options.catch != null || options.fallback != null)) {
+				throw TypeError(
+					`Flow node "${name}" cannot be optional with catch or fallback, which handle the failure instead`
+				)
+			}
+			if (!to_array(options.fallback).every(is_ref)) {
+				throw TypeError(
+					`The fallback of flow node "${name}" must be functions, inputs, flows or streams`
+				)
+			}
+			if (to_array(options.fallback).includes(ref)) {
+				throw TypeError(
+					`The fallback of flow node "${name}" cannot be the node itself, which would fail again`
+				)
+			}
+			if (options.join != null && !joins.has(options.join)) {
+				throw TypeError(
+					`The join of flow node "${name}" must be "all", "any" or "race"`
+				)
+			}
+			if (options.join != null && !deps.length) {
+				throw TypeError(
+					`The join of flow node "${name}" needs dependencies to join`
+				)
+			}
+			if (options.concurrency != null && !ref[EACH]) {
+				throw TypeError(
+					`The concurrency of flow node "${name}" applies only to flow.each(): use flow({ concurrency }) for nodes`
+				)
+			}
+			if (options.concurrency != null && !is_count(options.concurrency)) {
+				throw TypeError(
+					`The concurrency of flow node "${name}" must be a positive integer or Infinity`
+				)
+			}
+			if (options.retry != null && !is_retry(options.retry)) {
+				throw TypeError(
+					`The retry of flow node "${name}" must be a count or { count, delay, when }`
+				)
+			}
+			if (options.overlap != null && !overlaps.has(options.overlap)) {
+				throw TypeError(
+					`The overlap of flow node "${name}" must be "restart", "ignore", "rerun" or "queue"`
+				)
+			}
 			const queues = deps.some(
 				dep => /** @type {{ policy?: string }} */(/** @type {unknown} */(dep))/**/?.policy == "queue"
 			)
-			if (options.limit != null && options.overlap != "queue" && !queues) throw TypeError(
-				`The limit of flow node "${name}" applies only to overlap: "queue" or a flow.queue() dependency`
-			)
-			if (options.limit != null && !is_count(options.limit)) throw TypeError(
-				`The limit of flow node "${name}" must be a positive integer or Infinity`
-			)
-			if (options.overflow != null && options.overflow != "drop" && options.overflow != "wait") throw TypeError(
-				`The overflow of flow node "${name}" must be "drop" or "wait"`
-			)
-			if (options.overflow != null && options.limit == null) throw TypeError(
-				`The overflow of flow node "${name}" needs a limit`
-			)
-			if (options.overflow == "wait" && !deps.some(dep => is_stream(to_ref(dep)))) throw TypeError(
-				`The overflow "wait" of flow node "${name}" needs a stream dependency to stop reading`
-			)
-			if (options.timeout != null && !(typeof options.timeout == "number" && options.timeout > 0)) throw TypeError(
-				`The timeout of flow node "${name}" must be a positive number of milliseconds`
-			)
+			if (options.limit != null && options.overlap != "queue" && !queues) {
+				throw TypeError(
+					`The limit of flow node "${name}" applies only to overlap: "queue" or a flow.queue() dependency`
+				)
+			}
+			if (options.limit != null && !is_count(options.limit)) {
+				throw TypeError(
+					`The limit of flow node "${name}" must be a positive integer or Infinity`
+				)
+			}
+			if (options.overflow != null && options.overflow != "drop" && options.overflow != "wait") {
+				throw TypeError(
+					`The overflow of flow node "${name}" must be "drop" or "wait"`
+				)
+			}
+			if (options.overflow != null && options.limit == null) {
+				throw TypeError(
+					`The overflow of flow node "${name}" needs a limit`
+				)
+			}
+			if (options.overflow == "wait" && !deps.some(dep => is_stream(to_ref(dep)))) {
+				throw TypeError(
+					`The overflow "wait" of flow node "${name}" needs a stream dependency to stop reading`
+				)
+			}
+			if (options.timeout != null && !(typeof options.timeout == "number" && options.timeout > 0)) {
+				throw TypeError(
+					`The timeout of flow node "${name}" must be a positive number of milliseconds`
+				)
+			}
 			const shared = list.length == count
 			const next_list = shared ? list : list.slice(0, count)
 			const next_names = shared ? names : /** @type {Map<string, number>} */(new Map())/**/
@@ -288,14 +348,18 @@ export function create_builder(definition) {
 			/** @type {string[]} */
 			const stack = []
 			for (const node of program.nodes) {
-				if (program.incoming.has(node.name)) continue
+				if (program.incoming.has(node.name)) {
+					continue
+				}
 				reachable.add(node.name)
 				stack.push(node.name)
 			}
 			while (stack.length) {
 				const name = /** @type {string} */(stack.pop())/**/
 				for (const target of program.transitions.get(name) ?? []) {
-					if (reachable.has(target)) continue
+					if (reachable.has(target)) {
+						continue
+					}
 					reachable.add(target)
 					stack.push(target)
 				}
@@ -307,27 +371,36 @@ export function create_builder(definition) {
 					node => `Flow node "${node.name}" never starts: it does not run with the flow, and no node that runs goes to it`
 				)
 			for (const node of program.nodes) {
-				if (node.options.join != "race") continue
+				if (node.options.join != "race") {
+					continue
+				}
 				for (const dep of node.deps) {
 					const stream = find_stream(program, dep)
-					if (stream == dep) problems.push(
-						`Flow node "${node.name}" races the stream "${dep}", so the race ends with its first value`
-					)
-					else if (stream != null) problems.push(
-						`Flow node "${node.name}" races "${dep}", which runs again for every value of the stream "${stream}", so the race ends with its first value`
-					)
+					if (stream == dep) {
+						problems.push(
+							`Flow node "${node.name}" races the stream "${dep}", so the race ends with its first value`
+						)
+					} else if (stream != null) {
+						problems.push(
+							`Flow node "${node.name}" races "${dep}", which runs again for every value of the stream "${stream}", so the race ends with its first value`
+						)
+					}
 				}
 			}
 			/** @type {Set<string>} */
 			const racing = new Set()
 			for (const node of program.nodes) {
-				if (node.options.join != "race") continue
+				if (node.options.join != "race") {
+					continue
+				}
 				/** @type {Set<string>} */
 				const seen = new Set()
 				const region = [ ...node.deps ]
 				while (region.length) {
 					const name = /** @type {string} */(region.pop())/**/
-					if (name == node.name || seen.has(name)) continue
+					if (name == node.name || seen.has(name)) {
+						continue
+					}
 					seen.add(name)
 					racing.add(name)
 					region.push(
@@ -337,9 +410,11 @@ export function create_builder(definition) {
 				}
 			}
 			for (const node of program.nodes) {
-				if (node.options.finish && !racing.has(node.name)) problems.push(
-					`Flow node "${node.name}" has finish, but no race can abandon it`
-				)
+				if (node.options.finish && !racing.has(node.name)) {
+					problems.push(
+						`Flow node "${node.name}" has finish, but no race can abandon it`
+					)
+				}
 			}
 			check_snapshot_names(program, "", problems)
 			return problems
@@ -350,12 +425,16 @@ export function create_builder(definition) {
 		 * @param {EdgeSelect=} select
 		 */
 		edge(from, to, select) {
-			if (!is_ref(from)) throw TypeError(
-				"An edge must start from a function, an input, a flow or a stream"
-			)
-			if (definition.edges.some(edge => edge.from == from)) throw Error(
-				`The edge from ${describe(from)} is already defined`
-			)
+			if (!is_ref(from)) {
+				throw TypeError(
+					"An edge must start from a function, an input, a flow or a stream"
+				)
+			}
+			if (definition.edges.some(edge => edge.from == from)) {
+				throw Error(
+					`The edge from ${describe(from)} is already defined`
+				)
+			}
 			/** @type {DefinitionEdge} */
 			let edge
 			const is_map = !!to && typeof to == "object" && !Array.isArray(to) && !is_ref(to) && Object.values(to).every(is_ref)
@@ -370,9 +449,11 @@ export function create_builder(definition) {
 					targets: [ ...new Set(Object.values(map)) ]
 				}
 			} else if (typeof select == "function") {
-				if (!Array.isArray(to) || !to.every(is_ref)) throw TypeError(
-					`The edge from ${describe(from)} must list its targets, or map keys to them`
-				)
+				if (!Array.isArray(to) || !to.every(is_ref)) {
+					throw TypeError(
+						`The edge from ${describe(from)} must list its targets, or map keys to them`
+					)
+				}
 				edge = {
 					from,
 					labels: to.map(target => [ "", target ]),
@@ -380,14 +461,15 @@ export function create_builder(definition) {
 					select,
 					targets: [ ...to ]
 				}
-			} else if (is_ref(to)) edge = {
-				from,
-				labels: [ [ "", to ] ],
-				map: void 0,
-				select: () => to,
-				targets: [ to ]
-			}
-			else if (Array.isArray(to) && to.every(is_ref)) {
+			} else if (is_ref(to)) {
+				edge = {
+					from,
+					labels: [ [ "", to ] ],
+					map: void 0,
+					select: () => to,
+					targets: [ to ]
+				}
+			} else if (Array.isArray(to) && to.every(is_ref)) {
 				edge = {
 					from,
 					labels: to.map(target => [ "", target ]),
@@ -405,9 +487,11 @@ export function create_builder(definition) {
 					select: result => [ result ],
 					targets: [ ...new Set(Object.values(map)) ]
 				}
-			} else throw TypeError(
-				`Invalid edge from ${describe(from)}`
-			)
+			} else {
+				throw TypeError(
+					`Invalid edge from ${describe(from)}`
+				)
+			}
 			return create_builder(
 				{
 					...definition,
@@ -441,34 +525,47 @@ export function create_builder(definition) {
 				const label = escape(
 					marks.length ? `${node.name} (${marks.join(", ")})` : node.name
 				)
-				if (node.each) lines.push(
-					`\t${id}@{ shape: procs, label: "${label}" }`
-				)
-				else if (node.kind == "input") lines.push(`\t${id}[/"${label}"/]`)
-				else if (node.kind == "flow") lines.push(`\t${id}[["${label}"]]`)
-				else lines.push(`\t${id}["${label}"]`)
+				if (node.each) {
+					lines.push(
+						`\t${id}@{ shape: procs, label: "${label}" }`
+					)
+				} else if (node.kind == "input") {
+					lines.push(`\t${id}[/"${label}"/]`)
+				} else if (node.kind == "flow") {
+					lines.push(`\t${id}[["${label}"]]`)
+				} else {
+					lines.push(`\t${id}["${label}"]`)
+				}
 			}
 			/** @type {[string, string, string][]} */
 			const arrows = []
 			for (const [ from, edge ] of program.edges) {
-				for (const [ label, target ] of edge.labels) arrows.push([ from, label, target ])
+				for (const [ label, target ] of edge.labels) {
+					arrows.push([ from, label, target ])
+				}
 			}
 			for (const node of program.nodes) {
-				for (const target of node.fallback) arrows.push(
-					[ node.name, "fallback", target ]
-				)
+				for (const target of node.fallback) {
+					arrows.push(
+						[ node.name, "fallback", target ]
+					)
+				}
 			}
 			/** @type {Set<string>} */
 			const links = new Set()
-			for (const [ from, , target ] of arrows) links.add(from + "\n" + target)
+			for (const [ from, , target ] of arrows) {
+				links.add(from + "\n" + target)
+			}
 			for (const node of program.nodes) {
 				for (const dep of node.deps) {
 					const arrive = node.arrive?.[dep]
-					if (!links.has(dep + "\n" + node.name)) lines.push(
-						arrive
-							? `\t${ids.get(dep)} -->|"${arrive}"| ${ids.get(node.name)}`
-							: `\t${ids.get(dep)} --> ${ids.get(node.name)}`
-					)
+					if (!links.has(dep + "\n" + node.name)) {
+						lines.push(
+							arrive
+								? `\t${ids.get(dep)} -->|"${arrive}"| ${ids.get(node.name)}`
+								: `\t${ids.get(dep)} --> ${ids.get(node.name)}`
+						)
+					}
 				}
 			}
 			for (const [ from, label, target ] of arrows) {
@@ -487,7 +584,9 @@ export function create_builder(definition) {
 		 */
 		run(state, options) {
 			for (const key of Object.keys(options ?? {})) {
-				if (!run_option_keys.has(key)) throw TypeError(`Unknown run option "${key}"`)
+				if (!run_option_keys.has(key)) {
+					throw TypeError(`Unknown run option "${key}"`)
+				}
 			}
 			return start_run(
 				compile(definition),
@@ -508,11 +607,17 @@ function find_stream(program, name) {
 	const stack = [ name ]
 	while (stack.length) {
 		const current = /** @type {string} */(stack.pop())/**/
-		if (seen.has(current)) continue
+		if (seen.has(current)) {
+			continue
+		}
 		seen.add(current)
 		const node = program.node_of(current)
-		if (node?.source) return current
-		if (node) stack.push(...node.deps)
+		if (node?.source) {
+			return current
+		}
+		if (node) {
+			stack.push(...node.deps)
+		}
 	}
 	return void 0
 }

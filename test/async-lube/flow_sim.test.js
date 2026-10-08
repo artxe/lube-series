@@ -39,14 +39,16 @@ describe(
 							`SIM_MODE=${mode} SIM_SEED=${seed}`,
 							simulate_flow(seed, mode, unhandled)
 						)
-						if (problems.length) failures.push(
-							[
-								`SIM_MODE=${mode} SIM_SEED=${seed}`,
-								...problems,
-								...nodes,
-								...log
-							].join("\n")
-						)
+						if (problems.length) {
+							failures.push(
+								[
+									`SIM_MODE=${mode} SIM_SEED=${seed}`,
+									...problems,
+									...nodes,
+									...log
+								].join("\n")
+							)
+						}
 					}
 					assert.deepEqual(
 						{

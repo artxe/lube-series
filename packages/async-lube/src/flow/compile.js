@@ -15,7 +15,9 @@ const programs = new WeakMap()
  */
 export function compile(definition) {
 	const cached = programs.get(definition)
-	if (cached) return cached
+	if (cached) {
+		return cached
+	}
 	const source_nodes = definition.list.slice(0, definition.count)
 	/** @type {Map<unknown, string>} */
 	const by_ref = new Map(
@@ -42,9 +44,11 @@ export function compile(definition) {
 	 */
 	function resolve(target, message) {
 		const name = name_of(target)
-		if (name == null) throw Error(
-			message.replace("%s", describe(target))
-		)
+		if (name == null) {
+			throw Error(
+				message.replace("%s", describe(target))
+			)
+		}
 		return name
 	}
 	/**
@@ -55,7 +59,9 @@ export function compile(definition) {
 		/** @type {Record<string, "keep" | "queue" | "restart"> | undefined} */
 		let arrive
 		for (const dep of node.deps) {
-			if (!/** @type {RefProbe} */(dep)/**/?.[ARRIVE]) continue
+			if (!/** @type {RefProbe} */(dep)/**/?.[ARRIVE]) {
+				continue
+			}
 			(arrive ??= Object.create(null))[resolve(
 				to_ref(dep),
 				`Flow node "${node.name}" depends on %s, which is not added`
@@ -100,7 +106,9 @@ export function compile(definition) {
 		for (const dep of node.deps) {
 			const source = /** @type {ProgramNode} */(nodes_by_name.get(dep))/**/
 			source.dependents.push(node.name)
-			if (node.arrive?.[dep] == "queue") source.queuers.push(node.name)
+			if (node.arrive?.[dep] == "queue") {
+				source.queuers.push(node.name)
+			}
 		}
 	}
 	/** @type {Map<string, number>} */
@@ -108,7 +116,9 @@ export function compile(definition) {
 	/** @type {string[]} */
 	const sorted = []
 	for (const root of nodes) {
-		if (marks.has(root.name)) continue
+		if (marks.has(root.name)) {
+			continue
+		}
 		marks.set(root.name, 1)
 		const path = [ root.name ]
 		const cursors = [ 0 ]
@@ -127,10 +137,14 @@ export function compile(definition) {
 			cursors[top] = cursor + 1
 			const dep = /** @type {string} */(node.deps[cursor])/**/
 			const mark = marks.get(dep)
-			if (mark == 2) continue
-			if (mark == 1) throw Error(
-				`Circular dependency: ${[ ...path.slice(path.indexOf(dep)), dep ].join(" -> ")}`
-			)
+			if (mark == 2) {
+				continue
+			}
+			if (mark == 1) {
+				throw Error(
+					`Circular dependency: ${[ ...path.slice(path.indexOf(dep)), dep ].join(" -> ")}`
+				)
+			}
 			marks.set(dep, 1)
 			path.push(dep)
 			cursors.push(0)
@@ -144,13 +158,17 @@ export function compile(definition) {
 	 */
 	function downstream_of(name) {
 		let found = downstream.get(name)
-		if (found) return found
+		if (found) {
+			return found
+		}
 		found = new Set()
 		const stack = [ name ]
 		while (stack.length) {
 			const current = /** @type {string} */(stack.pop())/**/
 			for (const dependent of /** @type {ProgramNode} */(nodes_by_name.get(current))/**/.dependents) {
-				if (found.has(dependent)) continue
+				if (found.has(dependent)) {
+					continue
+				}
 				found.add(dependent)
 				stack.push(dependent)
 			}

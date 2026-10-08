@@ -24,7 +24,9 @@ function hash(value) {
 function hash_candidates(groups, value) {
 	const key = hash(value)
 	const bucket = groups.weak.get(key)
-	if (!bucket || bucket.length <= 8) return bucket ?? []
+	if (!bucket || bucket.length <= 8) {
+		return bucket ?? []
+	}
 	let split = groups.strong.get(key)
 	if (!split) {
 		split = new Map()
@@ -66,7 +68,9 @@ function hash_groups(values) {
  */
 function hash_items(items, length) {
 	let result = length
-	for (let i = 0; i < length && i < items_cap; i++) result = Math.imul(result, 31) + hash_value(items[i], 0) | 0
+	for (let i = 0; i < length && i < items_cap; i++) {
+		result = Math.imul(result, 31) + hash_value(items[i], 0) | 0
+	}
 	return result
 }
 /**
@@ -88,10 +92,12 @@ function hash_object(value, budget) {
 			budget / Math.min(length, items_cap)
 		)
 		result = length
-		for (let i = 0; i < length && i < items_cap; i++) result = Math.imul(result, 31) + hash_value(
+		for (let i = 0; i < length && i < items_cap; i++) {
+			result = Math.imul(result, 31) + hash_value(
 			/** @type {unknown[]} */(value)/**/[i],
-			share
-		) | 0
+				share
+			) | 0
+		}
 		return result
 	}
 	case "ArrayBuffer":
@@ -137,14 +143,18 @@ function hash_object(value, budget) {
 		)
 	case "Map": {
 		const size = /** @type {Map<unknown, unknown>} */(value)/**/.size
-		if (size > size_cap) return size
+		if (size > size_cap) {
+			return size
+		}
 		const share = Math.floor(budget / (size * 2))
 		for (const [ key, item ] of map_entries.call(
 			/** @type {Map<unknown, unknown>} */(value)/**/
-		)) result = result + mix(
-			hash_value(key, share),
-			hash_value(item, share)
-		) | 0
+		)) {
+			result = result + mix(
+				hash_value(key, share),
+				hash_value(item, share)
+			) | 0
+		}
 		return result
 	}
 	case "Number":
@@ -154,15 +164,19 @@ function hash_object(value, budget) {
 		)
 	case "Object": {
 		const names = keys(value)
-		if (names.length > size_cap) return names.length
+		if (names.length > size_cap) {
+			return names.length
+		}
 		const share = Math.floor(budget / names.length)
-		for (const key of names) result = result + mix(
-			hash_value(key, 0),
-			hash_value(
+		for (const key of names) {
+			result = result + mix(
+				hash_value(key, 0),
+				hash_value(
 				/** @type {Record<PropertyKey, unknown>} */(value)/**/[key],
-				share
-			)
-		) | 0
+					share
+				)
+			) | 0
+		}
 		return result
 	}
 	case "RegExp":
@@ -172,11 +186,15 @@ function hash_object(value, budget) {
 		)
 	case "Set": {
 		const size = /** @type {Set<unknown>} */(value)/**/.size
-		if (size > size_cap) return size
+		if (size > size_cap) {
+			return size
+		}
 		const share = Math.floor(budget / size)
 		for (const item of set_values.call(
 			/** @type {Set<unknown>} */(value)/**/
-		)) result = result + mix(hash_value(item, share), 0) | 0
+		)) {
+			result = result + mix(hash_value(item, share), 0) | 0
+		}
 		return result
 	}
 	case "String":
@@ -204,12 +222,18 @@ function hash_value(value, budget) {
 	case "boolean":
 		return value ? 1 : 2
 	case "number":
-		if ((value | 0) === value) return value | 0
-		if (Number.isNaN(value)) return 3
+		if ((value | 0) === value) {
+			return value | 0
+		}
+		if (Number.isNaN(value)) {
+			return 3
+		}
 		float[0] = value
 		return /** @type {number} */(float_words[0])/**/ ^ /** @type {number} */(float_words[1])/**/
 	case "object":
-		if (value === null) return 4
+		if (value === null) {
+			return 4
+		}
 		return budget > 0
 			? hash_object(value, budget - 1)
 			: 5
@@ -219,7 +243,9 @@ function hash_value(value, budget) {
 			? 1
 			: (length >>> 5) + 1
 		let result = length
-		for (let i = 0; i < length; i += step) result = Math.imul(result, 31) + value.charCodeAt(i) | 0
+		for (let i = 0; i < length; i += step) {
+			result = Math.imul(result, 31) + value.charCodeAt(i) | 0
+		}
 		return result
 	}
 	default:

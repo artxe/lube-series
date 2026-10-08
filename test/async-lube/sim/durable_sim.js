@@ -97,7 +97,9 @@ export async function simulate_durable(seed, options, unhandled) {
 	 * @returns {void}
 	 */
 	function read_fault(what) {
-		if (!options.reads || !fail_rate || !random.chance(fail_rate)) return
+		if (!options.reads || !fail_rate || !random.chance(fail_rate)) {
+			return
+		}
 		say(`${what} failed`)
 		throw Error("disk busy")
 	}
@@ -213,11 +215,15 @@ export async function simulate_durable(seed, options, unhandled) {
 								attempts.set(id, attempt)
 								const list = active.get(key) ?? []
 								active.set(key, list)
-								if (signal.aborted) zombies++
+								if (signal.aborted) {
+									zombies++
+								}
 								const live = signal.aborted ? [] : list.filter(other => !other.signal.aborted)
-								if (live.length) problems.push(
-									`two live step bodies for ${key}: ${live.map(other => `${other.worker}/${other.name}`).join(",")} and ${worker}/${n} at ${since(time())}`
-								)
+								if (live.length) {
+									problems.push(
+										`two live step bodies for ${key}: ${live.map(other => `${other.worker}/${other.name}`).join(",")} and ${worker}/${n} at ${since(time())}`
+									)
+								}
 								/** @type {DurableSimBody} */
 								const running = { name: n, signal, worker }
 								list.push(running)
@@ -230,7 +236,9 @@ export async function simulate_durable(seed, options, unhandled) {
 											resolve => setTimeout(resolve, ms)
 										)
 									}
-									if (fail != "none" && attempt == 1) throw step_error(kind, n)
+									if (fail != "none" && attempt == 1) {
+										throw step_error(kind, n)
+									}
 									return `${n}#${attempt}`
 								} finally {
 									list.splice(list.indexOf(running), 1)
@@ -243,9 +251,11 @@ export async function simulate_durable(seed, options, unhandled) {
 							out.push(`step ${n} ${await body()}`)
 						} catch (error) {
 							const expected = error_shape(step_error(kind, n))
-							if (error instanceof Error && error.message == `fail ${n}` && error_shape(error) != expected) problems.push(
-								`${key}: ${worker} caught ${n} as ${error_shape(error)}, not ${expected}`
-							)
+							if (error instanceof Error && error.message == `fail ${n}` && error_shape(error) != expected) {
+								problems.push(
+									`${key}: ${worker} caught ${n} as ${error_shape(error)}, not ${expected}`
+								)
+							}
 							out.push(
 								`caught ${n} ${error instanceof Error ? error.message : String(error)}`
 							)
@@ -253,7 +263,9 @@ export async function simulate_durable(seed, options, unhandled) {
 								await step(`comp-${n}`, () => `undo ${n}`)
 							)
 						}
-					} else out.push(`step ${n} ${await body()}`)
+					} else {
+						out.push(`step ${n} ${await body()}`)
+					}
 				} else if (op.t == "sleep") {
 					await sleep(op.n, op.ms)
 					out.push(`slept ${op.n}`)
@@ -261,13 +273,19 @@ export async function simulate_durable(seed, options, unhandled) {
 					try {
 						/** @type {{ timeout?: number, until?: number }} */
 						const wait_options = {}
-						if (op.timeout != null) wait_options.timeout = op.timeout
-						if (op.until != null) wait_options.until = op.until
+						if (op.timeout != null) {
+							wait_options.timeout = op.timeout
+						}
+						if (op.until != null) {
+							wait_options.until = op.until
+						}
 						out.push(
 							`got ${op.n} ${await wait(op.name, wait_options)}`
 						)
 					} catch (error) {
-						if (!(error instanceof TimeoutError)) throw error
+						if (!(error instanceof TimeoutError)) {
+							throw error
+						}
 						out.push(`timeout ${op.n}`)
 					}
 				}
@@ -323,9 +341,11 @@ export async function simulate_durable(seed, options, unhandled) {
 				}
 			).catch(
 				error => {
-					if (created.alive) problems.push(
-						`serve of ${id} rejected ${message_of(error)}`
-					)
+					if (created.alive) {
+						problems.push(
+							`serve of ${id} rejected ${message_of(error)}`
+						)
+					}
 				}
 			)
 		}
@@ -335,7 +355,9 @@ export async function simulate_durable(seed, options, unhandled) {
 		return created
 	}
 	const worker_count = 2 + random.int(2)
-	for (let i = 0; i < worker_count; i++) workers.push(spawn(false))
+	for (let i = 0; i < worker_count; i++) {
+		workers.push(spawn(false))
+	}
 	/** @type {DurableSimSent[]} */
 	const sent = []
 	/** @type {Map<string, Promise<void>>} */
@@ -363,9 +385,11 @@ export async function simulate_durable(seed, options, unhandled) {
 			error => {
 				const failed = error instanceof Error ? /^fail (s\d+)$/.exec(error.message) : null
 				const op = failed && program(key).ops.find(item => item.n == failed[1])
-				if (op && op.t == "step" && error_shape(error) != error_shape(step_error(op.error, op.n))) problems.push(
-					`${key}: ${how} rejected ${error_shape(error)}, not ${error_shape(step_error(op.error, op.n))}`
-				)
+				if (op && op.t == "step" && error_shape(error) != error_shape(step_error(op.error, op.n))) {
+					problems.push(
+						`${key}: ${how} rejected ${error_shape(error)}, not ${error_shape(step_error(op.error, op.n))}`
+					)
+				}
 				list.push(
 					{
 						how,
@@ -486,20 +510,28 @@ export async function simulate_durable(seed, options, unhandled) {
 	}
 	fail_rate = 0
 	say("failures off")
-	if (!alive().some(worker => worker.serve)) workers.push(spawn(true))
+	if (!alive().some(worker => worker.serve)) {
+		workers.push(spawn(true))
+	}
 	await advance(1000)
 	let settled = false
 	void Promise.all(chains.values()).then(() => void (settled = true))
-	for (let i = 0; i < 30 && !settled; i++) await advance(60000)
-	if (!settled) problems.push(
-		`send hangs: ${sent.filter(item => item.start >= 0 && item.end == null).map(item => `${item.key}/${item.name}/${item.id}`)
-			.join(",")}`
-	)
+	for (let i = 0; i < 30 && !settled; i++) {
+		await advance(60000)
+	}
+	if (!settled) {
+		problems.push(
+			`send hangs: ${sent.filter(item => item.start >= 0 && item.end == null).map(item => `${item.key}/${item.name}/${item.id}`)
+				.join(",")}`
+		)
+	}
 	for (let round = 0; round < 40; round++) {
 		let open = 0
 		for (const key of keys) {
 			const saved = await base.get(key)
-			if (saved && (saved.status == "done" || saved.status == "cancelled")) continue
+			if (saved && (saved.status == "done" || saved.status == "cancelled")) {
+				continue
+			}
 			open++
 			if (!saved || saved.status == "failed" || saved.status == "pending") {
 				const worker = random.pick(alive())
@@ -516,7 +548,9 @@ export async function simulate_durable(seed, options, unhandled) {
 			for (const entry of saved.journal) {
 				if (entry.type != "wait" || entry.done || saved.events?.[entry.name]?.length || saved.inbox?.some(
 					item => item.name == entry.name
-				)) continue
+				)) {
+					continue
+				}
 				const id = `v${last_value++}`
 				/** @type {DurableSimSent} */
 				const item = {
@@ -535,7 +569,9 @@ export async function simulate_durable(seed, options, unhandled) {
 				)
 				let sending = true
 				const sent_final = worker.durable.send(key, entry.name, id).finally(() => void (sending = false))
-				for (let tick = 0; tick < 600 && sending; tick++) await advance(100)
+				for (let tick = 0; tick < 600 && sending; tick++) {
+					await advance(100)
+				}
 				if (sending) {
 					problems.push(
 						`${key}: final send ${id} hangs`
@@ -552,7 +588,9 @@ export async function simulate_durable(seed, options, unhandled) {
 				item.end = time()
 			}
 		}
-		if (!open) break
+		if (!open) {
+			break
+		}
 		const ms = random.pick([ 1000, 60000, 86400000 ])
 		say(`advance ${ms}`)
 		await advance(ms)
@@ -565,37 +603,53 @@ export async function simulate_durable(seed, options, unhandled) {
 			problems.push(`${key}: no run`)
 			continue
 		}
-		if (saved.status != "done" && saved.status != "cancelled") problems.push(
-			`${key}: final status ${saved.status} ${JSON.stringify(saved.error)} journal=${JSON.stringify(saved.journal.map(entry => [ entry.name, entry.done ]))}`
-		)
-		if (saved.status == "cancelled" && !cancelled.has(key)) problems.push(
-			`${key}: cancelled without cancel`
-		)
+		if (saved.status != "done" && saved.status != "cancelled") {
+			problems.push(
+				`${key}: final status ${saved.status} ${JSON.stringify(saved.error)} journal=${JSON.stringify(saved.journal.map(entry => [ entry.name, entry.done ]))}`
+			)
+		}
+		if (saved.status == "cancelled" && !cancelled.has(key)) {
+			problems.push(
+				`${key}: cancelled without cancel`
+			)
+		}
 		/** @type {{ id: string, index: number }[]} */
 		const consumed = []
 		saved.journal.forEach(
 			(entry, index) => {
-				if (entry.type == "wait" && entry.done && !entry.timed_out) consumed.push(
-					{ id: String(entry.value), index }
-				)
+				if (entry.type == "wait" && entry.done && !entry.timed_out) {
+					consumed.push(
+						{ id: String(entry.value), index }
+					)
+				}
 			}
 		)
 		/** @type {Set<string>} */
 		const remaining = new Set()
 		for (const list of Object.values(saved.events ?? {})) {
-			for (const event of list) remaining.add(String(event.value))
+			for (const event of list) {
+				remaining.add(String(event.value))
+			}
 		}
-		for (const item of saved.inbox ?? []) remaining.add(String(item.value))
+		for (const item of saved.inbox ?? []) {
+			remaining.add(String(item.value))
+		}
 		/** @type {Map<string, number>} */
 		const seen = new Map()
-		for (const { id } of consumed) seen.set(id, (seen.get(id) ?? 0) + 1)
+		for (const { id } of consumed) {
+			seen.set(id, (seen.get(id) ?? 0) + 1)
+		}
 		for (const [ id, count ] of seen) {
-			if (count > 1) problems.push(
-				`${key}: value ${id} consumed ${count} times`
-			)
-			if (remaining.has(id)) problems.push(
-				`${key}: value ${id} consumed and still pending`
-			)
+			if (count > 1) {
+				problems.push(
+					`${key}: value ${id} consumed ${count} times`
+				)
+			}
+			if (remaining.has(id)) {
+				problems.push(
+					`${key}: value ${id} consumed and still pending`
+				)
+			}
 		}
 		const mine = sent.filter(item => item.key == key)
 		if (saved.status == "done") {
@@ -605,12 +659,16 @@ export async function simulate_durable(seed, options, unhandled) {
 					: remaining.has(item.id)
 						? "pending"
 						: "lost"
-				if (item.ok && where == "lost") problems.push(
-					`${key}: value ${item.id} sent ok but lost`
-				)
-				if (item.ok === false && where != "lost" && !/disk busy|disk full|connection reset/.test(item.error ?? "")) problems.push(
-					`${key}: value ${item.id} rejected (${item.error}) but ${where}`
-				)
+				if (item.ok && where == "lost") {
+					problems.push(
+						`${key}: value ${item.id} sent ok but lost`
+					)
+				}
+				if (item.ok === false && where != "lost" && !/disk busy|disk full|connection reset/.test(item.error ?? "")) {
+					problems.push(
+						`${key}: value ${item.id} rejected (${item.error}) but ${where}`
+					)
+				}
 			}
 			for (const name of [ "a", "b" ]) {
 				const order = mine.filter(
@@ -619,39 +677,54 @@ export async function simulate_durable(seed, options, unhandled) {
 				const got = consumed.filter(
 					item => saved.journal[item.index]?.name == name
 				).map(item => item.id)
-				if (order.join() != got.join()) problems.push(
-					`${key}/${name}: consumed ${got.join()} but sent ${order.join()}`
-				)
+				if (order.join() != got.join()) {
+					problems.push(
+						`${key}/${name}: consumed ${got.join()} but sent ${order.join()}`
+					)
+				}
 				for (const item of mine) {
-					if (item.name != name || !item.ok || seen.has(item.id)) continue
+					if (item.name != name || !item.ok || seen.has(item.id)) {
+						continue
+					}
 					const later = mine.find(
 						other => other.name == name && seen.has(other.id) && mine.indexOf(other) > mine.indexOf(item)
 					)
-					if (later) problems.push(
-						`${key}/${name}: ${item.id} skipped while the later ${later.id} was consumed`
-					)
+					if (later) {
+						problems.push(
+							`${key}/${name}: ${item.id} skipped while the later ${later.id} was consumed`
+						)
+					}
 				}
 			}
 			for (const { id, index } of consumed) {
 				const item = mine.find(other => other.id == id)
 				const until = saved.journal[index]?.until
-				if (item && until != null && item.start > until) problems.push(
-					`${key}: ${id} sent at ${since(item.start)} after the deadline ${since(until)} satisfied a wait`
-				)
+				if (item && until != null && item.start > until) {
+					problems.push(
+						`${key}: ${id} sent at ${since(item.start)} after the deadline ${since(until)} satisfied a wait`
+					)
+				}
 			}
 			saved.journal.forEach(
 				(entry, index) => {
 					const { until } = entry
-					if (entry.type != "wait" || !entry.timed_out || until == null) return
+					if (entry.type != "wait" || !entry.timed_out || until == null) {
+						return
+					}
 					for (const item of mine) {
-						if (item.name != entry.name || !item.ok || item.end == null || item.end >= until) continue
+						if (item.name != entry.name || !item.ok || item.end == null || item.end >= until) {
+							continue
+						}
 						const taken = consumed.find(other => other.id == item.id)
-						if (!taken) problems.push(
-							`${key}: wait ${entry.name}#${index} timed out at ${since(until)} but ${item.id} sent at ${since(item.end)} is unconsumed`
-						)
-						else if (taken.index > index) problems.push(
-							`${key}: wait ${entry.name}#${index} timed out at ${since(until)} but ${item.id} sent at ${since(item.end)} went to the later wait #${taken.index}`
-						)
+						if (!taken) {
+							problems.push(
+								`${key}: wait ${entry.name}#${index} timed out at ${since(until)} but ${item.id} sent at ${since(item.end)} is unconsumed`
+							)
+						} else if (taken.index > index) {
+							problems.push(
+								`${key}: wait ${entry.name}#${index} timed out at ${since(until)} but ${item.id} sent at ${since(item.end)} went to the later wait #${taken.index}`
+							)
+						}
 					}
 				}
 			)
@@ -666,36 +739,48 @@ export async function simulate_durable(seed, options, unhandled) {
 			const steps = result.filter(
 				line => line.startsWith("step ")
 			)
-			if (steps.join() != expected.join()) problems.push(
-				`${key}: result steps ${steps.join()} but journal ${expected.join()}`
-			)
-			for (const outcome of outcomes.get(key) ?? []) {
-				if (outcome.ok && !outcome.how.startsWith("start") && JSON.stringify(outcome.value) != JSON.stringify(saved.result)) problems.push(
-					`${key}: ${outcome.how} resolved ${JSON.stringify(outcome.value)}, not ${JSON.stringify(saved.result)}`
+			if (steps.join() != expected.join()) {
+				problems.push(
+					`${key}: result steps ${steps.join()} but journal ${expected.join()}`
 				)
+			}
+			for (const outcome of outcomes.get(key) ?? []) {
+				if (outcome.ok && !outcome.how.startsWith("start") && JSON.stringify(outcome.value) != JSON.stringify(saved.result)) {
+					problems.push(
+						`${key}: ${outcome.how} resolved ${JSON.stringify(outcome.value)}, not ${JSON.stringify(saved.result)}`
+					)
+				}
 			}
 		}
 		for (const outcome of outcomes.get(key) ?? []) {
-			if (!outcome.ok && !/worker stopped|disk busy|disk full|connection reset|fail s\d|TimeoutError|CancelError|There is no run/.test(String(outcome.value))) problems.push(
-				`${key}: ${outcome.how} rejected ${String(outcome.value)}`
-			)
+			if (!outcome.ok && !/worker stopped|disk busy|disk full|connection reset|fail s\d|TimeoutError|CancelError|There is no run/.test(String(outcome.value))) {
+				problems.push(
+					`${key}: ${outcome.how} rejected ${String(outcome.value)}`
+				)
+			}
 		}
 	}
-	if (zombies) problems.push(
-		`${zombies} step bodies started after their worker stopped or lost the run`
-	)
+	if (zombies) {
+		problems.push(
+			`${zombies} step bodies started after their worker stopped or lost the run`
+		)
+	}
 	for (const worker of workers) {
 		worker.alive = false
 		worker.serve?.abort()
 		worker.durable.stop()
 	}
 	await advance(60000)
-	if (pending_timers()) problems.push(
-		`${pending_timers()} timers left after every worker stopped`
-	)
-	for (const error of unhandled.splice(0)) problems.push(
-		`unhandled rejection: ${message_of(error)}`
-	)
+	if (pending_timers()) {
+		problems.push(
+			`${pending_timers()} timers left after every worker stopped`
+		)
+	}
+	for (const error of unhandled.splice(0)) {
+		problems.push(
+			`unhandled rejection: ${message_of(error)}`
+		)
+	}
 	return {
 		describe: [ ...programs ].map(
 			([ key, { ops } ]) => `${key}: ${JSON.stringify(ops)}`
@@ -711,11 +796,15 @@ export async function simulate_durable(seed, options, unhandled) {
  */
 function step_error(kind, n) {
 	const message = `fail ${n}`
-	if (kind == "range") return Object.assign(RangeError(message), { code: n })
-	if (kind == "timeout") return Object.assign(
-		new TimeoutError(Number(n.slice(1))),
-		{ message }
-	)
+	if (kind == "range") {
+		return Object.assign(RangeError(message), { code: n })
+	}
+	if (kind == "timeout") {
+		return Object.assign(
+			new TimeoutError(Number(n.slice(1))),
+			{ message }
+		)
+	}
 	return new HttpError(
 		new Response(null, { status: 503 }),
 		{ message, step: n },

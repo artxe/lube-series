@@ -29,7 +29,9 @@ describe(
 				assert.equal(await hash("lube"), 32)
 				const spin = offload(
 					(/** @type {number} */ value) => {
-						if (value) for (;;);
+						if (value) {
+							for (;;) { }
+						}
 						return typeof document
 					},
 					{ concurrency: 2 }

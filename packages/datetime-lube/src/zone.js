@@ -9,7 +9,9 @@ const formatters = new Map()
  * @param {string=} zone
  */
 function check_zone(name, zone) {
-	if (zone === undefined || formatters.has(zone)) return
+	if (zone === undefined || formatters.has(zone)) {
+		return
+	}
 	try {
 		formatter_of(zone)
 	} catch (error) {
@@ -25,9 +27,11 @@ function check_zone(name, zone) {
  * @returns {Date}
  */
 function date_of(fields, zone) {
-	if (zone !== undefined) return new Date(
-		instant_of(wall_of_fields(fields), zone)
-	)
+	if (zone !== undefined) {
+		return new Date(
+			instant_of(wall_of_fields(fields), zone)
+		)
+	}
 	const year = /** @type {number} */(fields[0])/**/
 	if (year >= 0 && year < 100) {
 		const date = new Date(0)
@@ -58,10 +62,14 @@ function date_of(fields, zone) {
  * @returns {number}
  */
 function end_at(wall, end, time, zone) {
-	if (end < time) return wall - offset_in(time, zone) - 1
+	if (end < time) {
+		return wall - offset_in(time, zone) - 1
+	}
 	const next = end + 1
 	const offset = offset_in(next, zone)
-	if (next + offset == wall || offset_in(end, zone) != offset) return end
+	if (next + offset == wall || offset_in(end, zone) != offset) {
+		return end
+	}
 	const transition = transition_of(time, next, zone)
 	return transition + offset_in(transition, zone) >= wall
 		? transition - 1
@@ -73,16 +81,18 @@ function end_at(wall, end, time, zone) {
  * @returns {number[]}
  */
 function fields_of(date, zone) {
-	if (zone === undefined) return [
-		date.getFullYear(),
-		date.getMonth(),
-		date.getDate(),
-		date.getHours(),
-		date.getMinutes(),
-		date.getSeconds(),
-		date.getMilliseconds(),
-		date.getDay()
-	]
+	if (zone === undefined) {
+		return [
+			date.getFullYear(),
+			date.getMonth(),
+			date.getDate(),
+			date.getHours(),
+			date.getMinutes(),
+			date.getSeconds(),
+			date.getMilliseconds(),
+			date.getDay()
+		]
+	}
 	const time = date.getTime()
 	return fields_of_wall(time + offset_of(time, zone))
 }
@@ -92,7 +102,9 @@ function fields_of(date, zone) {
  */
 function formatter_of(zone) {
 	let formatter = formatters.get(zone)
-	if (formatter) return formatter
+	if (formatter) {
+		return formatter
+	}
 	formatter = new Intl.DateTimeFormat(
 		"en-US",
 		{
@@ -105,10 +117,14 @@ function formatter_of(zone) {
 	if (known) {
 		formatter = known
 	} else {
-		if (canonical.size >= 1000) canonical.clear()
+		if (canonical.size >= 1000) {
+			canonical.clear()
+		}
 		canonical.set(name, formatter)
 	}
-	if (formatters.size >= 1000) formatters.clear()
+	if (formatters.size >= 1000) {
+		formatters.clear()
+	}
 	formatters.set(zone, formatter)
 	return formatter
 }
@@ -122,7 +138,9 @@ function instant_of(wall, zone, exact) {
 	const before = offset_of(wall - 86400000, zone)
 	const guess = wall - before
 	const offset = offset_of(guess, zone)
-	if (offset == before) return guess
+	if (offset == before) {
+		return guess
+	}
 	const candidate = wall - offset
 	return offset_of(candidate, zone) == offset
 		? candidate
@@ -155,7 +173,9 @@ function offset_of(time, zone) {
 					: 8.64e15
 		)
 	)
-	if (!match) return 0
+	if (!match) {
+		return 0
+	}
 	return (match[1] == "-" ? -1 : 1) * (
 		(+(match[2] ?? 0) * 60 + +(match[3] ?? 0)) * 60000
 		+ +(match[4] ?? 0) * 1000
@@ -171,8 +191,11 @@ function transition_of(from, to, zone) {
 	const offset = offset_in(to, zone)
 	while (to - from > 1) {
 		const middle = Math.floor((from + to) / 2)
-		if (offset_in(middle, zone) == offset) to = middle
-		else from = middle
+		if (offset_in(middle, zone) == offset) {
+			to = middle
+		} else {
+			from = middle
+		}
 	}
 	return to
 }
@@ -190,11 +213,17 @@ function unit_end(time, ms, zone) {
 	for (;;) {
 		const offset = offset_in(at, zone)
 		const end = (bucket + 1) * ms - offset - 1
-		if (!(end <= 8.64e15)) return NaN
-		if (offset_in(end, zone) == offset) return end
+		if (!(end <= 8.64e15)) {
+			return NaN
+		}
+		if (offset_in(end, zone) == offset) {
+			return end
+		}
 		const transition = transition_of(at, end, zone)
 		const wall = transition + offset_in(transition, zone)
-		if (Math.floor(wall / ms) != bucket || wall <= transition - 1 + offset) return transition - 1
+		if (Math.floor(wall / ms) != bucket || wall <= transition - 1 + offset) {
+			return transition - 1
+		}
 		at = transition
 	}
 }
@@ -212,12 +241,18 @@ function unit_start(time, ms, zone) {
 	for (;;) {
 		const offset = offset_in(at, zone)
 		const start = bucket * ms - offset
-		if (!(start >= -8.64e15)) return NaN
-		if (offset_in(start, zone) == offset) return start
+		if (!(start >= -8.64e15)) {
+			return NaN
+		}
+		if (offset_in(start, zone) == offset) {
+			return start
+		}
 		const transition = transition_of(start, at, zone)
 		const before = transition - 1
 		const wall = before + offset_in(before, zone)
-		if (Math.floor(wall / ms) != bucket || wall >= transition + offset) return transition
+		if (Math.floor(wall / ms) != bucket || wall >= transition + offset) {
+			return transition
+		}
 		at = before
 	}
 }

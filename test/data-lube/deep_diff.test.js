@@ -89,7 +89,9 @@ describe(
 				function deep(value) {
 					/** @type {ReturnType<typeof deep>} */
 					let node = { value }
-					for (let i = 0; i < 100; i++) node = { node }
+					for (let i = 0; i < 100; i++) {
+						node = { node }
+					}
 					return node
 				}
 				assert.lengthOf(deepDiff(deep(1), deep(2)), 1)
@@ -394,7 +396,9 @@ describe(
 				function create(leaf) {
 					/** @type {ReturnType<typeof create>} */
 					let node = { leaf }
-					for (let i = 0; i < 40; i++) node = { left: node, right: node }
+					for (let i = 0; i < 40; i++) {
+						node = { left: node, right: node }
+					}
 					return node
 				}
 				assert.deepEqual(

@@ -36,11 +36,15 @@ const units_of = new Set(
  */
 export default function(date, unit, zone) {
 	const time = time_of("startOf", date)
-	if (!units_of.has(unit)) throw new RangeError(
-		`startOf: Invalid unit "${String(unit)}"`
-	)
+	if (!units_of.has(unit)) {
+		throw new RangeError(
+			`startOf: Invalid unit "${String(unit)}"`
+		)
+	}
 	check_zone("startOf", zone)
-	if (isNaN(time)) return new Date(NaN)
+	if (isNaN(time)) {
+		return new Date(NaN)
+	}
 	const ms = unit_ms[unit]
 	if (ms) {
 		if (zone !== undefined) {
@@ -61,7 +65,9 @@ export default function(date, unit, zone) {
 		if (
 			result.getTimezoneOffset() == date.getTimezoneOffset()
 			&& result.getSeconds() == (ms > 1000 ? 0 : date.getSeconds())
-		) return result
+		) {
+			return result
+		}
 		result.setTime(unit_start(time, ms))
 		return result
 	}
@@ -84,15 +90,23 @@ export default function(date, unit, zone) {
 			0,
 			0
 		)
-		if (result.getTime() <= time && !(result.getHours() || result.getMinutes() || result.getSeconds())) return result
+		if (result.getTime() <= time && !(result.getHours() || result.getMinutes() || result.getSeconds())) {
+			return result
+		}
 	}
 	const fields = fields_of(date, zone)
-	if (unit == "W") fields[2] = /** @type {number} */(fields[2])/**/ - (/** @type {number} */(fields[7])/**/ + 6) % 7
-	for (let i = from; i < 7; i++) fields[i] = i == 2 ? 1 : 0
+	if (unit == "W") {
+		fields[2] = /** @type {number} */(fields[2])/**/ - (/** @type {number} */(fields[7])/**/ + 6) % 7
+	}
+	for (let i = from; i < 7; i++) {
+		fields[i] = i == 2 ? 1 : 0
+	}
 	const wall = wall_of_fields(fields)
 	if (zone !== undefined) {
 		const start = instant_of(wall, zone, true)
-		if (start <= time) return new Date(start)
+		if (start <= time) {
+			return new Date(start)
+		}
 	}
 	const before = offset_in(wall - 86400000, zone)
 	const guess = wall - before
@@ -100,7 +114,9 @@ export default function(date, unit, zone) {
 	const earliest = after == before
 		? wall - offset_in(time, zone)
 		: wall - after
-	if (!(earliest >= -8.64e15)) return new Date(NaN)
+	if (!(earliest >= -8.64e15)) {
+		return new Date(NaN)
+	}
 	return new Date(
 		transition_of(
 			earliest,

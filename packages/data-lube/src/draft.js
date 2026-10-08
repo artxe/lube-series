@@ -47,12 +47,18 @@ function collect(content, kind, found) {
 				? /** @type {number} */(indices[k])/**/
 				: k
 			const child = array[i]
-			if (typeof child == "object" && child !== null) found.push(child, i, 0)
+			if (typeof child == "object" && child !== null) {
+				found.push(child, i, 0)
+			}
 		}
-		if (getPrototypeOf(array) === array_prototype) return
+		if (getPrototypeOf(array) === array_prototype) {
+			return
+		}
 		for (const key of keys(array)) {
 			const child = fields[key]
-			if (typeof child == "object" && child !== null && String(Number(key) >>> 0) !== key) found.push(child, key, 0)
+			if (typeof child == "object" && child !== null && String(Number(key) >>> 0) !== key) {
+				found.push(child, key, 0)
+			}
 		}
 		return
 	}
@@ -62,20 +68,28 @@ function collect(content, kind, found) {
 			: map_entries.call(
 				/** @type {Map<unknown, unknown>} */(content)/**/
 			)) {
-			if (typeof key == "object" && key !== null) found.push(key, key, 1)
-			if (typeof child == "object" && child !== null) found.push(child, key, 0)
+			if (typeof key == "object" && key !== null) {
+				found.push(key, key, 1)
+			}
+			if (typeof child == "object" && child !== null) {
+				found.push(child, key, 0)
+			}
 		}
 		break
 	case "Object":
 		if (!proxied && getPrototypeOf(fields) === object_prototype) {
 			for (const key in fields) {
 				const child = fields[key]
-				if (typeof child == "object" && child !== null) found.push(child, key, 0)
+				if (typeof child == "object" && child !== null) {
+					found.push(child, key, 0)
+				}
 			}
 		} else {
 			for (const key of keys(fields)) {
 				const child = fields[key]
-				if (typeof child == "object" && child !== null) found.push(child, key, 0)
+				if (typeof child == "object" && child !== null) {
+					found.push(child, key, 0)
+				}
 			}
 		}
 		return
@@ -85,12 +99,16 @@ function collect(content, kind, found) {
 			: set_values.call(
 				/** @type {Set<unknown>} */(content)/**/
 			)) {
-			if (typeof child == "object" && child !== null) found.push(child, child, 2)
+			if (typeof child == "object" && child !== null) {
+				found.push(child, child, 2)
+			}
 		}
 	}
 	for (const key of keys(fields)) {
 		const child = fields[key]
-		if (typeof child == "object" && child !== null) found.push(child, key, 3)
+		if (typeof child == "object" && child !== null) {
+			found.push(child, key, 3)
+		}
 	}
 }
 /**
@@ -105,9 +123,13 @@ function contains_draft(value) {
 	const stack = [ value ]
 	while (stack.length) {
 		const item = /** @type {Prototype} */(stack.pop())/**/
-		if (state_of(item)) return true
+		if (state_of(item)) {
+			return true
+		}
 		if (visited) {
-			if (visited.has(item)) continue
+			if (visited.has(item)) {
+				continue
+			}
 			visited.add(item)
 		} else if (++visits > 10000) {
 			visited = new Set()
@@ -133,7 +155,9 @@ function contains_draft(value) {
 				const child = array[indices
 					? /** @type {number} */(indices[k])/**/
 					: k]
-				if (typeof child == "object" && child !== null) stack.push(child)
+				if (typeof child == "object" && child !== null) {
+					stack.push(child)
+				}
 			}
 			break
 		}
@@ -141,15 +165,21 @@ function contains_draft(value) {
 			for (const [ key, entry ] of map_entries.call(
 				/** @type {Map<unknown, unknown>} */(item)/**/
 			)) {
-				if (typeof key == "object" && key !== null) stack.push(key)
-				if (typeof entry == "object" && entry !== null) stack.push(entry)
+				if (typeof key == "object" && key !== null) {
+					stack.push(key)
+				}
+				if (typeof entry == "object" && entry !== null) {
+					stack.push(entry)
+				}
 			}
 			break
 		case "Object": {
 			const names = keys(item)
 			for (let k = 0; k < names.length; k++) {
 				const child = /** @type {Record<string, unknown>} */(item)/**/[/** @type {string} */(names[k])/**/]
-				if (typeof child == "object" && child !== null) stack.push(child)
+				if (typeof child == "object" && child !== null) {
+					stack.push(child)
+				}
 			}
 			break
 		}
@@ -157,7 +187,9 @@ function contains_draft(value) {
 			for (const entry of set_values.call(
 				/** @type {Set<unknown>} */(item)/**/
 			)) {
-				if (typeof entry == "object" && entry !== null) stack.push(entry)
+				if (typeof entry == "object" && entry !== null) {
+					stack.push(entry)
+				}
 			}
 		}
 	}
@@ -173,7 +205,9 @@ function own_properties(target, source, resolve) {
 	const descriptors = getOwnPropertyDescriptors(source)
 	for (const key of ownKeys(descriptors)) {
 		const descriptor = /** @type {PropertyDescriptor} */(descriptors[/** @type {string} */(key)/**/])/**/
-		if ("value" in descriptor) descriptor.value = resolve(descriptor.value)
+		if ("value" in descriptor) {
+			descriptor.value = resolve(descriptor.value)
+		}
 	}
 	defineProperties(target, descriptors)
 }
@@ -188,7 +222,9 @@ function push_children(stack, node) {
 		/** @type {unknown[]} */
 		const found = []
 		collect(source, kind, found)
-		for (let k = 0; k < found.length; k += 3) stack.push(found[k], node, ctx)
+		for (let k = 0; k < found.length; k += 3) {
+			stack.push(found[k], node, ctx)
+		}
 		return
 	}
 	const fields = /** @type {Record<PropertyKey, unknown>} */(source)/**/
@@ -205,9 +241,13 @@ function push_children(stack, node) {
 				? /** @type {number} */(indices[k])/**/
 				: k
 			const item = array[i]
-			if (typeof item == "object" && item !== null && (!original || item !== original[i])) stack.push(item, node, undefined)
+			if (typeof item == "object" && item !== null && (!original || item !== original[i])) {
+				stack.push(item, node, undefined)
+			}
 		}
-		if (getPrototypeOf(array) === array_prototype) return
+		if (getPrototypeOf(array) === array_prototype) {
+			return
+		}
 		break
 	}
 	case "Map":
@@ -217,11 +257,15 @@ function push_children(stack, node) {
 			if (typeof key == "object" && key !== null && !(base && map_contains.call(
 				/** @type {Map<unknown, unknown>} */(base)/**/,
 				key
-			))) stack.push(key, node, undefined)
+			))) {
+				stack.push(key, node, undefined)
+			}
 			if (typeof entry == "object" && entry !== null && !(base && map_read.call(
 				/** @type {Map<unknown, unknown>} */(base)/**/,
 				key
-			) === entry)) stack.push(entry, node, undefined)
+			) === entry)) {
+				stack.push(entry, node, undefined)
+			}
 		}
 		break
 	case "Set":
@@ -231,14 +275,18 @@ function push_children(stack, node) {
 			if (typeof entry == "object" && entry !== null && !(base && set_contains.call(
 				/** @type {Set<unknown>} */(base)/**/,
 				entry
-			))) stack.push(entry, node, undefined)
+			))) {
+				stack.push(entry, node, undefined)
+			}
 		}
 	}
 	for (const key of kind == "Array"
 		? keys(source)
 		: ownKeys(source)) {
 		const item = fields[key]
-		if (typeof item == "object" && item !== null && (!original || item !== original[key])) stack.push(item, node, undefined)
+		if (typeof item == "object" && item !== null && (!original || item !== original[key])) {
+			stack.push(item, node, undefined)
+		}
 	}
 }
 /**
@@ -262,10 +310,16 @@ function snapshot(values) {
 	 */
 	function find(item, ctx) {
 		const mapped = ctx?.drafts?.get(item)
-		if (mapped) return states.get(mapped)
+		if (mapped) {
+			return states.get(mapped)
+		}
 		const state = state_of(item)
-		if (!state) return plain.get(item) ?? undefined
-		if (state.scope.graph) return states.get(state)
+		if (!state) {
+			return plain.get(item) ?? undefined
+		}
+		if (state.scope.graph) {
+			return states.get(state)
+		}
 		const base = source_of(item)
 		const inner = state_of(base)
 		return (inner?.scope.graph
@@ -279,11 +333,18 @@ function snapshot(values) {
 	 */
 	function node_of(item, ctx) {
 		const mapped = ctx?.drafts?.get(item)
-		if (mapped) return state_node(mapped)
+		if (mapped) {
+			return state_node(mapped)
+		}
 		const state = state_of(item)
-		if (!state) return raw_node(item, ctx)
-		if (state.scope.graph) return state_node(state)
-		const base = /** @type {Prototype} */(source_of(item))/**/
+		if (!state) {
+			return raw_node(item, ctx)
+		}
+		if (state.scope.graph) {
+			return state_node(state)
+		}
+		/** @type {Prototype} */
+		const base = source_of(item)
 		const inner = state_of(base)
 		return inner?.scope.graph
 			? state_node(inner)
@@ -345,7 +406,9 @@ function snapshot(values) {
 		return node
 	}
 	for (const value of values) {
-		if (typeof value == "object" && value !== null && contains_draft(value)) stack.push(value, undefined, undefined)
+		if (typeof value == "object" && value !== null && contains_draft(value)) {
+			stack.push(value, undefined, undefined)
+		}
 	}
 	while (stack.length) {
 		const ctx = /** @type {DraftScope | undefined} */(stack.pop())/**/
@@ -353,28 +416,42 @@ function snapshot(values) {
 		const item = /** @type {Prototype} */(stack.pop())/**/
 		const state = state_of(item)
 		if (state) {
-			if (parent) dirty.push(parent)
+			if (parent) {
+				dirty.push(parent)
+			}
 			if (trusted && !state.scope.graph && !ctx?.drafts?.get(item)) {
 				const base = source_of(item)
-				if (base !== item && !state_of(base)) continue
+				if (base !== item && !state_of(base)) {
+					continue
+				}
 			}
 		}
 		const node = node_of(item, ctx)
-		if (!node) continue
-		if (parent) node.parents.push(parent)
+		if (!node) {
+			continue
+		}
+		if (parent) {
+			node.parents.push(parent)
+		}
 		if (ctx && !node.ctx && !node.seed) {
 			node.ctx = ctx
 			push_children(stack, node)
 		}
-		if (node.seen) continue
+		if (node.seen) {
+			continue
+		}
 		node.seen = true
-		if (node.seed) dirty.push(node)
+		if (node.seed) {
+			dirty.push(node)
+		}
 		push_children(stack, node)
 	}
 	/** @type {Map<SnapshotNode, Prototype>} */
 	const copies = new Map()
 	for (let node = dirty.pop(); node; node = dirty.pop()) {
-		if (copies.has(node)) continue
+		if (copies.has(node)) {
+			continue
+		}
 		const { kind, source } = node
 		const proto = getPrototypeOf(source)
 		/** @type {Prototype} */
@@ -387,9 +464,13 @@ function snapshot(values) {
 				: kind == "Set"
 					? new Set()
 					: create(proto)
-		if (getPrototypeOf(shell) !== proto) setPrototypeOf(shell, proto)
+		if (getPrototypeOf(shell) !== proto) {
+			setPrototypeOf(shell, proto)
+		}
 		copies.set(node, shell)
-		for (const parent of node.parents) dirty.push(parent)
+		for (const parent of node.parents) {
+			dirty.push(parent)
+		}
 	}
 	/**
 	 * @param {unknown} value
@@ -397,9 +478,13 @@ function snapshot(values) {
 	 * @returns {unknown}
 	 */
 	function current(value, ctx) {
-		if (typeof value != "object" || value === null) return value
+		if (typeof value != "object" || value === null) {
+			return value
+		}
 		const found = find(value, ctx)
-		if (found) return copies.get(found) ?? found.original
+		if (found) {
+			return copies.get(found) ?? found.original
+		}
 		return state_of(value)
 			? source_of(value)
 			: value
@@ -420,17 +505,23 @@ function snapshot(values) {
 			const target = /** @type {unknown[]} */(shell)/**/
 			const indices = sparse_indices(array)
 			if (indices) {
-				for (const i of indices) target[i] = resolve(array[i])
+				for (const i of indices) {
+					target[i] = resolve(array[i])
+				}
 			} else {
 				for (let i = 0; i < array.length; i++) {
-					if (i in array) target[i] = resolve(array[i])
+					if (i in array) {
+						target[i] = resolve(array[i])
+					}
 				}
 			}
 			if (getPrototypeOf(array) !== array_prototype) {
 				for (const key of keys(array)) {
-					if (!has_own.call(target, key)) target[/** @type {number} */(/** @type {unknown} */(key))/**/] = resolve(
-						array[/** @type {number} */(/** @type {unknown} */(key))/**/]
-					)
+					if (!has_own.call(target, key)) {
+						target[/** @type {number} */(/** @type {unknown} */(key))/**/] = resolve(
+							array[/** @type {number} */(/** @type {unknown} */(key))/**/]
+						)
+					}
 				}
 			}
 			break
@@ -440,11 +531,13 @@ function snapshot(values) {
 				? /** @type {Map<unknown, unknown>} */(source)/**/.entries()
 				: map_entries.call(
 					/** @type {Map<unknown, unknown>} */(source)/**/
-				)) map_write.call(
+				)) {
+				map_write.call(
 				/** @type {Map<unknown, unknown>} */(shell)/**/,
-				resolve(key),
-				resolve(entry)
-			)
+					resolve(key),
+					resolve(entry)
+				)
+			}
 			own_properties(shell, source, resolve)
 			break
 		case "Object":
@@ -455,10 +548,12 @@ function snapshot(values) {
 				? /** @type {Set<unknown>} */(source)/**/.values()
 				: set_values.call(
 					/** @type {Set<unknown>} */(source)/**/
-				)) set_add.call(
+				)) {
+				set_add.call(
 				/** @type {Set<unknown>} */(shell)/**/,
-				resolve(entry)
-			)
+					resolve(entry)
+				)
+			}
 			own_properties(shell, source, resolve)
 		}
 	}
@@ -472,7 +567,9 @@ function snapshot(values) {
  */
 function source_of(value) {
 	let node = value
-	for (let state = state_of(node); state && !state.modified && !state.scope.graph; state = state_of(node)) node = state.base
+	for (let state = state_of(node); state && !state.modified && !state.scope.graph; state = state_of(node)) {
+		node = state.base
+	}
 	return node
 }
 /**

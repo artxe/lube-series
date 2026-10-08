@@ -34,8 +34,11 @@ describe(
 						}
 					}
 				} finally {
-					if (tz === undefined) delete process.env["TZ"]
-					else process.env["TZ"] = tz
+					if (tz === undefined) {
+						delete process.env["TZ"]
+					} else {
+						process.env["TZ"] = tz
+					}
 				}
 			}
 		)

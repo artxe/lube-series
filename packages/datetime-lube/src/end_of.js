@@ -40,11 +40,15 @@ const units_of = new Set(
  */
 export default function(date, unit, zone) {
 	const time = time_of("endOf", date)
-	if (!units_of.has(unit)) throw new RangeError(
-		`endOf: Invalid unit "${String(unit)}"`
-	)
+	if (!units_of.has(unit)) {
+		throw new RangeError(
+			`endOf: Invalid unit "${String(unit)}"`
+		)
+	}
 	check_zone("endOf", zone)
-	if (isNaN(time)) return new Date(NaN)
+	if (isNaN(time)) {
+		return new Date(NaN)
+	}
 	const ms = unit_ms[unit]
 	if (ms) {
 		if (zone !== undefined) {
@@ -67,7 +71,9 @@ export default function(date, unit, zone) {
 		if (
 			result.getTimezoneOffset() == date.getTimezoneOffset()
 			&& result.getSeconds() == (ms > 1000 ? 59 : date.getSeconds())
-		) return result
+		) {
+			return result
+		}
 		result.setTime(unit_end(time, ms))
 		return result
 	}
@@ -102,16 +108,23 @@ export default function(date, unit, zone) {
 	}
 	const offset = offset_in(time, zone)
 	const fields = fields_of_wall(time + offset)
-	if (unit == "W") fields[2] = /** @type {number} */(fields[2])/**/ + 7 - (/** @type {number} */(fields[7])/**/ + 6) % 7
-	else fields[from - 1] = /** @type {number} */(fields[from - 1])/**/ + 1
-	for (let i = from; i < 7; i++) fields[i] = i == 2 ? 1 : 0
+	if (unit == "W") {
+		fields[2] = /** @type {number} */(fields[2])/**/ + 7 - (/** @type {number} */(fields[7])/**/ + 6) % 7
+	} else {
+		fields[from - 1] = /** @type {number} */(fields[from - 1])/**/ + 1
+	}
+	for (let i = from; i < 7; i++) {
+		fields[i] = i == 2 ? 1 : 0
+	}
 	const wall = wall_of_fields(fields)
 	if (zone !== undefined) {
 		const next = offset_of(wall - offset, zone)
 		if (
 			next == offset
 			|| wall - next > time && offset_of(wall - next, zone) == next
-		) return new Date(wall - next - 1)
+		) {
+			return new Date(wall - next - 1)
+		}
 		end = instant_of(wall, zone) - 1
 	}
 	return new Date(end_at(wall, end, time, zone))

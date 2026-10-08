@@ -107,19 +107,29 @@ function compare(a, b, key, state) {
 function diff(a, b, state) {
 	const kind = comparable(a, b)
 	if (kind === undefined) {
-		if (!deep_equal(a, b)) push(state, "replace", b)
+		if (!deep_equal(a, b)) {
+			push(state, "replace", b)
+		}
 		return
 	}
 	const trail = state.trail
 	const depth = trail.length
 	for (let i = 0; i < depth && i < 128; i += 2) {
-		if (trail[i] === a && trail[i + 1] === b) throw restart
+		if (trail[i] === a && trail[i + 1] === b) {
+			throw restart
+		}
 	}
 	const deep = depth >= 128
-	if (deep && state.active?.get(a)?.has(b) || state.path.length > 200) throw restart
+	if (deep && state.active?.get(a)?.has(b) || state.path.length > 200) {
+		throw restart
+	}
 	const done = state.done?.get(a)?.get(b)
-	if (done === false) return
-	if (done) throw restart
+	if (done === false) {
+		return
+	}
+	if (done) {
+		throw restart
+	}
 	const count = state.changes.length
 	if (deep) {
 		activate(a, b, state)
@@ -181,7 +191,9 @@ function diff_graph(before, after, kind) {
 			}
 		}
 	}
-	if (!root.changed) return []
+	if (!root.changed) {
+		return []
+	}
 	const once = has_cycle(root)
 	/** @type {Change[]} */
 	const changes = []
@@ -200,14 +212,18 @@ function diff_graph(before, after, kind) {
 			path.pop()
 		} else if ("node" in item) {
 			const target = item.node
-			if (!target.changed || target.active || once && target.done) continue
+			if (!target.changed || target.active || once && target.done) {
+				continue
+			}
 			target.active = true
 			target.done = true
 			path.push(item.key)
 			frames.push({ index: 0, node: target })
 		} else {
 			const full = path.slice()
-			if (!item.self) full.push(item.key)
+			if (!item.self) {
+				full.push(item.key)
+			}
 			changes.push(
 				item.op == "remove"
 					? { op: item.op, path: full }
@@ -236,12 +252,18 @@ function diff_sparse(a, b, sparse, others, state) {
 		const x_index = sparse[i] ?? Infinity
 		const y_index = others[j] ?? Infinity
 		const index = Math.min(x_index, y_index)
-		if (x_index == index) i++
-		if (y_index == index) j++
+		if (x_index == index) {
+			i++
+		}
+		if (y_index == index) {
+			j++
+		}
 		const x = a[index]
 		const y = b[index]
 		if (x === y) {
-			if (x === undefined && (index in a) != (index in b)) child(state, index, "replace", y)
+			if (x === undefined && (index in a) != (index in b)) {
+				child(state, index, "replace", y)
+			}
 		} else {
 			compare(x, y, index, state)
 		}
@@ -285,18 +307,24 @@ function expand(a, b, kind, state) {
 			const x = /** @type {unknown[]} */(a)/**/[i]
 			const y = /** @type {unknown[]} */(b)/**/[i]
 			if (x === y) {
-				if (x === undefined && (i in /** @type {unknown[]} */(a)/**/) != (i in /** @type {unknown[]} */(b)/**/)) child(state, i, "replace", y)
+				if (x === undefined && (i in /** @type {unknown[]} */(a)/**/) != (i in /** @type {unknown[]} */(b)/**/)) {
+					child(state, i, "replace", y)
+				}
 			} else {
 				compare(x, y, i, state)
 			}
 		}
-		for (let i = length; i < /** @type {unknown[]} */(b)/**/.length; i++) child(
-			state,
-			i,
-			"add",
-			/** @type {unknown[]} */(b)/**/[i]
-		)
-		for (let i = /** @type {unknown[]} */(a)/**/.length - 1; i >= length; i--) child(state, i, "remove")
+		for (let i = length; i < /** @type {unknown[]} */(b)/**/.length; i++) {
+			child(
+				state,
+				i,
+				"add",
+				/** @type {unknown[]} */(b)/**/[i]
+			)
+		}
+		for (let i = /** @type {unknown[]} */(a)/**/.length - 1; i >= length; i--) {
+			child(state, i, "remove")
+		}
 		break
 	}
 	case "Map": {
@@ -313,12 +341,16 @@ function expand(a, b, kind, state) {
 				continue
 			}
 			const y = /** @type {Map<unknown, unknown>} */(b)/**/.get(key)
-			if (x !== y) compare(x, y, key, state)
+			if (x !== y) {
+				compare(x, y, key, state)
+			}
 		}
 		/** @type {WeakKey[] | undefined} */
 		let added
 		for (const [ key, y ] of /** @type {Map<unknown, unknown>} */(b)/**/) {
-			if (/** @type {Map<unknown, unknown>} */(a)/**/.has(key)) continue
+			if (/** @type {Map<unknown, unknown>} */(a)/**/.has(key)) {
+				continue
+			}
 			if (typeof key == "object" && key !== null) {
 				added ??= []
 				added.push(key)
@@ -335,15 +367,19 @@ function expand(a, b, kind, state) {
 			}
 			const x = /** @type {Map<unknown, unknown>} */(a)/**/.get(key)
 			const y = /** @type {Map<unknown, unknown>} */(b)/**/.get(other)
-			if (x !== y) compare(x, y, key, state)
+			if (x !== y) {
+				compare(x, y, key, state)
+			}
 		}
 		for (const key of added ?? []) {
-			if (!matched.has(key)) child(
-				state,
-				key,
-				"add",
-				/** @type {Map<unknown, unknown>} */(b)/**/.get(key)
-			)
+			if (!matched.has(key)) {
+				child(
+					state,
+					key,
+					"add",
+					/** @type {Map<unknown, unknown>} */(b)/**/.get(key)
+				)
+			}
 		}
 		break
 	}
@@ -354,10 +390,14 @@ function expand(a, b, kind, state) {
 		let i = 0
 		for (; i < length; i++) {
 			const key = /** @type {string} */(names[i])/**/
-			if (key !== others[i]) break
+			if (key !== others[i]) {
+				break
+			}
 			const x = /** @type {Record<PropertyKey, unknown>} */(a)/**/[key]
 			const y = /** @type {Record<PropertyKey, unknown>} */(b)/**/[key]
-			if (x !== y) compare(x, y, key, state)
+			if (x !== y) {
+				compare(x, y, key, state)
+			}
 		}
 		for (let j = i; j < names.length; j++) {
 			const key = /** @type {string} */(names[j])/**/
@@ -367,16 +407,20 @@ function expand(a, b, kind, state) {
 			}
 			const x = /** @type {Record<PropertyKey, unknown>} */(a)/**/[key]
 			const y = /** @type {Record<PropertyKey, unknown>} */(b)/**/[key]
-			if (x !== y) compare(x, y, key, state)
+			if (x !== y) {
+				compare(x, y, key, state)
+			}
 		}
 		for (let j = i; j < others.length; j++) {
 			const key = /** @type {string} */(others[j])/**/
-			if (!property_is_enumerable.call(a, key)) child(
-				state,
-				key,
-				"add",
-				/** @type {Record<PropertyKey, unknown>} */(b)/**/[key]
-			)
+			if (!property_is_enumerable.call(a, key)) {
+				child(
+					state,
+					key,
+					"add",
+					/** @type {Record<PropertyKey, unknown>} */(b)/**/[key]
+				)
+			}
 		}
 		break
 	}
@@ -384,7 +428,9 @@ function expand(a, b, kind, state) {
 		/** @type {WeakKey[] | undefined} */
 		let removed
 		for (const value of /** @type {Set<unknown>} */(a)/**/) {
-			if (/** @type {Set<unknown>} */(b)/**/.has(value)) continue
+			if (/** @type {Set<unknown>} */(b)/**/.has(value)) {
+				continue
+			}
 			if (typeof value == "object" && value !== null) {
 				removed ??= []
 				removed.push(value)
@@ -395,7 +441,9 @@ function expand(a, b, kind, state) {
 		/** @type {WeakKey[] | undefined} */
 		let added
 		for (const value of /** @type {Set<unknown>} */(b)/**/) {
-			if (/** @type {Set<unknown>} */(a)/**/.has(value)) continue
+			if (/** @type {Set<unknown>} */(a)/**/.has(value)) {
+				continue
+			}
 			if (typeof value == "object" && value !== null) {
 				added ??= []
 				added.push(value)
@@ -405,10 +453,14 @@ function expand(a, b, kind, state) {
 		}
 		const matched = match(removed, added)
 		for (const value of removed ?? []) {
-			if (!matched.has(value)) child(state, value, "remove")
+			if (!matched.has(value)) {
+				child(state, value, "remove")
+			}
 		}
 		for (const value of added ?? []) {
-			if (!matched.has(value)) child(state, value, "add", value)
+			if (!matched.has(value)) {
+				child(state, value, "add", value)
+			}
 		}
 	}
 	}
@@ -440,7 +492,9 @@ function has_cycle(root) {
 			}
 		}
 	}
-	for (const open of frames) open.node.active = false
+	for (const open of frames) {
+		open.node.active = false
+	}
 	return cycle
 }
 /**
@@ -451,14 +505,18 @@ function has_cycle(root) {
 function match(removed, added) {
 	/** @type {Map<WeakKey, WeakKey>} */
 	const matched = new Map()
-	if (!removed || !added) return matched
+	if (!removed || !added) {
+		return matched
+	}
 	const groups = hash_groups(added)
 	const used = new Uint8Array(added.length)
 	for (const value of removed) {
 		const index = hash_candidates(groups, value).find(
 			i => !used[i] && deep_equal(value, added[i])
 		)
-		if (index === undefined) continue
+		if (index === undefined) {
+			continue
+		}
 		used[index] = 1
 		const other = /** @type {WeakKey} */(added[index])/**/
 		matched.set(value, other)
@@ -539,7 +597,9 @@ function push(state, op, value) {
  * @returns {Change[]}
  */
 export default function(before, after) {
-	if (drafts.active) [ before, after ] = snapshot([ before, after ])
+	if (drafts.active) {
+		[ before, after ] = snapshot([ before, after ])
+	}
 	/** @type {DiffState} */
 	const state = {
 		changes: [],
@@ -548,11 +608,15 @@ export default function(before, after) {
 		visits: 0
 	}
 	if (typeof before == "object" && before !== null && typeof after == "object" && after !== null) {
-		if (before === after) return state.changes
+		if (before === after) {
+			return state.changes
+		}
 		try {
 			diff(before, after, state)
 		} catch (error) {
-			if (error !== restart) throw error
+			if (error !== restart) {
+				throw error
+			}
 			return diff_graph(
 				before,
 				after,

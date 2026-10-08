@@ -20,18 +20,26 @@ const tokens = {
  */
 function compile(format) {
 	let parts = formats.get(format)
-	if (parts) return parts
+	if (parts) {
+		return parts
+	}
 	parts = []
 	let last = 0
 	for (const { 0: token, index = 0 } of format.matchAll(token_regex)) {
-		if (index > last) parts.push(format.slice(last, index))
+		if (index > last) {
+			parts.push(format.slice(last, index))
+		}
 		parts.push(
 			/** @type {number[]} */(tokens[token])/**/
 		)
 		last = index + token.length
 	}
-	if (last < format.length) parts.push(format.slice(last))
-	if (formats.size >= 1000) formats.clear()
+	if (last < format.length) {
+		parts.push(format.slice(last))
+	}
+	if (formats.size >= 1000) {
+		formats.clear()
+	}
 	formats.set(format, parts)
 	return parts
 }
@@ -86,7 +94,9 @@ export default function(
 ) {
 	const time = time_of("dateToString", date)
 	check_zone("dateToString", zone)
-	if (isNaN(time)) return "Invalid Date"
+	if (isNaN(time)) {
+		return "Invalid Date"
+	}
 	const fields = fields_of(date, zone)
 	const parts = compile(format)
 	let result = ""

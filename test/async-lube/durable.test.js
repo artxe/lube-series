@@ -33,9 +33,13 @@ describe.each(
 				get: key => inner.get(key),
 				async put(key, saved, expected) {
 					const fault = when(saved, ++writes)
-					if (fault == "before") throw Error("disk full")
+					if (fault == "before") {
+						throw Error("disk full")
+					}
 					const written = await inner.put(key, saved, expected)
-					if (fault == "after") throw Error("connection reset")
+					if (fault == "after") {
+						throw Error("connection reset")
+					}
 					return written
 				}
 			}
@@ -239,7 +243,9 @@ describe.each(
 					failing(
 						create_store(),
 						saved => {
-							if (!broken || saved.status != "cancelled") return void 0
+							if (!broken || saved.status != "cancelled") {
+								return void 0
+							}
 							broken = false
 							return "before"
 						}
@@ -358,7 +364,9 @@ describe.each(
 					due: (now, limit) => inner.due(now, limit),
 					get: key => inner.get(key),
 					async put(key, saved, expected) {
-						if (saved.status == "waiting" && gate) await gate.promise
+						if (saved.status == "waiting" && gate) {
+							await gate.promise
+						}
 						return inner.put(key, saved, expected)
 					}
 				}
@@ -405,7 +413,9 @@ describe.each(
 						try {
 							await wait("late", { timeout: 20 })
 						} catch (error) {
-							if (!(error instanceof TimeoutError)) throw error
+							if (!(error instanceof TimeoutError)) {
+								throw error
+							}
 							log.push("late timed out")
 						}
 						return "done"
@@ -450,7 +460,9 @@ describe.each(
 					async (/** @type {null} */ _, { wait }) => {
 						/** @type {unknown[]} */
 						const values = []
-						for (let index = 0; index < 4; index++) values.push(await wait("a"))
+						for (let index = 0; index < 4; index++) {
+							values.push(await wait("a"))
+						}
 						return values
 					},
 					{ idle: 100, poll: 10 }
@@ -488,7 +500,9 @@ describe.each(
 					async (/** @type {null} */ _, { wait }) => {
 						/** @type {number[]} */
 						const values = []
-						for (let index = 0; index < 3; index++) values.push(await wait("a"))
+						for (let index = 0; index < 3; index++) {
+							values.push(await wait("a"))
+						}
 						return values
 					},
 					{ idle: 100, poll: 10 }
@@ -568,7 +582,9 @@ describe.each(
 						return step(
 							"charge",
 							() => {
-								if (broken) throw TypeError("card declined")
+								if (broken) {
+									throw TypeError("card declined")
+								}
 								return "charged"
 							}
 						)
@@ -662,7 +678,9 @@ describe.each(
 					try {
 						return `got ${await wait("confirm", { timeout: 1000 })}`
 					} catch (error) {
-						if (error instanceof TimeoutError) return "timed out"
+						if (error instanceof TimeoutError) {
+							return "timed out"
+						}
 						throw error
 					}
 				}
@@ -702,7 +720,9 @@ describe.each(
 					try {
 						return await wait("b", { timeout: 10 })
 					} catch (error) {
-						if (error instanceof TimeoutError) return "timed out"
+						if (error instanceof TimeoutError) {
+							return "timed out"
+						}
 						throw error
 					}
 				}
@@ -710,7 +730,9 @@ describe.each(
 					failing(
 						store,
 						saved => {
-							if (failed || !saved.events?.["a"] || !saved.events["b"]) return void 0
+							if (failed || !saved.events?.["a"] || !saved.events["b"]) {
+								return void 0
+							}
 							failed = true
 							return "before"
 						}
@@ -758,7 +780,9 @@ describe.each(
 					try {
 						return await wait("a", { until: start + 100 })
 					} catch (error) {
-						if (error instanceof TimeoutError) return "timed out"
+						if (error instanceof TimeoutError) {
+							return "timed out"
+						}
 						throw error
 					}
 				}
@@ -835,11 +859,15 @@ describe.each(
 				 * @returns {Promise<string>}
 				 */
 				async function nap(input, { sleep: pause, step }) {
-					if (!input.startsWith("fast")) await pause("nap", 5000)
+					if (!input.startsWith("fast")) {
+						await pause("nap", 5000)
+					}
 					return step(
 						"wake",
 						({ signal }) => {
-							if (input.endsWith("bad")) throw RangeError(`no ${input}`)
+							if (input.endsWith("bad")) {
+								throw RangeError(`no ${input}`)
+							}
 							if (input == "gone") {
 								return new Promise(
 									(_, reject) => signal.addEventListener(
@@ -853,7 +881,9 @@ describe.each(
 					)
 				}
 				const first = durable(store, nap, { idle: 0 })
-				for (const key of [ "bad", "good", "gone" ]) await first.start(key, key)
+				for (const key of [ "bad", "good", "gone" ]) {
+					await first.start(key, key)
+				}
 				await vi.advanceTimersByTimeAsync(10)
 				first.stop()
 				const second = durable(store, nap)
@@ -910,10 +940,13 @@ describe.each(
 							"list",
 							() => /** @type {number[]} */([])/**/
 						)
-						for (let index = 0; index < 3; index++) list.push(
+						for (let index = 0; index < 3; index++) {
+							list.push(
 							/** @type {number} */(await wait("n"))/**/
-						)
-						const bid = /** @type {{ amount: number }} */(await wait("bid"))/**/
+							)
+						}
+						/** @type {{ amount: number }} */
+						const bid = await wait("bid")
 						bid.amount *= 2
 						await pause("later", 50)
 						return {
@@ -967,7 +1000,9 @@ describe.each(
 							"open",
 							() => {
 								calls++
-								if (lot.id == "broken") throw RangeError("no stock")
+								if (lot.id == "broken") {
+									throw RangeError("no stock")
+								}
 								return null
 							}
 						)
@@ -1030,14 +1065,18 @@ describe.each(
 						{ wait }
 					) => {
 						let sum = 0
-						for (let index = 0; index < count; index++) sum += /** @type {number} */(await wait("bid"))/**/
+						for (let index = 0; index < count; index++) {
+							sum += /** @type {number} */(await wait("bid"))/**/
+						}/**/
 						return sum
 					}
 				)
 				const done = job.run("k", 200)
 				await vi.advanceTimersByTimeAsync(0)
 				puts = 0
-				for (let index = 0; index < 200; index++) await job.send("k", "bid", 1)
+				for (let index = 0; index < 200; index++) {
+					await job.send("k", "bid", 1)
+				}
 				assert.equal(await done, 200)
 				assert.isAtMost(puts, 202)
 				job.stop()
@@ -1176,9 +1215,7 @@ describe.each(
 					log.slice(0, failures.length)
 				)
 				assert.deepEqual(
-					log.slice(0, failures.length).map(
-						line => /** @type {unknown[]} */(JSON.parse(line))/**/[0]
-					),
+					log.slice(0, failures.length).map(line => JSON.parse(line)[0]),
 					[
 						"CancelError",
 						"TimeoutError",
@@ -1256,7 +1293,9 @@ describe.each(
 						store,
 						saved => {
 							const values = saved.events?.["b"]?.map(event => event.value) ?? []
-							if (failed || !values.includes("first") || !values.includes("lost")) return void 0
+							if (failed || !values.includes("first") || !values.includes("lost")) {
+								return void 0
+							}
 							failed = true
 							return "after"
 						}
@@ -1915,7 +1954,9 @@ describe.each(
 						await step(
 							"charge",
 							() => {
-								if (++charges == 1) throw RangeError("card declined")
+								if (++charges == 1) {
+									throw RangeError("card declined")
+								}
 								return "ok"
 							}
 						)
@@ -2026,7 +2067,9 @@ describe.each(
 					due: (now, limit) => inner.due(now, limit),
 					get: key => inner.get(key),
 					put(key, saved, expected) {
-						if (saved.status == "waiting" && failures-- > 0) throw Error("disk full")
+						if (saved.status == "waiting" && failures-- > 0) {
+							throw Error("disk full")
+						}
 						return inner.put(key, saved, expected)
 					}
 				}
@@ -2132,7 +2175,9 @@ describe.each(
 								"charge",
 								() => {
 									calls.push(`charge ${key}`)
-									if (declined.has(key)) throw TypeError("card declined")
+									if (declined.has(key)) {
+										throw TypeError("card declined")
+									}
 									return "charged"
 								}
 							)
@@ -2543,7 +2588,9 @@ describe.each(
 					due: (now, limit) => inner.due(now, limit),
 					get: key => inner.get(key),
 					async put(key, saved, expected) {
-						if (saved.owner == "A" && expected !== void 0 && !saved.inbox && collisions > 0) await sender.send("k", "a", `b${--collisions}`)
+						if (saved.owner == "A" && expected !== void 0 && !saved.inbox && collisions > 0) {
+							await sender.send("k", "a", `b${--collisions}`)
+						}
 						return inner.put(key, saved, expected)
 					}
 				}
@@ -2786,7 +2833,9 @@ describe.each(
 								() => `${answer} ${order}`
 							)
 						} catch (error) {
-							if (error instanceof TimeoutError) return `expired ${order}`
+							if (error instanceof TimeoutError) {
+								return `expired ${order}`
+							}
 							throw error
 						}
 					},
@@ -2838,7 +2887,9 @@ describe.each(
 						try {
 							return await wait("bid", input)
 						} catch (error) {
-							if (error instanceof TimeoutError) return Date.now() - start
+							if (error instanceof TimeoutError) {
+								return Date.now() - start
+							}
 							throw error
 						}
 					},
@@ -2939,7 +2990,9 @@ describe(
 						try {
 							return await wait("approve", { timeout: 3 * day })
 						} catch (error) {
-							if (error instanceof TimeoutError) return "expired"
+							if (error instanceof TimeoutError) {
+								return "expired"
+							}
 							throw error
 						}
 					}

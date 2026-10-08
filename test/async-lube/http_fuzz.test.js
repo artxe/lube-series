@@ -61,12 +61,24 @@ function classify(action, config) {
  * @returns {string}
  */
 function kind_of(error) {
-	if (error === void 0) return "ok"
-	if (error instanceof CancelError) return "cancel"
-	if (error instanceof HttpError) return "http"
-	if (error instanceof NetworkError) return "network"
-	if (error instanceof TimeoutError) return "timeout"
-	if (error instanceof SyntaxError) return "syntax"
+	if (error === void 0) {
+		return "ok"
+	}
+	if (error instanceof CancelError) {
+		return "cancel"
+	}
+	if (error instanceof HttpError) {
+		return "http"
+	}
+	if (error instanceof NetworkError) {
+		return "network"
+	}
+	if (error instanceof TimeoutError) {
+		return "timeout"
+	}
+	if (error instanceof SyntaxError) {
+		return "syntax"
+	}
 	return "other: " + String(error)
 }
 /**
@@ -118,8 +130,9 @@ function model(plan, refreshes, config) {
 			return expected
 		}
 		if (outcome == "http" && status == 401 && config.refresh) {
-			if (refreshed) expected.unauthorized++
-			else {
+			if (refreshed) {
+				expected.unauthorized++
+			} else {
 				refreshed = true
 				const refresh = refreshes[expected.refreshes++] ?? "ok"
 				if (refresh == "fail") {
@@ -130,20 +143,30 @@ function model(plan, refreshes, config) {
 					expected.unauthorized++
 					return fail("timeout", void 0)
 				}
-				if (config.stream) return fail("http", 401)
+				if (config.stream) {
+					return fail("http", 401)
+				}
 				attempt--
 				continue
 			}
 		}
-		if (attempt > retries) return fail(outcome, status)
-		if (!(config.idempotent || config.retry_at == "request" || [ "DELETE", "GET", "PUT" ].includes(config.method))) return fail(outcome, status)
+		if (attempt > retries) {
+			return fail(outcome, status)
+		}
+		if (!(config.idempotent || config.retry_at == "request" || [ "DELETE", "GET", "PUT" ].includes(config.method))) {
+			return fail(outcome, status)
+		}
 		const retryable = config.when
 			? outcome == "network" || outcome == "http" && status == 503
 			: outcome == "network" || outcome == "timeout" || outcome == "http" && retry_statuses.has(
 				/** @type {number} */(status)/**/
 			)
-		if (!retryable) return fail(outcome, status)
-		if (!config.custom_delay && retry_after != null && Number(retry_after) * 1000 > 60000) return fail(outcome, status)
+		if (!retryable) {
+			return fail(outcome, status)
+		}
+		if (!config.custom_delay && retry_after != null && Number(retry_after) * 1000 > 60000) {
+			return fail(outcome, status)
+		}
 		expected.delays++
 	}
 }
@@ -165,6 +188,7 @@ function sleep(ms) {
 async function within(promise, ms) {
 	/** @type {ReturnType<typeof setTimeout> | undefined} */
 	let timer
+	/** @type {T | "deadline"} */
 	const result = await Promise.race(
 		[
 			promise,
@@ -176,7 +200,7 @@ async function within(promise, ms) {
 		]
 	)
 	clearTimeout(timer)
-	return /** @type {T | "deadline"} */(result)/**/
+	return result
 }
 describe(
 	"http fuzz",
@@ -285,7 +309,9 @@ describe(
 		}
 		const server = createServer(
 			async (request, response) => {
-				for await (const chunk of request) void chunk
+				for await (const chunk of request) {
+					void chunk
+				}
 				const owner = String(
 					request.headers["x-client"] ?? ""
 				)
@@ -294,10 +320,12 @@ describe(
 					refresh_counts.set(owner, count + 1)
 					const active = (refresh_active.get(owner) ?? 0) + 1
 					refresh_active.set(owner, active)
-					if (active > 1) refresh_overlaps.set(
-						owner,
-						(refresh_overlaps.get(owner) ?? 0) + 1
-					)
+					if (active > 1) {
+						refresh_overlaps.set(
+							owner,
+							(refresh_overlaps.get(owner) ?? 0) + 1
+						)
+					}
 					response.on(
 						"close",
 						() => refresh_active.set(
@@ -334,7 +362,9 @@ describe(
 					k: "ok",
 					status: 200
 				}
-				if ("delay" in action && action.delay) await sleep(action.delay)
+				if ("delay" in action && action.delay) {
+					await sleep(action.delay)
+				}
 				respond(response, action, id)
 			}
 		)
@@ -345,7 +375,9 @@ describe(
 					"unhandledRejection",
 					on_unhandled
 				)
-				for (const response of open) response.destroy()
+				for (const response of open) {
+					response.destroy()
+				}
 				server.closeAllConnections()
 				await new Promise(
 					resolve => server.close(resolve)
@@ -376,21 +408,23 @@ describe(
 		 */
 		function action_of(random, config, slow) {
 			const roll = random.next()
-			if (roll < 0.35) return {
-				body: random.pick(
+			if (roll < 0.35) {
+				return {
+					body: random.pick(
 					/** @type {const} */([
-						"json",
-						"json",
-						"text",
-						"malformed",
-						"empty"
-					])/**/
-				),
-				delay: random.int(6),
-				k: "ok",
-				status: random.pick(
+							"json",
+							"json",
+							"text",
+							"malformed",
+							"empty"
+						])/**/
+					),
+					delay: random.int(6),
+					k: "ok",
+					status: random.pick(
 					/** @type {const} */([ 200, 200, 201, 204 ])/**/
-				)
+					)
+				}
 			}
 			if (roll < 0.75) {
 				const status = random.pick(
@@ -424,11 +458,13 @@ describe(
 					status
 				}
 			}
-			if (roll < 0.9 || !slow) return {
-				k: "drop",
-				when: random.pick(
+			if (roll < 0.9 || !slow) {
+				return {
+					k: "drop",
+					when: random.pick(
 					/** @type {const} */([ "before", "mid-body" ])/**/
-				)
+					)
+				}
 			}
 			return random.chance(0.5) ? { k: "hang" } : { k: "slow-body" }
 		}
@@ -592,7 +628,9 @@ describe(
 				8000
 			)
 			const trace = `plan ${JSON.stringify(plan)} cancel ${cancel_at} server ${counts.get(id)} errors ${hook.error.map(kind_of)} results ${results == "deadline" ? results : JSON.stringify(results.map(([ error ]) => kind_of(error)))}`
-			if (results == "deadline") return [ "never settled", trace ]
+			if (results == "deadline") {
+				return [ "never settled", trace ]
+			}
 			/** @type {string[]} */
 			const problems = []
 			const expected = model(plan, [ "ok", "ok" ], config)
@@ -605,30 +643,42 @@ describe(
 				)
 					.map(([ error ]) => kind_of(error))
 			)
-			if (outcomes.size > 1) problems.push(
-				`callers of one request got ${[ ...outcomes ]}`
-			)
-			if (!every_cancelled && (counts.get(id) ?? 0) > expected.server) problems.push(
-				`the server got ${counts.get(id)} requests, expected ${expected.server}`
-			)
-			for (const [ index, [ error ] ] of results.entries()) {
-				if (/** @type {number} */(cancel_at[index])/**/ < 0 && error instanceof CancelError) problems.push(
-					`caller ${index} was cancelled`
+			if (outcomes.size > 1) {
+				problems.push(
+					`callers of one request got ${[ ...outcomes ]}`
 				)
+			}
+			if (!every_cancelled && (counts.get(id) ?? 0) > expected.server) {
+				problems.push(
+					`the server got ${counts.get(id)} requests, expected ${expected.server}`
+				)
+			}
+			for (const [ index, [ error ] ] of results.entries()) {
+				if (/** @type {number} */(cancel_at[index])/**/ < 0 && error instanceof CancelError) {
+					problems.push(
+						`caller ${index} was cancelled`
+					)
+				}
 			}
 			const data = results.map(([ , value ]) => value)
 				.filter(
 					value => value && typeof value == "object"
 				)
-			if (new Set(data).size != data.length) problems.push(
-				"callers share one data object"
-			)
-			if (hook.error.length > 1) problems.push(
-				`error hook ${hook.error.length} times for one request`
-			)
-			if (every_cancelled && hook.error.length) problems.push(
-				"error hook although every caller cancelled"
-			)
+			if (new Set(data).size != data.length) {
+				problems.push(
+					"callers share one data object"
+				)
+			}
+			if (hook.error.length > 1) {
+				problems.push(
+					`error hook ${hook.error.length} times for one request`
+				)
+			}
+			if (every_cancelled && hook.error.length) {
+				problems.push(
+					"error hook although every caller cancelled"
+				)
+			}
 			return problems.length ? [ ...problems, trace ] : []
 		}
 		/**
@@ -670,7 +720,9 @@ describe(
 			let settled = 0
 			let while_pending = 0
 			for (let i = 0; i < clicks; i++) {
-				if (i > 0 && !settled) while_pending++
+				if (i > 0 && !settled) {
+					while_pending++
+				}
 				requests.push(
 					api.post(
 						"/r",
@@ -687,7 +739,9 @@ describe(
 							}
 						)
 				)
-				if (random.chance(0.5)) await sleep(random.int(4))
+				if (random.chance(0.5)) {
+					await sleep(random.int(4))
+				}
 			}
 			await Promise.all(requests)
 			return while_pending == clicks - 1 && counts.get(id) != 1
@@ -770,21 +824,29 @@ describe(
 			}
 			const results = await within(Promise.all(requests), 10000)
 			const trace = `timeout ${timeout} calls ${calls} waves ${waves} refreshes ${refreshes} refreshed ${hook.refresh} server ${refresh_counts.get(id)}`
-			if (results == "deadline") return [ "never settled", trace ]
+			if (results == "deadline") {
+				return [ "never settled", trace ]
+			}
 			/** @type {string[]} */
 			const problems = []
-			if (refresh_overlaps.get(id)) problems.push(
-				`two refreshes ran at the same time ${refresh_overlaps.get(id)} times`
-			)
-			if (hook.refresh > waves * calls) problems.push(
-				"more refreshes than 401 waves"
-			)
+			if (refresh_overlaps.get(id)) {
+				problems.push(
+					`two refreshes ran at the same time ${refresh_overlaps.get(id)} times`
+				)
+			}
+			if (hook.refresh > waves * calls) {
+				problems.push(
+					"more refreshes than 401 waves"
+				)
+			}
 			for (let wave = 0; wave < waves; wave++) {
 				for (let i = 0; i < calls; i++) {
 					const count = counts.get(`${id}-${wave}-${i}`) ?? 0
-					if (count > 3) problems.push(
-						`request ${wave}-${i} was sent ${count} times`
-					)
+					if (count > 3) {
+						problems.push(
+							`request ${wave}-${i} was sent ${count} times`
+						)
+					}
 				}
 			}
 			return problems.length ? [ ...problems, trace ] : []
@@ -818,8 +880,12 @@ describe(
 			const expected = model(plan, refreshes, config)
 			/** @type {RequestOptions} */
 			const options = { headers: { "x-case": id } }
-			if (config.as) options.as = config.as
-			if (config.idempotent) options.idempotent = true
+			if (config.as) {
+				options.as = config.as
+			}
+			if (config.idempotent) {
+				options.idempotent = true
+			}
 			if (config.retry_at == "request") {
 				options.retry = {
 					count: config.count,
@@ -873,55 +939,84 @@ describe(
 				`plan ${JSON.stringify(plan.slice(0, expected.server + 1))} refreshes ${refreshes}`,
 				`expected ${JSON.stringify(expected)}`
 			]
-			if (settled == "deadline") return [ "never settled", ...trace ]
+			if (settled == "deadline") {
+				return [ "never settled", ...trace ]
+			}
 			const [ error ] = settled
 			const got = kind_of(error)
 			trace.push(
 				`got ${got} ${error instanceof Error ? error.message : ""} server ${server_count()} hooks ${JSON.stringify({ ...hook, error: hook.error.map(kind_of), unauthorized: hook.unauthorized.map(kind_of) })}`
 			)
 			if (got == "cancel" && cancel_at >= 0) {
-				if (hook.error.length) problems.push(
-					"the error hook got a cancelled request"
-				)
-				if (server_count() > expected.server) problems.push(
-					`a cancelled request was sent ${server_count()} times`
-				)
+				if (hook.error.length) {
+					problems.push(
+						"the error hook got a cancelled request"
+					)
+				}
+				if (server_count() > expected.server) {
+					problems.push(
+						`a cancelled request was sent ${server_count()} times`
+					)
+				}
 				return problems.length ? [ ...problems, ...trace ] : []
 			}
-			if (got != expected.outcome) problems.push(
-				`outcome ${got}, expected ${expected.outcome}`
-			)
-			else if (error instanceof HttpError && error.status != expected.status) problems.push(
-				`status ${error.status}, expected ${expected.status}`
-			)
-			if (server_count() != expected.server) problems.push(
-				`the server got ${server_count()} requests, expected ${expected.server}`
-			)
-			if (hook.request != server_count()) problems.push(
-				`request hook ${hook.request} times for ${server_count()} requests`
-			)
-			if (hook.response != expected.response_hook) problems.push(
-				`response hook ${hook.response} times`
-			)
-			if (hook.error.length != expected.error_hook) problems.push(
-				`error hook ${hook.error.length} times`
-			)
-			if (hook.error.length == 1 && hook.error[0] !== error) problems.push(
-				"the error hook got another error than the caller"
-			)
-			if (hook.unauthorized.length != expected.unauthorized) problems.push(
-				`unauthorized hook ${hook.unauthorized.length} times`
-			)
-			if (hook.refresh != expected.refreshes) problems.push(
-				`refresh ${hook.refresh} times`
-			)
-			if (config.custom_delay && hook.delay != expected.delays) problems.push(`delay ${hook.delay} times`)
-			if (refresh_overlaps.get(id)) problems.push(
-				"two refreshes ran at the same time"
-			)
-			if (config.method == "POST" && !config.idempotent && config.retry_at != "request" && server_count() > 1 + expected.refreshes) problems.push(
-				"POST sent again without idempotent"
-			)
+			if (got != expected.outcome) {
+				problems.push(
+					`outcome ${got}, expected ${expected.outcome}`
+				)
+			} else if (error instanceof HttpError && error.status != expected.status) {
+				problems.push(
+					`status ${error.status}, expected ${expected.status}`
+				)
+			}
+			if (server_count() != expected.server) {
+				problems.push(
+					`the server got ${server_count()} requests, expected ${expected.server}`
+				)
+			}
+			if (hook.request != server_count()) {
+				problems.push(
+					`request hook ${hook.request} times for ${server_count()} requests`
+				)
+			}
+			if (hook.response != expected.response_hook) {
+				problems.push(
+					`response hook ${hook.response} times`
+				)
+			}
+			if (hook.error.length != expected.error_hook) {
+				problems.push(
+					`error hook ${hook.error.length} times`
+				)
+			}
+			if (hook.error.length == 1 && hook.error[0] !== error) {
+				problems.push(
+					"the error hook got another error than the caller"
+				)
+			}
+			if (hook.unauthorized.length != expected.unauthorized) {
+				problems.push(
+					`unauthorized hook ${hook.unauthorized.length} times`
+				)
+			}
+			if (hook.refresh != expected.refreshes) {
+				problems.push(
+					`refresh ${hook.refresh} times`
+				)
+			}
+			if (config.custom_delay && hook.delay != expected.delays) {
+				problems.push(`delay ${hook.delay} times`)
+			}
+			if (refresh_overlaps.get(id)) {
+				problems.push(
+					"two refreshes ran at the same time"
+				)
+			}
+			if (config.method == "POST" && !config.idempotent && config.retry_at != "request" && server_count() > 1 + expected.refreshes) {
+				problems.push(
+					"POST sent again without idempotent"
+				)
+			}
 			return problems.length ? [ ...problems, ...trace ] : []
 		}
 		/**
@@ -958,41 +1053,58 @@ describe(
 			for (let i = 0; i < calls; i++) {
 				/** @type {RequestOptions} */
 				const options = { headers: { "x-case": id } }
-				if (kind == "latest") options.latest = "feed"
-				else options[kind] = window
+				if (kind == "latest") {
+					options.latest = "feed"
+				} else {
+					options[kind] = window
+				}
 				requests.push(
 					api.get("/r", { q: i }, options)
 						.safe()
 				)
-				if (i < calls - 1) await sleep(
+				if (i < calls - 1) {
+					await sleep(
 					/** @type {number} */(gaps[i])/**/
-				)
+					)
+				}
 			}
 			const spread = Date.now() - started
 			const results = await within(Promise.all(requests), 8000)
 			const trace = `gaps ${gaps} spread ${spread} server ${counts.get(id)} results ${results == "deadline" ? results : results.map(([ error ]) => kind_of(error))}`
-			if (results == "deadline") return [ "never settled", trace ]
+			if (results == "deadline") {
+				return [ "never settled", trace ]
+			}
 			/** @type {string[]} */
 			const problems = []
 			const kinds = results.map(([ error ]) => kind_of(error))
 			const quick = spread < window - 10
-			if (kinds.at(-1) != "ok") problems.push(
-				`the last request ended with ${kinds.at(-1)}`
-			)
-			if (hook.error.length) problems.push(
-				"error hook for a cancellation"
-			)
-			if (kind == "debounce" && quick && (counts.get(id) != 1 || kinds.slice(0, -1).some(outcome => outcome != "cancel"))) problems.push(
-				"debounce sent more than the last request"
-			)
-			if (kind == "throttle" && quick && (counts.get(id) != Math.min(calls, 2) || kinds[0] != "ok" || kinds.slice(1, -1).some(outcome => outcome != "cancel"))) problems.push(
-				"throttle sent more than the first and the last request"
-			)
+			if (kinds.at(-1) != "ok") {
+				problems.push(
+					`the last request ended with ${kinds.at(-1)}`
+				)
+			}
+			if (hook.error.length) {
+				problems.push(
+					"error hook for a cancellation"
+				)
+			}
+			if (kind == "debounce" && quick && (counts.get(id) != 1 || kinds.slice(0, -1).some(outcome => outcome != "cancel"))) {
+				problems.push(
+					"debounce sent more than the last request"
+				)
+			}
+			if (kind == "throttle" && quick && (counts.get(id) != Math.min(calls, 2) || kinds[0] != "ok" || kinds.slice(1, -1).some(outcome => outcome != "cancel"))) {
+				problems.push(
+					"throttle sent more than the first and the last request"
+				)
+			}
 			if (kind == "latest" && kinds.slice(0, -1).some(
 				outcome => outcome != "ok" && outcome != "cancel"
-			)) problems.push(
-				"latest failed a superseded request"
-			)
+			)) {
+				problems.push(
+					"latest failed a superseded request"
+				)
+			}
 			return problems.length ? [ ...problems, trace ] : []
 		}
 		/**
@@ -1036,12 +1148,14 @@ describe(
 												: mode == "refresh"
 													? await refreshing(seed)
 													: await superseded(seed, mode)
-									if (problems.length) failures.push(
-										[
-											`SIM_MODE=http-${mode} SIM_SEED=${seed}`,
-											...problems
-										].join("\n")
-									)
+									if (problems.length) {
+										failures.push(
+											[
+												`SIM_MODE=http-${mode} SIM_SEED=${seed}`,
+												...problems
+											].join("\n")
+										)
+									}
 								}
 							}
 						)

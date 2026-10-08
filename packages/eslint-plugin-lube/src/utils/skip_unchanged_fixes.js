@@ -22,7 +22,9 @@ function skip_unchanged_fixes(rule) {
 									&& fixes.every(
 										item => text.slice(item.range[0], item.range[1]) == item.text
 									)
-								) return
+								) {
+									return
+								}
 								context.report(descriptor)
 							}
 						}

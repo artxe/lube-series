@@ -42,7 +42,9 @@ function anchor_after(
 		/** @type {number} */(from_fields[6])/**/
 	]
 	const distance = wall_of_fields(fields) - to_wall
-	if (Math.abs(distance) >= 172800000) return distance
+	if (Math.abs(distance) >= 172800000) {
+		return distance
+	}
 	const time = date_of(fields, zone).getTime()
 	return isNaN(time)
 		? distance
@@ -71,13 +73,19 @@ function anchor_after(
 export default function(from, to, unit, zone) {
 	const start = time_of("diff", from)
 	const end = time_of("diff", to)
-	if (!units_of.has(unit)) throw new RangeError(
-		`diff: Invalid unit "${String(unit)}"`
-	)
+	if (!units_of.has(unit)) {
+		throw new RangeError(
+			`diff: Invalid unit "${String(unit)}"`
+		)
+	}
 	check_zone("diff", zone)
-	if (isNaN(start) || isNaN(end)) return NaN
+	if (isNaN(start) || isNaN(end)) {
+		return NaN
+	}
 	const ms = unit_ms[unit]
-	if (ms) return Math.trunc((end - start) / ms) + 0
+	if (ms) {
+		return Math.trunc((end - start) / ms) + 0
+	}
 	const from_fields = fields_of(from, zone)
 	const to_fields = fields_of(to, zone)
 	if (unit == "D" || unit == "W") {
@@ -99,8 +107,11 @@ export default function(from, to, unit, zone) {
 	const to_day = /** @type {number} */(to_fields[2])/**/
 	const from_day = /** @type {number} */(from_fields[2])/**/
 	if (Math.abs(to_day - from_day) > 2 && to_day < 27 && from_day < 27) {
-		if (months > 0 && to_day < from_day) months--
-		else if (months < 0 && to_day > from_day) months++
+		if (months > 0 && to_day < from_day) {
+			months--
+		} else if (months < 0 && to_day > from_day) {
+			months++
+		}
 	} else {
 		const to_wall = wall_of_fields(to_fields)
 		if (end >= start) {
@@ -111,14 +122,18 @@ export default function(from, to, unit, zone) {
 				to_wall,
 				end,
 				zone
-			) > 0) months--
+			) > 0) {
+				months--
+			}
 			if (anchor_after(
 				from_fields,
 				months + 1,
 				to_wall,
 				end,
 				zone
-			) <= 0) months++
+			) <= 0) {
+				months++
+			}
 		} else {
 			months = Math.min(months, 0)
 			while (months && anchor_after(
@@ -127,14 +142,18 @@ export default function(from, to, unit, zone) {
 				to_wall,
 				end,
 				zone
-			) < 0) months++
+			) < 0) {
+				months++
+			}
 			if (anchor_after(
 				from_fields,
 				months - 1,
 				to_wall,
 				end,
 				zone
-			) >= 0) months--
+			) >= 0) {
+				months--
+			}
 		}
 	}
 	return unit == "Y"

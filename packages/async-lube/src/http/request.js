@@ -78,7 +78,9 @@ const unshared_option_keys = [
  * @returns {T}
  */
 function clone_data(data) {
-	if (data == null || typeof data != "object" || data instanceof Blob) return data
+	if (data == null || typeof data != "object" || data instanceof Blob) {
+		return data
+	}
 	try {
 		return structuredClone(data)
 	} catch {
@@ -107,11 +109,14 @@ async function execute(c, spec, signal) {
 			try {
 				return await send(c, spec, attempt, signal)
 			} catch (error) {
-				if (signal.aborted) throw to_cancel_error(signal.reason, summary)
+				if (signal.aborted) {
+					throw to_cancel_error(signal.reason, summary)
+				}
 				const is_unauthorized = error instanceof HttpError && error.status == 401
 				if (is_unauthorized && refresh_state) {
-					if (refreshed) reject_refreshed(c, refresh_state, generation, error)
-					else {
+					if (refreshed) {
+						reject_refreshed(c, refresh_state, generation, error)
+					} else {
 						refreshed = true
 						await wait_refresh(
 							c,
@@ -121,13 +126,19 @@ async function execute(c, spec, signal) {
 							error,
 							signal
 						)
-						if (is_stream_body) throw error
+						if (is_stream_body) {
+							throw error
+						}
 						attempt--
 						continue
 					}
 				}
-				if (attempt > retry_count) throw error
-				if (!spec.idempotency_key && options.retry == null && !is_idempotent(method)) throw error
+				if (attempt > retry_count) {
+					throw error
+				}
+				if (!spec.idempotency_key && options.retry == null && !is_idempotent(method)) {
+					throw error
+				}
 				const retryable = retry.when
 					? await race_signal(
 						Promise.resolve(retry.when(error, attempt)),
@@ -139,9 +150,13 @@ async function execute(c, spec, signal) {
 							}
 						)
 					: is_retryable(error)
-				if (!retryable) throw error
+				if (!retryable) {
+					throw error
+				}
 				const delay = get_retry_wait(retry, attempt, error)
-				if (delay == null) throw error
+				if (delay == null) {
+					throw error
+				}
 				await sleep(delay, signal)
 					.catch(
 						(/** @type {unknown} */ reason) => {
@@ -151,7 +166,9 @@ async function execute(c, spec, signal) {
 			}
 		}
 	} catch (error) {
-		if (!spec.silent) report(c, error)
+		if (!spec.silent) {
+			report(c, error)
+		}
 		throw error
 	}
 }
@@ -174,7 +191,9 @@ function is_raw_body(body) {
  * @returns {AsyncGenerator<unknown, void, undefined>}
  */
 async function* map_lines(lines, parse) {
-	for await (const line of lines) yield parse(line)
+	for await (const line of lines) {
+		yield parse(line)
+	}
 }
 /**
  * @param {ClientContext} c
@@ -182,7 +201,9 @@ async function* map_lines(lines, parse) {
  * @returns {void}
  */
 export function report(c, error) {
-	if (!(error instanceof CancelError)) call_hook(c.config.on?.error, error)
+	if (!(error instanceof CancelError)) {
+		call_hook(c.config.on?.error, error)
+	}
 }
 /**
  * @param {ClientContext} c
@@ -229,17 +250,23 @@ export function request(
 		/** @type {string | undefined} */
 		let latest_key
 		function forget_latest() {
-			if (latest_key != null && c.shared.latest.get(latest_key) == cancel) c.shared.latest.delete(latest_key)
+			if (latest_key != null && c.shared.latest.get(latest_key) == cancel) {
+				c.shared.latest.delete(latest_key)
+			}
 		}
 		/** @type {Job | undefined} */
 		let job
 		try {
-			if ((method == "GET" || method == "HEAD") && body !== void 0) throw TypeError(
-				`A ${method} request cannot have a body: ${path}`
-			)
-			if (is_stream && options.lock != null) throw TypeError(
-				`A request read as "${options.as}" cannot be locked, because its body is read once: ${path}`
-			)
+			if ((method == "GET" || method == "HEAD") && body !== void 0) {
+				throw TypeError(
+					`A ${method} request cannot have a body: ${path}`
+				)
+			}
+			if (is_stream && options.lock != null) {
+				throw TypeError(
+					`A request read as "${options.as}" cannot be locked, because its body is read once: ${path}`
+				)
+			}
 			check_retry(
 				options.retry ?? c.config.retry,
 				"request"
@@ -251,44 +278,57 @@ export function request(
 				c.config.query
 			)
 			summary.url = url
-			if (!c.config.fetch && typeof location == "undefined" && !scheme_regex.test(url)) throw TypeError(
-				`The URL "${url}" is relative: set base, or use an absolute URL`
-			)
-			if (controller.signal.aborted) throw controller.signal.reason
-			if (options.latest != null) latest_key = [
-				c.client_id,
-				"latest",
-				options.latest
-			].join(" ")
-			else if (options.debounce) latest_key = [
-				c.client_id,
-				"debounce",
-				method,
-				url.replace(/[?#].*/s, "")
-			].join(" ")
+			if (!c.config.fetch && typeof location == "undefined" && !scheme_regex.test(url)) {
+				throw TypeError(
+					`The URL "${url}" is relative: set base, or use an absolute URL`
+				)
+			}
+			if (controller.signal.aborted) {
+				throw controller.signal.reason
+			}
+			if (options.latest != null) {
+				latest_key = [
+					c.client_id,
+					"latest",
+					options.latest
+				].join(" ")
+			} else if (options.debounce) {
+				latest_key = [
+					c.client_id,
+					"debounce",
+					method,
+					url.replace(/[?#].*/s, "")
+				].join(" ")
+			}
 			if (latest_key != null) {
 				c.shared.latest.get(latest_key)?.(
 					"Superseded by a newer request"
 				)
 				c.shared.latest.set(latest_key, cancel)
 			}
-			if (options.debounce) await sleep(
-				options.debounce,
-				controller.signal
-			)
-			if (options.throttle) await throttle(
-				c,
-				[
-					c.client_id,
-					"throttle",
-					method,
-					url.replace(/[?#].*/s, "")
-				].join(" "),
-				options.throttle,
-				cancel,
-				controller.signal
-			)
-			if (controller.signal.aborted) throw controller.signal.reason
+			if (options.debounce) {
+				await sleep(
+					options.debounce,
+					controller.signal
+				)
+			}
+			if (options.throttle) {
+				await throttle(
+					c,
+					[
+						c.client_id,
+						"throttle",
+						method,
+						url.replace(/[?#].*/s, "")
+					].join(" "),
+					options.throttle,
+					cancel,
+					controller.signal
+				)
+			}
+			if (controller.signal.aborted) {
+				throw controller.signal.reason
+			}
 			const is_shareable = options.dedupe !== false
 				&& (method == "GET" || method == "HEAD")
 				&& latest_key == null
@@ -322,7 +362,9 @@ export function request(
 					].join(" ")
 					: void 0
 			job = share_key == null ? void 0 : c.shared.shared.get(share_key)
-			if (job?.controller.signal.aborted) job = void 0
+			if (job?.controller.signal.aborted) {
+				job = void 0
+			}
 			const joined = !!job
 			if (!job) {
 				job = start_job(
@@ -344,17 +386,23 @@ export function request(
 				)
 			}
 			job.refs++
-			if (is_stream) link_signal(
-				job.controller,
-				controller.signal
-			)
+			if (is_stream) {
+				link_signal(
+					job.controller,
+					controller.signal
+				)
+			}
 			from_job = true
 			const result = await race_signal(job.promise, controller.signal)
-			if (joined) return {
-				...result,
-				data: clone_data(result.data)
+			if (joined) {
+				return {
+					...result,
+					data: clone_data(result.data)
+				}
 			}
-			if (!is_stream) return result
+			if (!is_stream) {
+				return result
+			}
 			keeps_link = true
 			function done() {
 				unlink()
@@ -370,18 +418,25 @@ export function request(
 					: watch_records(
 						/** @type {AsyncIterable<unknown>} */(result.data)/**/,
 						(left, failure) => {
-							if (left) cancel(void 0)
-							else if (failure && !silent) report(c, failure.value)
+							if (left) {
+								cancel(void 0)
+							} else if (failure && !silent) {
+								report(c, failure.value)
+							}
 							done()
 						}
 					)
 			}
 		} catch (error) {
-			if (controller.signal.aborted) throw to_cancel_error(
-				controller.signal.reason,
-				summary
-			)
-			if (!from_job && !silent) report(c, error)
+			if (controller.signal.aborted) {
+				throw to_cancel_error(
+					controller.signal.reason,
+					summary
+				)
+			}
+			if (!from_job && !silent) {
+				report(c, error)
+			}
 			throw error
 		} finally {
 			if (!keeps_link) {
@@ -389,7 +444,9 @@ export function request(
 				forget_latest()
 			}
 			if (job && !--job.refs && !job.settled) {
-				if (job.key != null && c.shared.shared.get(job.key) == job) c.shared.shared.delete(job.key)
+				if (job.key != null && c.shared.shared.get(job.key) == job) {
+					c.shared.shared.delete(job.key)
+				}
 				job.controller.abort(
 					new CancelError(
 						"Cancelled by all callers",
@@ -460,8 +517,12 @@ async function send(c, spec, attempt, job_signal) {
 		try {
 			yield* lines
 		} catch (error) {
-			if (controller.signal.aborted) throw abort_error()
-			if (error instanceof SyntaxError) throw invalid_json(error)
+			if (controller.signal.aborted) {
+				throw abort_error()
+			}
+			if (error instanceof SyntaxError) {
+				throw invalid_json(error)
+			}
 			throw new NetworkError(error, summary)
 		}
 	}
@@ -498,7 +559,9 @@ async function send(c, spec, attempt, job_signal) {
 			options: /** @type {import("../../public.js").RequestOptions} */(options)/**/,
 			url: spec.url
 		}
-		if (controller.signal.aborted) throw abort_error()
+		if (controller.signal.aborted) {
+			throw abort_error()
+		}
 		await race_signal(
 			Promise.resolve(
 				c.config.on?.request?.(context)
@@ -508,11 +571,15 @@ async function send(c, spec, attempt, job_signal) {
 		summary.url = context.url
 		const raw_body = context.body === void 0 || is_raw_body(context.body)
 		const body = raw_body ? context.body : JSON.stringify(context.body)
-		if (!raw_body && !headers.has("Content-Type")) headers.set(
-			"Content-Type",
-			"application/json"
-		)
-		if (body instanceof FormData) headers.delete("Content-Type")
+		if (!raw_body && !headers.has("Content-Type")) {
+			headers.set(
+				"Content-Type",
+				"application/json"
+			)
+		}
+		if (body instanceof FormData) {
+			headers.delete("Content-Type")
+		}
 		if (spec.idempotency_key && !headers.has("Idempotency-Key")) {
 			headers.set(
 				"Idempotency-Key",
@@ -528,11 +595,15 @@ async function send(c, spec, attempt, job_signal) {
 			method,
 			signal: controller.signal
 		}
-		if (body instanceof ReadableStream) init.duplex = "half"
+		if (body instanceof ReadableStream) {
+			init.duplex = "half"
+		}
 		const uses_xhr = !!options.upload && !c.config.fetch && typeof XMLHttpRequest != "undefined"
-		if (uses_xhr && body instanceof ReadableStream) throw TypeError(
-			"Upload progress cannot be reported for a ReadableStream body"
-		)
+		if (uses_xhr && body instanceof ReadableStream) {
+			throw TypeError(
+				"Upload progress cannot be reported for a ReadableStream body"
+			)
+		}
 		const started = Date.now()
 		try {
 			response = await race_signal(
@@ -556,7 +627,9 @@ async function send(c, spec, attempt, job_signal) {
 			)
 			throw new HttpError(received, error_data, summary)
 		}
-		if (is_stream) clearTimeout(timer)
+		if (is_stream) {
+			clearTimeout(timer)
+		}
 		/** @type {unknown} */
 		let data
 		try {
@@ -570,13 +643,19 @@ async function send(c, spec, attempt, job_signal) {
 				controller.signal
 			)
 		} catch (error) {
-			if (controller.signal.aborted) throw abort_error()
-			if (!(error instanceof SyntaxError)) throw new NetworkError(error, summary)
+			if (controller.signal.aborted) {
+				throw abort_error()
+			}
+			if (!(error instanceof SyntaxError)) {
+				throw new NetworkError(error, summary)
+			}
 			throw invalid_json(error)
 		}
-		if (options.as == "ndjson" || options.as == "events") data = guard_lines(
+		if (options.as == "ndjson" || options.as == "events") {
+			data = guard_lines(
 			/** @type {AsyncIterable<unknown>} */(data)/**/
-		)
+			)
+		}
 		if (options.parse) {
 			const parse = options.parse
 			data = options.as == "ndjson"
@@ -611,16 +690,22 @@ async function send(c, spec, attempt, job_signal) {
 		keeps_link = is_stream
 		return result
 	} catch (error) {
-		if (response && !response.bodyUsed && !response.body?.locked) response.body?.cancel().catch(noop)
+		if (response && !response.bodyUsed && !response.body?.locked) {
+			response.body?.cancel().catch(noop)
+		}
 		const is_known = error instanceof CancelError
 			|| error instanceof HttpError
 			|| error instanceof NetworkError
 			|| error instanceof TimeoutError
-		if (controller.signal.aborted && !is_known) throw abort_error()
+		if (controller.signal.aborted && !is_known) {
+			throw abort_error()
+		}
 		throw error
 	} finally {
 		clearTimeout(timer)
-		if (!keeps_link) unlink()
+		if (!keeps_link) {
+			unlink()
+		}
 	}
 }
 /**
@@ -641,12 +726,16 @@ function start_job(c, spec, key) {
 		settled: false
 	}
 	job.promise = execute(c, spec, job.controller.signal)
-	if (key != null) c.shared.shared.set(key, job)
+	if (key != null) {
+		c.shared.shared.set(key, job)
+	}
 	job.promise.then(noop, noop)
 		.finally(
 			() => {
 				job.settled = true
-				if (key != null && c.shared.shared.get(key) == job) c.shared.shared.delete(key)
+				if (key != null && c.shared.shared.get(key) == job) {
+					c.shared.shared.delete(key)
+				}
 			}
 		)
 	return job
@@ -682,17 +771,23 @@ export function watch_records(records, finish) {
 			return this
 		},
 		async next() {
-			if (finished) return { done: true, value: void 0 }
+			if (finished) {
+				return { done: true, value: void 0 }
+			}
 			try {
 				const step = await reader.next()
-				if (finished) return { done: true, value: void 0 }
+				if (finished) {
+					return { done: true, value: void 0 }
+				}
 				if (step.done) {
 					finished = true
 					finish(false, void 0)
 				}
 				return step
 			} catch (error) {
-				if (finished) return { done: true, value: void 0 }
+				if (finished) {
+					return { done: true, value: void 0 }
+				}
 				finished = true
 				finish(false, { value: error })
 				throw error
@@ -737,7 +832,9 @@ function watch_stream(stream, done) {
 					if (finished) {
 						done()
 						controller.close()
-					} else controller.enqueue(value)
+					} else {
+						controller.enqueue(value)
+					}
 				} catch (error) {
 					done()
 					controller.error(error)

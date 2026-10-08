@@ -1,5 +1,6 @@
 import * as eslint from "eslint"
 import * as estree from "estree"
+import * as typescript from "typescript"
 export type AstNode = BaseAstNode & (
 	{
 		elements: (AstNode | null)[]
@@ -223,6 +224,7 @@ export type RuleOptions = {
 		checkNames?: boolean
 		checkTests?: boolean
 	}
+	"prefer-type-tag": never
 	"pretty-imports"?: {
 		checkExports?: boolean
 		checkImports?: boolean
@@ -314,3 +316,9 @@ export type TsNode = estree.BaseNode & (
 		type: "TSTypeLiteral"
 	}
 )
+export type TypeServices = {
+	esTreeNodeToTSNodeMap: {
+		get(node: estree.VariableDeclarator): typescript.VariableDeclaration | undefined
+	}
+	program?: typescript.Program | null
+}

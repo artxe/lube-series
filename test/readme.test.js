@@ -27,7 +27,9 @@ function code_blocks(source) {
 		/^(\t| *)```(js|ts)\n([\s\S]*?)^\1```/gm
 	)) {
 		const code = /** @type {string} */(match[3])/**/
-		if (match[1] || !resolvable(code)) continue
+		if (match[1] || !resolvable(code)) {
+			continue
+		}
 		blocks.push(
 			{
 				code,
@@ -55,7 +57,9 @@ function resolvable(code) {
 		/(?:from|import)\s*\(?\s*["']([^"']+)["']/g
 	)) {
 		const name = /** @type {string} */(specifier)/**/
-		if (name.startsWith("node:")) continue
+		if (name.startsWith("node:")) {
+			continue
+		}
 		try {
 			require_from_root.resolve(name)
 		} catch {
@@ -74,7 +78,9 @@ function skipped(source) {
 		/^(\t| *)```(?:js|ts)\n([\s\S]*?)^\1```/gm
 	)) {
 		const code = /** @type {string} */(match[2])/**/
-		if (!match[1] && !resolvable(code)) count++
+		if (!match[1] && !resolvable(code)) {
+			count++
+		}
 	}
 	return count
 }
@@ -169,7 +175,9 @@ describe(
 							)
 							continue
 						}
-						if (!origin.ts && implicit_any.has(diagnostic.code)) continue
+						if (!origin.ts && implicit_any.has(diagnostic.code)) {
+							continue
+						}
 						const inside = diagnostic.file && diagnostic.start != null
 							? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start).line
 							: 0

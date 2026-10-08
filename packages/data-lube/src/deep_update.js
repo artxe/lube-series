@@ -82,7 +82,9 @@ function complete(root, result, tree, record) {
 		let shared = false
 		const drafted = result === undefined || result === root.proxy
 		if (drafted) {
-			if (scope.graph && root.modified) shared = link(root)
+			if (scope.graph && root.modified) {
+				shared = link(root)
+			}
 			next = finalize(root)
 		} else if (root.modified) {
 			throw new TypeError(
@@ -120,7 +122,9 @@ function complete(root, result, tree, record) {
 				: scope.shared
 					? false
 					: input
-			if (input !== undefined || output !== undefined) remember(root.base, input, next, output)
+			if (input !== undefined || output !== undefined) {
+				remember(root.base, input, next, output)
+			}
 		}
 		return next
 	} finally {
@@ -136,10 +140,14 @@ function copy_items(array, indices) {
 	/** @type {unknown[]} */
 	const copy = new Array(array.length)
 	if (indices) {
-		for (const i of indices) copy[i] = array[i]
+		for (const i of indices) {
+			copy[i] = array[i]
+		}
 	} else {
 		for (let i = 0; i < array.length; i++) {
-			if (i in array) copy[i] = array[i]
+			if (i in array) {
+				copy[i] = array[i]
+			}
 		}
 	}
 	return copy
@@ -223,7 +231,9 @@ function draft_for(value, kind, parent) {
 	}
 	if (known && !scope.graph) {
 		scope.graph = scope.found = true
-		if (seen) index_drafts(scope)
+		if (seen) {
+			index_drafts(scope)
+		}
 	}
 	return known
 		? /** @type {Draftable} */(known.proxy)/**/
@@ -259,18 +269,24 @@ export function draft_map_has(draft, key) {
 function draft_members(state) {
 	prepare(state)
 	const copy = state.copy
-	if (state.members) return copy
+	if (state.members) {
+		return copy
+	}
 	const members = state.members = new Map()
 	let drafted = false
 	for (const value of set_values.call(copy)) {
-		if (typeof value != "object" || value === null || !base_has(state, value)) continue
+		if (typeof value != "object" || value === null || !base_has(state, value)) {
+			continue
+		}
 		if (draft_kind(value)) {
 			drafted = true
 			break
 		}
 		keep(state.scope, value)
 	}
-	if (!drafted) return copy
+	if (!drafted) {
+		return copy
+	}
 	const values = [ ...set_values.call(copy) ]
 	set_clear.call(copy)
 	for (const value of values) {
@@ -280,7 +296,9 @@ function draft_members(state) {
 			members.set(value, draft)
 			set_add.call(copy, draft)
 		} else {
-			if (typeof value == "object" && value !== null && base_has(state, value)) keep(state.scope, value)
+			if (typeof value == "object" && value !== null && base_has(state, value)) {
+				keep(state.scope, value)
+			}
 			set_add.call(copy, value)
 		}
 	}
@@ -302,18 +320,22 @@ function draft_of(proxy) {
  */
 function leave(parent, value, original) {
 	const state = state_of(value)
-	if (state?.scope === parent.scope && state.base === original) state.away = true
+	if (state?.scope === parent.scope && state.base === original) {
+		state.away = true
+	}
 }
 /** @satisfies {ProxyHandler<DraftState>} */
 const draft_traps = {
 	defineProperty(state, key, descriptor) {
 		if (state.scope.track) {
 			const source = state.copy ?? state.base
-			if (has_own.call(source, key)) leave(
-				state,
-				source[key],
-				state.base[key]
-			)
+			if (has_own.call(source, key)) {
+				leave(
+					state,
+					source[key],
+					state.base[key]
+				)
+			}
 		}
 		prepare(state)
 		mark(state)
@@ -324,11 +346,13 @@ const draft_traps = {
 	deleteProperty(state, key) {
 		const source = state.copy ?? state.base
 		if (has_own.call(source, key)) {
-			if (state.scope.track) leave(
-				state,
-				source[key],
-				state.base[key]
-			)
+			if (state.scope.track) {
+				leave(
+					state,
+					source[key],
+					state.base[key]
+				)
+			}
 			prepare(state)
 			mark(state)
 			delete state.copy[key]
@@ -336,14 +360,22 @@ const draft_traps = {
 		return true
 	},
 	get(state, key) {
-		if (key === draft_state) return state
+		if (key === draft_state) {
+			return state
+		}
 		const source = state.copy ?? state.base
-		if (!has_own.call(source, key)) return reflect_get(source, key, state.proxy)
+		if (!has_own.call(source, key)) {
+			return reflect_get(source, key, state.proxy)
+		}
 		const value = source[key]
-		if (value !== state.base[key]) return value
+		if (value !== state.base[key]) {
+			return value
+		}
 		const kind = draft_kind(value)
 		if (!kind) {
-			if (typeof value == "object" && value !== null) keep(state.scope, value)
+			if (typeof value == "object" && value !== null) {
+				keep(state.scope, value)
+			}
 			return value
 		}
 		prepare(state)
@@ -382,15 +414,23 @@ const draft_traps = {
 		let current_state
 		if (has_own.call(source, key)) {
 			const current = source[key]
-			if (is(current, value)) return true
+			if (is(current, value)) {
+				return true
+			}
 			current_state = state_of(current)
 			if (current_state && current_state.scope === state.scope && current_state.base === value) {
-				if (state.copy) set_own(state.copy, key, value)
-				if (!state.scope.graph) forget(state.scope, value)
+				if (state.copy) {
+					set_own(state.copy, key, value)
+				}
+				if (!state.scope.graph) {
+					forget(state.scope, value)
+				}
 				return true
 			}
 		}
-		if (state.scope.track && current_state?.scope === state.scope && current_state.base === state.base[key]) current_state.away = true
+		if (state.scope.track && current_state?.scope === state.scope && current_state.base === state.base[key]) {
+			current_state.away = true
+		}
 		prepare(state)
 		mark(state)
 		set_own(state.copy, key, value)
@@ -408,8 +448,12 @@ const draft_traps = {
  * @returns {Draftable | undefined}
  */
 function finalize(state) {
-	if (!state.modified) return state.base
-	if (state.finalized) return state.copy
+	if (!state.modified) {
+		return state.base
+	}
+	if (state.finalized) {
+		return state.copy
+	}
 	state.finalized = true
 	const { base, copy, kind, scope } = /** @type {DraftState & { copy: Draftable }} */(state)/**/
 	scope.depth++
@@ -423,7 +467,9 @@ function finalize(state) {
 			const value = copy[key]
 			if (typeof value == "object" && value !== null && (value !== base[key] || states?.get(value)?.modified)) {
 				const resolved = finalize_value(value, state, base[key])
-				if (resolved !== value) set_own(copy, key, resolved)
+				if (resolved !== value) {
+					set_own(copy, key, resolved)
+				}
 			}
 		}
 		break
@@ -431,8 +477,12 @@ function finalize(state) {
 		/** @type {Map<unknown, unknown> | undefined} */
 		let rebuild
 		for (const key of state.touched ?? []) {
-			if ((typeof key == "string" || typeof key == "symbol") && has_own.call(copy, key)) finalize_key(copy, key, state)
-			if (!map_contains.call(copy, key)) continue
+			if ((typeof key == "string" || typeof key == "symbol") && has_own.call(copy, key)) {
+				finalize_key(copy, key, state)
+			}
+			if (!map_contains.call(copy, key)) {
+				continue
+			}
 			if (typeof key == "object" && key !== null) {
 				const known = base_has(state, key)
 				if (!known || states?.get(key)?.modified) {
@@ -453,7 +503,9 @@ function finalize(state) {
 			const original = base_get(state, key)
 			if (typeof value == "object" && value !== null && (value !== original || states?.get(value)?.modified)) {
 				const resolved = finalize_value(value, state, original)
-				if (resolved !== value) map_write.call(copy, key, resolved)
+				if (resolved !== value) {
+					map_write.call(copy, key, resolved)
+				}
 			}
 		}
 		if (rebuild) {
@@ -483,12 +535,16 @@ function finalize(state) {
 			)
 		}
 		for (const key of /** @type {Iterable<PropertyKey>} */(state.touched ?? [])/**/) {
-			if (has_own.call(copy, key)) finalize_key(copy, key, state)
+			if (has_own.call(copy, key)) {
+				finalize_key(copy, key, state)
+			}
 		}
 	}
 	}
 	scope.depth--
-	if (is_frozen(base)) freeze(state.copy)
+	if (is_frozen(base)) {
+		freeze(state.copy)
+	}
 	return state.copy
 }
 /**
@@ -502,7 +558,9 @@ function finalize_key(copy, key, state) {
 	const original = state.base[key]
 	if (typeof value == "object" && value !== null && (value !== original || state.scope.graph && state.scope.drafts?.get(value)?.modified)) {
 		const resolved = finalize_value(value, state, original)
-		if (resolved !== value) set_own(copy, key, resolved)
+		if (resolved !== value) {
+			set_own(copy, key, resolved)
+		}
 	}
 }
 /**
@@ -520,7 +578,9 @@ function finalize_value(value, state, original) {
 		if (mapped?.modified) {
 			child = mapped
 		} else if (child) {
-			if (state.scope.track) state.scope.shared = true
+			if (state.scope.track) {
+				state.scope.shared = true
+			}
 			return value
 		}
 	}
@@ -531,12 +591,16 @@ function finalize_value(value, state, original) {
 				: child.base === original
 		) {
 			child.away = false
-			if (child.placed) state.scope.shared = true
+			if (child.placed) {
+				state.scope.shared = true
+			}
 		} else {
 			place(child)
 		}
 	}
-	if (child) return finalize_later(child)
+	if (child) {
+		return finalize_later(child)
+	}
 	const resolved = resolve(value, state.scope)
 	if (typeof resolved == "object" && resolved !== null && is_frozen(state.base)) {
 		state.scope.frozen ??= []
@@ -550,7 +614,9 @@ function finalize_value(value, state, original) {
  */
 function release(scope) {
 	drafts.active--
-	for (const revoke of scope.revokes) revoke()
+	for (const revoke of scope.revokes) {
+		revoke()
+	}
 }
 /** @type {{ Array: ProxyHandler<[ DraftState ]>, Map: ProxyHandler<DraftState>, Object: ProxyHandler<DraftState>, Set: ProxyHandler<DraftState> }} */
 const handlers = {
@@ -571,10 +637,14 @@ const handlers = {
 	Map: {
 		...draft_traps,
 		get(state, key) {
-			if (key === draft_state) return state
-			if (key === "size") return size_of(
+			if (key === draft_state) {
+				return state
+			}
+			if (key === "size") {
+				return size_of(
 				/** @type {DraftState<MapDraft>} */(state)/**/
-			)
+				)
+			}
 			return has_own.call(map_methods, key)
 				? map_methods[/** @type {keyof typeof map_methods} */(key)/**/]
 				: draft_traps.get(state, key)
@@ -584,10 +654,14 @@ const handlers = {
 	Set: {
 		...draft_traps,
 		get(state, key) {
-			if (key === draft_state) return state
-			if (key === "size") return size_of(
+			if (key === draft_state) {
+				return state
+			}
+			if (key === "size") {
+				return size_of(
 				/** @type {DraftState<SetDraft>} */(state)/**/
-			)
+				)
+			}
 			return has_own.call(set_methods, key)
 				? set_methods[/** @type {keyof typeof set_methods} */(key)/**/]
 				: has_own.call(set_readers, key)
@@ -605,10 +679,14 @@ function map_get(state, key) {
 	const value = state.copy
 		? map_read.call(state.copy, key)
 		: base_get(state, key)
-	if (value !== base_get(state, key)) return value
+	if (value !== base_get(state, key)) {
+		return value
+	}
 	const kind = draft_kind(value)
 	if (!kind) {
-		if (typeof value == "object" && value !== null) keep(state.scope, value)
+		if (typeof value == "object" && value !== null) {
+			keep(state.scope, value)
+		}
 		return value
 	}
 	prepare(state)
@@ -639,7 +717,9 @@ function* map_items(state, mode) {
 		for (let step = cursor.keys.next(); !step.done; step = cursor.keys.next()) {
 			cursor.index++
 			const key = step.value
-			if (typeof key == "object" && key !== null && base_has(state, key)) keep(state.scope, key)
+			if (typeof key == "object" && key !== null && base_has(state, key)) {
+				keep(state.scope, key)
+			}
 			yield mode == "keys"
 				? key
 				: mode == "values"
@@ -664,7 +744,9 @@ const map_methods = {
 	 */
 	clear() {
 		const state = draft_of(this)
-		if (!size_of(state)) return
+		if (!size_of(state)) {
+			return
+		}
 		prepare(state)
 		mark(state)
 		map_clear.call(state.copy)
@@ -677,14 +759,18 @@ const map_methods = {
 	delete(key) {
 		const state = draft_of(this)
 		const found = map_key(state, key)
-		if (!map_has(state, found)) return false
-		if (state.scope.track) leave(
-			state,
-			state.copy
-				? map_read.call(state.copy, found)
-				: base_get(state, found),
-			base_get(state, found)
-		)
+		if (!map_has(state, found)) {
+			return false
+		}
+		if (state.scope.track) {
+			leave(
+				state,
+				state.copy
+					? map_read.call(state.copy, found)
+					: base_get(state, found),
+				base_get(state, found)
+			)
+		}
 		prepare(state)
 		mark(state)
 		return map_remove.call(state.copy, found)
@@ -704,12 +790,14 @@ const map_methods = {
 	 */
 	forEach(callback, this_arg) {
 		const state = draft_of(this)
-		for (const key of map_items(state, "keys")) callback.call(
-			this_arg,
-			map_get(state, key),
-			key,
-			this
-		)
+		for (const key of map_items(state, "keys")) {
+			callback.call(
+				this_arg,
+				map_get(state, key),
+				key,
+				this
+			)
+		}
 	},
 	/**
 	 * @this {MapDraft}
@@ -750,14 +838,22 @@ const map_methods = {
 			const current = state.copy
 				? map_read.call(state.copy, key)
 				: base_get(state, key)
-			if (is(current, value)) return this
-			const current_state = state_of(current)
-			if (current_state && current_state.scope === state.scope && current_state.base === value) {
-				if (state.copy) map_write.call(state.copy, key, value)
-				if (!state.scope.graph) forget(state.scope, value)
+			if (is(current, value)) {
 				return this
 			}
-			if (state.scope.track && current_state?.scope === state.scope && current_state.base === base_get(state, key)) current_state.away = true
+			const current_state = state_of(current)
+			if (current_state && current_state.scope === state.scope && current_state.base === value) {
+				if (state.copy) {
+					map_write.call(state.copy, key, value)
+				}
+				if (!state.scope.graph) {
+					forget(state.scope, value)
+				}
+				return this
+			}
+			if (state.scope.track && current_state?.scope === state.scope && current_state.base === base_get(state, key)) {
+				current_state.away = true
+			}
 		}
 		prepare(state)
 		mark(state)
@@ -811,7 +907,9 @@ function base_has(state, key) {
  */
 function finalize_later(state) {
 	const scope = state.scope
-	if (!state.modified || state.finalized || scope.depth <= 200) return finalize(state)
+	if (!state.modified || state.finalized || scope.depth <= 200) {
+		return finalize(state)
+	}
 	later(
 		scope,
 		() => {
@@ -828,7 +926,9 @@ function finalize_later(state) {
 function forget(scope, value) {
 	const seen = scope.listed ?? []
 	for (let i = seen.length - 1; i >= 0; i--) {
-		if (/** @type {DraftState} */(seen[i])/**/.base === value) seen.splice(i, 1)
+		if (/** @type {DraftState} */(seen[i])/**/.base === value) {
+			seen.splice(i, 1)
+		}
 	}
 	scope.bases?.delete(value)
 }
@@ -839,7 +939,9 @@ function forget(scope, value) {
 function index_drafts(scope) {
 	/** @type {Map<unknown, DraftState>} */
 	const map = new Map()
-	for (const state of scope.listed ?? []) map.set(state.base, state)
+	for (const state of scope.listed ?? []) {
+		map.set(state.base, state)
+	}
 	scope.drafts = map
 	scope.bases = scope.listed = undefined
 }
@@ -863,7 +965,9 @@ function is_draft(value) {
  */
 export function is_frozen(value) {
 	let current = value
-	for (let state = state_of(current); state; state = state_of(current)) current = state.base
+	for (let state = state_of(current); state; state = state_of(current)) {
+		current = state.base
+	}
 	return isFrozen(current)
 }
 /**
@@ -928,13 +1032,17 @@ function link(root) {
 			: states.get(value)
 		const key = state ?? value
 		const known = index.get(key)
-		if (known !== undefined) return known
+		if (known !== undefined) {
+			return known
+		}
 		const kind = state
 			? state.kind
 			: own
 				? own.kind
 				: container_kind(value)
-		if (!kind) return -1
+		if (!kind) {
+			return -1
+		}
 		const at = values.length
 		index.set(key, at)
 		values.push(value)
@@ -960,7 +1068,9 @@ function link(root) {
 		for (let k = 0; k < found.length; k += 3) {
 			const child = found[k]
 			const target = node_of(child)
-			if (target < 0) continue
+			if (target < 0) {
+				continue
+			}
 			const type = /** @type {number} */(found[k + 2])/**/
 			const slot = found[k + 1]
 			from.push(at)
@@ -971,7 +1081,9 @@ function link(root) {
 					? type | 4
 					: type
 			)
-			if (++/** @type {number} */(incoming[target])/**/ > 1 || target == 0) shared = true
+			if (++/** @type {number} */(incoming[target])/**/ > 1 || target == 0) {
+				shared = true
+			}
 		}
 	}
 	const count = values.length
@@ -1038,7 +1150,9 @@ function link(root) {
 		}
 	}
 	for (let i = 0; i < count; i++) {
-		if (!dirty[i]) continue
+		if (!dirty[i]) {
+			continue
+		}
 		const state = owners[i] ??= draft_of(
 			create_draft(
 				/** @type {Draftable} */(values[i])/**/,
@@ -1053,7 +1167,9 @@ function link(root) {
 	for (let e = 0; e < edges; e++) {
 		const parent = /** @type {number} */(from[e])/**/
 		const type = /** @type {number} */(types[e])/**/ & 3
-		if (type == 2 || !dirty[parent] || !dirty[/** @type {number} */(to[e])/**/]) continue
+		if (type == 2 || !dirty[parent] || !dirty[/** @type {number} */(to[e])/**/]) {
+			continue
+		}
 		const slot = slots[e]
 		touch(
 			/** @type {DraftState} */(owners[parent])/**/,
@@ -1074,7 +1190,9 @@ function listed_again(scope, seen, value) {
 	let bases = scope.bases
 	if (!bases) {
 		bases = scope.bases = new Set()
-		for (const state of seen) bases.add(state.base)
+		for (const state of seen) {
+			bases.add(state.base)
+		}
 	}
 	const size = bases.size
 	bases.add(value)
@@ -1096,7 +1214,9 @@ function map_has(state, key) {
  * @returns {unknown}
  */
 function map_key(state, key) {
-	if (typeof key != "object" || key === null || map_has(state, key)) return key
+	if (typeof key != "object" || key === null || map_has(state, key)) {
+		return key
+	}
 	const original = original_draft_base(state.scope, key)
 	return original !== key && map_has(state, original)
 		? original
@@ -1107,7 +1227,9 @@ function map_key(state, key) {
  * @returns {void}
  */
 function mark(state) {
-	for (let current = /** @type {DraftState | undefined} */(state)/**/; current && !current.modified; current = current.parent) current.modified = true
+	for (let current = /** @type {DraftState | undefined} */(state)/**/; current && !current.modified; current = current.parent) {
+		current.modified = true
+	}
 }
 /**
  * @param {DraftState<SetDraft>} state
@@ -1116,7 +1238,9 @@ function mark(state) {
  */
 function member_key(state, value) {
 	const outer = state_of(state.base)
-	if (outer?.kind != "Set") return value
+	if (outer?.kind != "Set") {
+		return value
+	}
 	const key = member_key(outer, value)
 	return outer.members?.get(key) ?? key
 }
@@ -1127,7 +1251,9 @@ function member_key(state, value) {
  */
 function original_draft_base(scope, value) {
 	let current = value
-	for (let state = state_of(current); state?.scope === scope; state = state_of(current)) current = state.base
+	for (let state = state_of(current); state?.scope === scope; state = state_of(current)) {
+		current = state.base
+	}
 	return current
 }
 /**
@@ -1158,7 +1284,9 @@ function own_properties(target, value) {
 	for (const key of ownKeys(descriptors)) {
 		const descriptor = /** @type {PropertyDescriptor} */(descriptors[/** @type {string} */(key)/**/])/**/
 		descriptor.configurable = true
-		if ("value" in descriptor) descriptor.writable = true
+		if ("value" in descriptor) {
+			descriptor.writable = true
+		}
 	}
 	return defineProperties(target, descriptors)
 }
@@ -1168,14 +1296,18 @@ function own_properties(target, value) {
  */
 function place(state) {
 	state.placed = (state.placed ?? 0) + 1
-	if (state.placed > 1 || !state.away) state.scope.shared = true
+	if (state.placed > 1 || !state.away) {
+		state.scope.shared = true
+	}
 }
 /**
  * @param {DraftState} state
  * @returns {asserts state is DraftState & { copy: Draftable }}
  */
 function prepare(state) {
-	if (state.copy !== undefined) return
+	if (state.copy !== undefined) {
+		return
+	}
 	const base = state.base
 	/** @type {Prototype | null} */
 	const proto = getPrototypeOf(base)
@@ -1209,7 +1341,9 @@ function prepare(state) {
 		)
 		for (const cursor of state.cursors ?? []) {
 			cursor.keys = map_keys.call(copy)
-			for (let i = 0; i < cursor.index; i++) cursor.keys.next()
+			for (let i = 0; i < cursor.index; i++) {
+				cursor.keys.next()
+			}
 		}
 		state.cursors = undefined
 		state.copy = copy
@@ -1223,11 +1357,17 @@ function prepare(state) {
 		const names = getOwnPropertyNames(base)
 		let count = 0
 		for (const key in copy) {
-			if (has_own.call(copy, key)) count++
+			if (has_own.call(copy, key)) {
+				count++
+			}
 		}
-		if (names.length != count) define_hidden(copy, base, names)
+		if (names.length != count) {
+			define_hidden(copy, base, names)
+		}
 		const symbols = getOwnPropertySymbols(base)
-		if (symbols.length) define_hidden(copy, base, symbols)
+		if (symbols.length) {
+			define_hidden(copy, base, symbols)
+		}
 		state.copy = copy
 		break
 	}
@@ -1243,7 +1383,9 @@ function prepare(state) {
 			base
 		)
 	}
-	if (proto !== null && proto !== getPrototypeOf(state.copy)) setPrototypeOf(state.copy, proto)
+	if (proto !== null && proto !== getPrototypeOf(state.copy)) {
+		setPrototypeOf(state.copy, proto)
+	}
 }
 /**
  * @param {unknown} value
@@ -1259,7 +1401,9 @@ function reaches_draft(value, scope, visited) {
 	while (stack.length) {
 		const parent = stack.pop()
 		const item = stack.pop()
-		if (typeof item != "object" || item === null) continue
+		if (typeof item != "object" || item === null) {
+			continue
+		}
 		const state = state_of(item)
 		const mapped = scope.graph
 			? scope.drafts?.get(item)
@@ -1273,49 +1417,69 @@ function reaches_draft(value, scope, visited) {
 				) ?? item) !== item
 		if (found) {
 			const reaching = scope.reaching ??= new Set()
-			for (let node = parent; node !== undefined; node = parents.get(node)) reaching.add(node)
+			for (let node = parent; node !== undefined; node = parents.get(node)) {
+				reaching.add(node)
+			}
 			return true
 		}
 		if (mapped || state) {
-			if (scope.track && state && state.scope !== scope) scope.shared = true
+			if (scope.track && state && state.scope !== scope) {
+				scope.shared = true
+			}
 			continue
 		}
 		if (visited.has(item) || scope.seen?.has(
 			/** @type {Draftable} */(item)/**/
 		)) {
-			if (scope.track) scope.shared = true
+			if (scope.track) {
+				scope.shared = true
+			}
 			continue
 		}
 		const kind = container_kind(item)
-		if (!kind) continue
+		if (!kind) {
+			continue
+		}
 		visited.add(item)
-		if (item !== value) parents.set(item, parent)
+		if (item !== value) {
+			parents.set(item, parent)
+		}
 		switch (kind) {
 		case "Array": {
 			const array = /** @type {unknown[]} */(item)/**/
 			const indices = sparse_indices(array)
 			if (indices) {
-				for (const i of indices) stack.push(array[i], item)
+				for (const i of indices) {
+					stack.push(array[i], item)
+				}
 			} else {
-				for (let i = 0; i < array.length; i++) stack.push(array[i], item)
+				for (let i = 0; i < array.length; i++) {
+					stack.push(array[i], item)
+				}
 			}
 			break
 		}
 		case "Map":
 			for (const [ key, entry ] of map_entries.call(
 				/** @type {Map<unknown, unknown>} */(item)/**/
-			)) stack.push(key, item, entry, item)
+			)) {
+				stack.push(key, item, entry, item)
+			}
 			break
 		case "Object":
-			for (const key of ownKeys(item)) stack.push(
+			for (const key of ownKeys(item)) {
+				stack.push(
 				/** @type {Record<PropertyKey, unknown>} */(item)/**/[key],
-				item
-			)
+					item
+				)
+			}
 			break
 		default:
 			for (const entry of set_values.call(
 				/** @type {Set<unknown>} */(item)/**/
-			)) stack.push(entry, item)
+			)) {
+				stack.push(entry, item)
+			}
 		}
 	}
 	return false
@@ -1340,7 +1504,9 @@ function read_set(proxy, name, other) {
 		view.add(original)
 	}
 	const result = /** @type {Record<keyof typeof set_readers, (this: Set<unknown>, other: unknown) => unknown>} */(/** @type {unknown} */(Set.prototype))/**/[name].call(view, other)
-	if (!(result instanceof Set)) return /** @type {R} */(result)/**/
+	if (!(result instanceof Set)) {
+		return /** @type {R} */(result)/**/
+	}/**/
 	/** @type {Set<unknown>} */
 	const mapped = new Set()
 	for (const item of result) {
@@ -1365,14 +1531,18 @@ function remember(
 	result,
 	result_tree
 ) {
-	if (recent.result !== undefined && recent.result !== value && (recent.value !== value || !recent.result_tree)) shapes.set(
-		recent.result,
-		recent.result_tree
-	)
-	if (value_tree === false) shapes.set(
+	if (recent.result !== undefined && recent.result !== value && (recent.value !== value || !recent.result_tree)) {
+		shapes.set(
+			recent.result,
+			recent.result_tree
+		)
+	}
+	if (value_tree === false) {
+		shapes.set(
 		/** @type {WeakKey} */(value)/**/,
-		false
-	)
+			false
+		)
+	}
 	recent.result = result_tree === undefined
 		? undefined
 		: result
@@ -1389,7 +1559,9 @@ function remember(
  * @returns {void}
  */
 function replace_own(target, key, value) {
-	if ("value" in /** @type {PropertyDescriptor} */(getOwnPropertyDescriptor(target, key))/**/) defineProperty(target, key, { value })
+	if ("value" in /** @type {PropertyDescriptor} */(getOwnPropertyDescriptor(target, key))/**/) {
+		defineProperty(target, key, { value })
+	}
 }
 /**
  * @param {unknown} value
@@ -1411,20 +1583,28 @@ function resolve(value, scope) {
 	const state = state_of(value)
 	if (state) {
 		if (state.scope !== scope) {
-			if (scope.track) scope.shared = true
+			if (scope.track) {
+				scope.shared = true
+			}
 			return value
 		}
-		if (scope.track) place(state)
+		if (scope.track) {
+			place(state)
+		}
 		return keep(scope, finalize_later(state))
 	}
 	const kind = container_kind(value)
-	if (!kind) return value
+	if (!kind) {
+		return value
+	}
 	const seen = scope.seen ??= new Map()
 	const known = seen.get(
 		/** @type {Draftable} */(value)/**/
 	)
 	if (known) {
-		if (scope.track) scope.shared = true
+		if (scope.track) {
+			scope.shared = true
+		}
 		return known
 	}
 	const frozen = isFrozen(value)
@@ -1432,14 +1612,17 @@ function resolve(value, scope) {
 		/** @type {Set<unknown>} */
 		const visited = new Set()
 		if (!reaches_draft(value, scope, visited)) {
-			for (const item of visited) seen.set(
+			for (const item of visited) {
+				seen.set(
 				/** @type {Draftable} */(item)/**/,
-				/** @type {Draftable} */(item)/**/
-			)
+					/** @type {Draftable} */(item)/**/
+				)
+			}
 			return value
 		}
 	}
-	const target = /** @type {Draftable} */(frozen
+	/** @type {Draftable} */
+	const target = frozen
 		? kind == "Array"
 			? setPrototypeOf(
 				copy_items(
@@ -1472,7 +1655,7 @@ function resolve(value, scope) {
 						: create(getPrototypeOf(value)),
 				value
 			)
-		: value)/**/
+		: value
 	seen.set(
 		/** @type {Draftable} */(value)/**/,
 		target
@@ -1510,7 +1693,9 @@ function resolve_items(value, target, kind, scope) {
 			const item = array[i]
 			if (typeof item == "object" && item !== null) {
 				const resolved = resolve(item, scope)
-				if (resolved !== item) /** @type {unknown[]} */(target)/**/[i] = resolved
+				if (resolved !== item) {
+					/** @type {unknown[]} */(target)/**/[i] = resolved
+				}
 			}
 		}
 		break
@@ -1527,14 +1712,18 @@ function resolve_items(value, target, kind, scope) {
 					resolve(key, scope),
 					resolve(item, scope)
 				]
-				if (next[0] !== key || next[1] !== item) changed = true
+				if (next[0] !== key || next[1] !== item) {
+					changed = true
+				}
 				return next
 			}
 		)
 		if (changed) {
 			const map = /** @type {Map<unknown, unknown>} */(target)/**/
 			map_clear.call(map)
-			for (const [ key, item ] of entries) map_write.call(map, key, item)
+			for (const [ key, item ] of entries) {
+				map_write.call(map, key, item)
+			}
 		}
 		break
 	}
@@ -1545,7 +1734,9 @@ function resolve_items(value, target, kind, scope) {
 			const item = /** @type {Record<PropertyKey, unknown>} */(value)/**/[key]
 			if (typeof item == "object" && item !== null) {
 				const resolved = resolve(item, scope)
-				if (resolved !== item) replace_own(target, key, resolved)
+				if (resolved !== item) {
+					replace_own(target, key, resolved)
+				}
 			}
 		}
 		break
@@ -1558,19 +1749,25 @@ function resolve_items(value, target, kind, scope) {
 		].map(
 			item => {
 				const next = resolve(item, scope)
-				if (next !== item) changed = true
+				if (next !== item) {
+					changed = true
+				}
 				return next
 			}
 		)
 		if (changed) {
 			const set = /** @type {Set<unknown>} */(target)/**/
 			set_clear.call(set)
-			for (const item of items) set_add.call(set, item)
+			for (const item of items) {
+				set_add.call(set, item)
+			}
 		}
 	}
 	}
 	scope.depth--
-	if (target !== value) freeze(target)
+	if (target !== value) {
+		freeze(target)
+	}
 }
 /**
  * @param {DraftState<SetDraft>} state
@@ -1579,9 +1776,13 @@ function resolve_items(value, target, kind, scope) {
  */
 function set_has(state, value) {
 	const copy = state.copy
-	if (!copy) return base_has(state, value)
+	if (!copy) {
+		return base_has(state, value)
+	}
 	const key = member_key(state, value)
-	if (set_contains.call(copy, key)) return true
+	if (set_contains.call(copy, key)) {
+		return true
+	}
 	const draft = state.members?.get(key)
 	return draft !== undefined && set_contains.call(copy, draft)
 }
@@ -1591,7 +1792,9 @@ function set_has(state, value) {
  * @returns {unknown}
  */
 function set_key(state, value) {
-	if (typeof value != "object" || value === null || set_has(state, value)) return value
+	if (typeof value != "object" || value === null || set_has(state, value)) {
+		return value
+	}
 	const original = original_draft_base(state.scope, value)
 	return original !== value && set_has(state, original)
 		? original
@@ -1643,7 +1846,9 @@ const set_methods = {
 	 */
 	clear() {
 		const state = draft_of(this)
-		if (!size_of(state)) return
+		if (!size_of(state)) {
+			return
+		}
 		prepare(state)
 		mark(state)
 		set_clear.call(state.copy)
@@ -1656,13 +1861,19 @@ const set_methods = {
 	delete(member) {
 		const state = draft_of(this)
 		const value = set_key(state, member)
-		if (!set_has(state, value)) return false
+		if (!set_has(state, value)) {
+			return false
+		}
 		prepare(state)
 		mark(state)
 		const key = member_key(state, value)
-		if (set_remove.call(state.copy, key)) return true
+		if (set_remove.call(state.copy, key)) {
+			return true
+		}
 		const drafted = state.members?.get(key)
-		if (state.scope.track) leave(state, drafted, key)
+		if (state.scope.track) {
+			leave(state, drafted, key)
+		}
 		return set_remove.call(state.copy, drafted)
 	},
 	/**
@@ -1670,7 +1881,9 @@ const set_methods = {
 	 * @returns {IterableIterator<[ unknown, unknown ]>}
 	 */
 	* entries() {
-		for (const value of this.values()) yield [ value, value ]
+		for (const value of this.values()) {
+			yield [ value, value ]
+		}
 	},
 	/**
 	 * @this {SetDraft}
@@ -1679,7 +1892,9 @@ const set_methods = {
 	 * @returns {void}
 	 */
 	forEach(callback, this_arg) {
-		for (const value of this.values()) callback.call(this_arg, value, value, this)
+		for (const value of this.values()) {
+			callback.call(this_arg, value, value, this)
+		}
 	},
 	/**
 	 * @this {SetDraft}
@@ -1793,9 +2008,7 @@ function size_of(state) {
 	const source = /** @type {Map<unknown, unknown> | Set<unknown>} */(/** @type {unknown} */(state.copy ?? state.base))/**/
 	return state.nested && !state.copy
 		? source.size
-		: /** @type {number} */((state.kind == "Map"
-			? map_size
-			: set_size).call(source))/**/
+		: (state.kind == "Map" ? map_size : set_size).call(source)
 }
 /**
  * @param {DraftState} state
@@ -1827,7 +2040,9 @@ function unchanged(state, child, slot, type) {
 	case 2:
 		return base_has(state, original)
 	default:
-		if (state.kind == "Map" && type == 0) return base_has(state, slot) && base_get(state, slot) === original
+		if (state.kind == "Map" && type == 0) {
+			return base_has(state, slot) && base_get(state, slot) === original
+		}
 		return has_own.call(
 			state.base,
 			/** @type {PropertyKey} */(slot)/**/
@@ -1839,9 +2054,11 @@ function unchanged(state, child, slot, type) {
  * @returns {unknown}
  */
 function undrafted(result) {
-	if (result === undefined) throw new TypeError(
-		"deepUpdate drafts only plain objects, arrays, Map and Set; a recipe for any other value, such as a class instance, Date or primitive, must return the next value"
-	)
+	if (result === undefined) {
+		throw new TypeError(
+			"deepUpdate drafts only plain objects, arrays, Map and Set; a recipe for any other value, such as a class instance, Date or primitive, must return the next value"
+		)
+	}
 	return result
 }
 /**
@@ -1933,19 +2150,23 @@ export default /** @type {import("../public.js").DeepUpdate} */(
 	 * @returns {unknown}
 	 */
 	function(value, recipe, options) {
-		if (typeof recipe != "function") throw new TypeError(
-			Array.isArray(recipe)
-				? "deepUpdate takes a recipe function; apply changes listed by deepDiff with deepPatch"
-				: "deepUpdate needs a recipe function"
-		)
+		if (typeof recipe != "function") {
+			throw new TypeError(
+				Array.isArray(recipe)
+					? "deepUpdate takes a recipe function; apply changes listed by deepDiff with deepPatch"
+					: "deepUpdate needs a recipe function"
+			)
+		}
 		if (options !== undefined) {
 			const keys = typeof options == "object" && options !== null
 				? Object.keys(options)
 				: undefined
 			const graph = /** @type {{ graph?: unknown }} */(options)/**/?.graph
-			if (!keys || keys.some(key => key != "graph") || graph !== undefined && typeof graph != "boolean") throw new TypeError(
-				"deepUpdate options must be an object with an optional boolean graph"
-			)
+			if (!keys || keys.some(key => key != "graph") || graph !== undefined && typeof graph != "boolean") {
+				throw new TypeError(
+					"deepUpdate options must be an object with an optional boolean graph"
+				)
+			}
 		}
 		return update(
 			value,

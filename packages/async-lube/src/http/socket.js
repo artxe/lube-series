@@ -44,15 +44,21 @@ function check_socket_options(options) {
 		"ws"
 	)
 	const { as, heartbeat, limit, outbox } = options
-	if (as != null && as != "json" && as != "text") throw TypeError(
-		"The as of ws() must be \"json\" or \"text\""
-	)
-	if (limit != null && !(limit === Infinity || Number.isInteger(limit) && limit >= 1)) throw TypeError(
-		"The limit of ws() must be a positive integer or Infinity"
-	)
-	if (outbox != null && !(outbox === Infinity || Number.isInteger(outbox) && outbox >= 0)) throw TypeError(
-		"The outbox of ws() must be a non-negative integer or Infinity"
-	)
+	if (as != null && as != "json" && as != "text") {
+		throw TypeError(
+			"The as of ws() must be \"json\" or \"text\""
+		)
+	}
+	if (limit != null && !(limit === Infinity || Number.isInteger(limit) && limit >= 1)) {
+		throw TypeError(
+			"The limit of ws() must be a positive integer or Infinity"
+		)
+	}
+	if (outbox != null && !(outbox === Infinity || Number.isInteger(outbox) && outbox >= 0)) {
+		throw TypeError(
+			"The outbox of ws() must be a non-negative integer or Infinity"
+		)
+	}
 	if (heartbeat != null) {
 		check_options(
 			heartbeat,
@@ -60,9 +66,11 @@ function check_socket_options(options) {
 			"ws",
 			"heartbeat."
 		)
-		if (!(typeof heartbeat.interval == "number" && heartbeat.interval > 0)) throw TypeError(
-			"The heartbeat interval of ws() must be positive milliseconds"
-		)
+		if (!(typeof heartbeat.interval == "number" && heartbeat.interval > 0)) {
+			throw TypeError(
+				"The heartbeat interval of ws() must be positive milliseconds"
+			)
+		}
 	}
 	check_reconnect(options.reconnect, "ws")
 }
@@ -136,35 +144,46 @@ export function open_socket(setup) {
 		}
 		try {
 			const { redacted, url } = await setup.url()
-			if (id != generation) return
+			if (id != generation) {
+				return
+			}
 			summary.url = redacted
 			const socket = setup.create(url, options.protocols)
 			current = socket
 			socket.binaryType = "arraybuffer"
 			socket.onerror = noop
 			socket.onopen = () => {
-				if (id == generation) open(id)
+				if (id == generation) {
+					open(id)
+				}
 			}
 			socket.onmessage = (
 				/** @type {MessageEvent} */ event
 			) => {
-				if (id == generation) receive(event.data)
+				if (id == generation) {
+					receive(event.data)
+				}
 			}
 			socket.onclose = (
 				/** @type {CloseEvent} */ event
 			) => {
-				if (id != generation) return
+				if (id != generation) {
+					return
+				}
 				detach()
-				if (event.code == 1000) finish(void 0)
-				else lose(
-					generation,
-					event.code == 1005 || event.code == 1006
-						? new NetworkError(
-							new SocketError(event.code, event.reason, summary),
-							summary
-						)
-						: new SocketError(event.code, event.reason, summary)
-				)
+				if (event.code == 1000) {
+					finish(void 0)
+				} else {
+					lose(
+						generation,
+						event.code == 1005 || event.code == 1006
+							? new NetworkError(
+								new SocketError(event.code, event.reason, summary),
+								summary
+							)
+							: new SocketError(event.code, event.reason, summary)
+					)
+				}
 			}
 		} catch (error) {
 			lose(id, error)
@@ -183,7 +202,9 @@ export function open_socket(setup) {
 		silence_timer = void 0
 		const socket = current
 		current = void 0
-		if (!socket) return
+		if (!socket) {
+			return
+		}
 		try {
 			socket.close(1000)
 		} catch {}
@@ -206,7 +227,9 @@ export function open_socket(setup) {
 			loop.wake?.()
 		}
 		loops.clear()
-		if (failed) setup.report(error)
+		if (failed) {
+			setup.report(error)
+		}
 	}
 	/**
 	 * @param {number} id
@@ -214,7 +237,9 @@ export function open_socket(setup) {
 	 * @returns {void}
 	 */
 	function lose(id, error) {
-		if (id != generation) return
+		if (id != generation) {
+			return
+		}
 		detach()
 		if (!reconnect || !is_reconnectable(error) || ++failures > (reconnect_count ?? (ever_opened ? Infinity : first_failures))) {
 			finish(error, true)
@@ -230,7 +255,9 @@ export function open_socket(setup) {
 		const next = generation
 		function retry() {
 			stop_waiting?.()
-			if (next == generation) connect(next)
+			if (next == generation) {
+				connect(next)
+			}
 		}
 		timer = setTimeout(retry, clamp_delay(delay))
 		if (typeof globalThis.addEventListener == "function") {
@@ -258,9 +285,13 @@ export function open_socket(setup) {
 		set_status("open")
 		const pending = outbox
 		outbox = []
-		for (const data of pending) write(data)
+		for (const data of pending) {
+			write(data)
+		}
 		const heartbeat = options.heartbeat
-		if (!heartbeat) return
+		if (!heartbeat) {
+			return
+		}
 		const ping = serialize(heartbeat.message)
 		heartbeat_timer = setInterval(
 			() => {
@@ -294,7 +325,9 @@ export function open_socket(setup) {
 					message = JSON.parse(data)
 				} catch {}
 			}
-			if (options.parse) message = options.parse(message)
+			if (options.parse) {
+				message = options.parse(message)
+			}
 		} catch (error) {
 			finish(error, true)
 			return
@@ -304,8 +337,11 @@ export function open_socket(setup) {
 			message.then(
 				noop,
 				(/** @type {unknown} */ error) => {
-					if (id == generation) finish(error, true)
-					else setup.report(error)
+					if (id == generation) {
+						finish(error, true)
+					} else {
+						setup.report(error)
+					}
 				}
 			)
 		}
@@ -326,7 +362,9 @@ export function open_socket(setup) {
 	 * @returns {void}
 	 */
 	function set_status(next) {
-		if (status == next) return
+		if (status == next) {
+			return
+		}
 		status = next
 		try {
 			options.onStatus?.(next)
@@ -336,7 +374,9 @@ export function open_socket(setup) {
 	 * @returns {void}
 	 */
 	function start() {
-		if (status != "idle") return
+		if (status != "idle") {
+			return
+		}
 		set_status("connecting")
 		connect(++generation)
 	}
@@ -349,8 +389,9 @@ export function open_socket(setup) {
 			/** @type {never} */(payload)/**/
 		)
 	}
-	if (closed.signal.aborted) status = "closed"
-	else {
+	if (closed.signal.aborted) {
+		status = "closed"
+	} else {
 		on_abort(
 			closed.signal,
 			() => {
@@ -396,7 +437,9 @@ export function open_socket(setup) {
 						}
 					}
 					for (;;) {
-						if (finished) return { done: true, value: void 0 }
+						if (finished) {
+							return { done: true, value: void 0 }
+						}
 						if (loop.head < loop.buffer.length) {
 							const message = loop.buffer[loop.head]
 							loop.buffer[loop.head++] = void 0
@@ -407,17 +450,23 @@ export function open_socket(setup) {
 								loop.buffer = loop.buffer.slice(loop.head)
 								loop.head = 0
 							}
-							if (!(message instanceof Promise)) return { done: false, value: message }
+							if (!(message instanceof Promise)) {
+								return { done: false, value: message }
+							}
 							/** @type {unknown} */
 							let value
 							try {
 								value = await message
 							} catch (error) {
-								if (finished) return { done: true, value: void 0 }
+								if (finished) {
+									return { done: true, value: void 0 }
+								}
 								stop()
 								throw error
 							}
-							if (finished) return { done: true, value: void 0 }
+							if (finished) {
+								return { done: true, value: void 0 }
+							}
 							return { done: false, value }
 						}
 						if (loop.error) {
@@ -425,7 +474,9 @@ export function open_socket(setup) {
 							stop()
 							throw value
 						}
-						if (loop.ended) return stop()
+						if (loop.ended) {
+							return stop()
+						}
 						await new Promise(
 							resolve => {
 								loop.wake = () => resolve(void 0)
@@ -451,16 +502,20 @@ export function open_socket(setup) {
 		 * @returns {boolean}
 		 */
 		send: data => {
-			if (closed.signal.aborted) throw closed.signal.reason instanceof CancelError
-				? closed.signal.reason
-				: new CancelError(closed.signal.reason, summary)
+			if (closed.signal.aborted) {
+				throw closed.signal.reason instanceof CancelError
+					? closed.signal.reason
+					: new CancelError(closed.signal.reason, summary)
+			}
 			const payload = serialize(data)
 			if (status == "open" && current?.readyState == 1) {
 				write(payload)
 				return true
 			}
 			if (outbox_limit > 0) {
-				if (outbox.length >= outbox_limit) outbox.shift()
+				if (outbox.length >= outbox_limit) {
+					outbox.shift()
+				}
 				outbox.push(payload)
 			}
 			start()

@@ -9,7 +9,9 @@ import { clear_record, get_record } from "./nodes.js"
  */
 export function discard(record, value) {
 	const dispose = record.node.options.release
-	if (!dispose || record.node.each) return
+	if (!dispose || record.node.each) {
+		return
+	}
 	void Promise.resolve()
 		.then(
 			() => dispose(
@@ -28,7 +30,9 @@ export function discard(record, value) {
  */
 export function release_all(c, error) {
 	for (const record of c.records.values()) {
-		if (!record.node.options.release || record.status != "done" || record.released) continue
+		if (!record.node.options.release || record.status != "done" || record.released) {
+			continue
+		}
 		release_quietly(record, error)
 		record.released = { error }
 	}
@@ -54,7 +58,9 @@ export function release_unused(c, name, error) {
 	const record = get_record(c, name)
 	if (!record.node.options.release || record.status != "done" || record.released || record.node.dependents.some(
 		dependent => get_record(c, dependent).status != "skipped"
-	)) return
+	)) {
+		return
+	}
 	record.released = { error: void 0 }
 	release_quietly(
 		record,

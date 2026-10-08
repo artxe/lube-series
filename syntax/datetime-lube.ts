@@ -44,7 +44,9 @@ days.toFixed()
 ms.toFixed()
 offset.toFixed()
 const array: TimeZone[] = [ "America/New_York", "Zulu" ]
-for (const tz of array) dateToString(date, undefined, tz)
+for (const tz of array) {
+	dateToString(date, undefined, tz)
+}
 // @ts-expect-error: not a unit
 startOf(date, "Q")
 const resolved: string = Intl.DateTimeFormat().resolvedOptions().timeZone

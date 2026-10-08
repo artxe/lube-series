@@ -28,9 +28,11 @@ describe(
 						{ signal: controller.signal }
 					)) {
 						ticks.push([ tick, Date.now() - started ])
-						if (tick == 2) await new Promise(
-							resolve => setTimeout(resolve, 2500)
-						)
+						if (tick == 2) {
+							await new Promise(
+								resolve => setTimeout(resolve, 2500)
+							)
+						}
 					}
 				})()
 				await vi.advanceTimersByTimeAsync(999)
@@ -56,7 +58,9 @@ describe(
 					for await (const tick of until(
 						every(1000, { immediate: true }),
 						stop
-					)) quick.push(tick)
+					)) {
+						quick.push(tick)
+					}
 				})()
 				await vi.advanceTimersByTimeAsync(0)
 				assert.deepEqual(quick, [ 1 ])
@@ -75,7 +79,9 @@ describe(
 				let calls = 0
 				function poll() {
 					calls++
-					if (calls < 3) throw Error("pending")
+					if (calls < 3) {
+						throw Error("pending")
+					}
 					return calls
 				}
 				const approve = flow.input("approve")
@@ -177,10 +183,14 @@ describe(
 				const reading = Promise.all(
 					[
 						(async () => {
-							for await (const value of debounce(typed, 300)) quiet.push(value)
+							for await (const value of debounce(typed, 300)) {
+								quiet.push(value)
+							}
 						})(),
 						(async () => {
-							for await (const value of throttle(typed, 1000)) paced.push(value)
+							for await (const value of throttle(typed, 1000)) {
+								paced.push(value)
+							}
 						})()
 					]
 				)

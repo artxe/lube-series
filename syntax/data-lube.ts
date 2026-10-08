@@ -51,7 +51,9 @@ frozen.map.get("k")?.v.toFixed()
 frozen.method(1)
 frozen.promise.then(n => n.toFixed())
 frozen.tuple[1].toUpperCase()
-for (const item of frozen.set) item.v.toFixed()
+for (const item of frozen.set) {
+	item.v.toFixed()
+}
 // @ts-expect-error: read-only property
 frozen.list[0].n = 2
 // @ts-expect-error: read-only array
@@ -315,7 +317,9 @@ payslip(roster_copy.owner)
 const skipped: typeof state = deepUpdate(
 	state,
 	todo => {
-		if (todo.list.length) return undefined
+		if (todo.list.length) {
+			return undefined
+		}
 		todo.list.push({ done: true, id: 3 })
 	}
 )
@@ -328,9 +332,14 @@ const policy: Policy = { cap: 1, version: 1 }
 deepUpdate(
 	policy,
 	policy_draft => {
-		if (!deepEqual(policy, policy_draft)) policy_draft.version++
-		if (deepEqual(policy_draft, policy)) policy.cap.toFixed()
-		else policy.cap.toFixed()
+		if (!deepEqual(policy, policy_draft)) {
+			policy_draft.version++
+		}
+		if (deepEqual(policy_draft, policy)) {
+			policy.cap.toFixed()
+		} else {
+			policy.cap.toFixed()
+		}
 	}
 )
 const policy_input: unknown = JSON.parse("{}")

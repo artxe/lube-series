@@ -9,7 +9,9 @@ function keep_line_breaks(rule) {
 		...rule,
 		create(context) {
 			const eol = create_source_text(context.sourceCode).eol
-			if (eol == "\n") return rule.create(context)
+			if (eol == "\n") {
+				return rule.create(context)
+			}
 			return rule.create(
 				Object.create(
 					context,

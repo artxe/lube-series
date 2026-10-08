@@ -51,14 +51,22 @@ export function begin(c) {
 			clear_record(c, record)
 			touched.add(record.node.name)
 		} else {
-			for (const name of reset(c, record.node.name, true)) touched.add(name)
+			for (const name of reset(c, record.node.name, true)) {
+				touched.add(name)
+			}
 		}
 	}
-	for (const record of released) record.released = void 0
-	for (const name of touched) get_record(c, name).released = void 0
+	for (const record of released) {
+		record.released = void 0
+	}
+	for (const name of touched) {
+		get_record(c, name).released = void 0
+	}
 	if (c.cycle.settled) {
 		c.cycle = create_cycle()
-		if (c.watched || c.streaming && c.observed) c.cycle.promise.catch(noop)
+		if (c.watched || c.streaming && c.observed) {
+			c.cycle.promise.catch(noop)
+		}
 		c.run_status = "running"
 		c.steps = 0
 		start_pumps(c)
@@ -67,17 +75,23 @@ export function begin(c) {
 			c.run_options.signal
 		)
 		for (const record of c.records.values()) {
-			if (record.status == "cancelled") prepare_restart(c, record)
+			if (record.status == "cancelled") {
+				prepare_restart(c, record)
+			}
 		}
 	}
-	for (const name of touched) try_start(c, name)
+	for (const name of touched) {
+		try_start(c, name)
+	}
 }
 /**
  * @param {RunContext} c
  * @returns {void}
  */
 function check_complete(c) {
-	if (c.active_count || c.run_status != "running" || c.cycle.settled || c.releasing) return
+	if (c.active_count || c.run_status != "running" || c.cycle.settled || c.releasing) {
+		return
+	}
 	/** @type {NodeRecord | undefined} */
 	let fatal
 	for (const record of c.records.values()) {
@@ -92,7 +106,9 @@ function check_complete(c) {
 			c.errors[fatal.node.name]
 		)
 		: void 0
-	if (failure) release_all(c, failure)
+	if (failure) {
+		release_all(c, failure)
+	}
 	const holding = [ ...c.records.values() ].filter(
 		record => record.node.options.release && record.status == "done" && !record.released
 	)
@@ -115,7 +131,9 @@ function check_complete(c) {
 					c.releasing = false
 					for (const [ index, outcome ] of outcomes.entries()) {
 						const record = /** @type {NodeRecord} */(holding[index])/**/
-						if (outcome.status == "fulfilled" || record.released?.error !== void 0 || record.status != "done") continue
+						if (outcome.status == "fulfilled" || record.released?.error !== void 0 || record.status != "done") {
+							continue
+						}
 						record.released = { error: outcome.reason }
 						c.errors[record.node.name] = outcome.reason
 						record.fatal = true
@@ -150,9 +168,14 @@ export function close_cycle(c, error, value) {
 	c.cycle.settled = true
 	c.unlink_signal()
 	c.unlink_signal = noop
-	if (error instanceof CancelError) c.cycle.promise.catch(noop)
-	if (error) c.cycle.reject(error)
-	else c.cycle.resolve(value)
+	if (error instanceof CancelError) {
+		c.cycle.promise.catch(noop)
+	}
+	if (error) {
+		c.cycle.reject(error)
+	} else {
+		c.cycle.resolve(value)
+	}
 	schedule(c)
 }
 /**
@@ -176,10 +199,14 @@ function create_cycle() {
  */
 export function defer(c, job) {
 	c.jobs.push(job)
-	if (c.flushing) return
+	if (c.flushing) {
+		return
+	}
 	c.flushing = true
 	try {
-		for (const queued of c.jobs) queued()
+		for (const queued of c.jobs) {
+			queued()
+		}
 	} finally {
 		c.jobs.length = 0
 		c.flushing = false
@@ -192,7 +219,9 @@ export function defer(c, job) {
 export function drain(c) {
 	while (c.running < c.concurrency && c.queue.length) {
 		const name = /** @type {string} */(c.queue.shift())/**/
-		if (get_record(c, name).status == "pending") start(c, name)
+		if (get_record(c, name).status == "pending") {
+			start(c, name)
+		}
 	}
 }
 /**
@@ -206,7 +235,9 @@ function get_statuses(c) {
 		statuses[name] = record.status == "running" && record.sub_waiting && !record.sub_running && !record.delaying
 			? "waiting"
 			: record.status
-		if (record.status == "done" || record.status == "skipped") continue
+		if (record.status == "done" || record.status == "skipped") {
+			continue
+		}
 		for (const [ key, sub_run ] of record.sub_runs) {
 			const prefix = key ? name + "." + key : name
 			for (const [ sub_name, status ] of Object.entries(sub_run.nodes)) {
@@ -221,10 +252,14 @@ function get_statuses(c) {
  * @returns {void}
  */
 function notify(c) {
-	if (!c.waiters.length && !c.run_options[ON_CHANGE] && !c.subscribers.size) return
+	if (!c.waiters.length && !c.run_options[ON_CHANGE] && !c.subscribers.size) {
+		return
+	}
 	const status = c.run.status
 	if (status != "running") {
-		for (const resolve of c.waiters.splice(0)) resolve()
+		for (const resolve of c.waiters.splice(0)) {
+			resolve()
+		}
 	}
 	report(c, status)
 	publish(c)
@@ -234,7 +269,9 @@ function notify(c) {
  * @returns {void}
  */
 export function publish(c) {
-	if (!c.subscribers.size || c.notified_version == c.version) return
+	if (!c.subscribers.size || c.notified_version == c.version) {
+		return
+	}
 	c.notified_version = c.version
 	for (const listener of [ ...c.subscribers ]) {
 		try {
@@ -249,9 +286,13 @@ export function publish(c) {
  */
 export function report(c, status) {
 	const on_change = c.run_options[ON_CHANGE]
-	if (!on_change) return
+	if (!on_change) {
+		return
+	}
 	const current = status ?? c.run.status
-	if (current == c.reported_status && c.reported_version == c.version) return
+	if (current == c.reported_status && c.reported_version == c.version) {
+		return
+	}
 	c.reported_status = current
 	c.reported_version = c.version
 	on_change(current)
@@ -263,16 +304,24 @@ export function report(c, status) {
  */
 function retry_failed(c, only_fatal) {
 	begin(c)
-	if (c.run_status != "running") return
+	if (c.run_status != "running") {
+		return
+	}
 	/** @type {[string, ResumePlan, BacklogEntry[]][]} */
 	const plans = []
 	for (const [ name, record ] of c.records) {
-		if (only_fatal && !record.fatal) continue
+		if (only_fatal && !record.fatal) {
+			continue
+		}
 		const has_failed_items = !!(record.items ?? record.resume_items)?.some(item => item?.failed)
-		if (record.status != "failed" && !(record.status == "done" && (has_failed_items || failed_sub_keys(record).length))) continue
+		if (record.status != "failed" && !(record.status == "done" && (has_failed_items || failed_sub_keys(record).length))) {
+			continue
+		}
 		const plan = plan_retry(record)
 		if (record.args && !same_args(c, record)) {
-			if (record.status == "failed") plan.items = void 0
+			if (record.status == "failed") {
+				plan.items = void 0
+			}
 			plan.runs = void 0
 			plan.subs = void 0
 		}
@@ -288,16 +337,22 @@ function retry_failed(c, only_fatal) {
 	const reached = new Set()
 	for (const [ name ] of plans) {
 		for (const reset_name of reset(c, name, true, true)) {
-			if (reset_name != name) reached.add(reset_name)
+			if (reset_name != name) {
+				reached.add(reset_name)
+			}
 		}
 	}
 	for (const [ name, plan, backlog ] of plans) {
-		if (reached.has(name)) continue
+		if (reached.has(name)) {
+			continue
+		}
 		const record = get_record(c, name)
 		plan_resume(record, plan)
 		record.backlog = backlog
 	}
-	for (const node_name of c.records.keys()) try_start(c, node_name)
+	for (const node_name of c.records.keys()) {
+		try_start(c, node_name)
+	}
 	drain(c)
 	schedule(c)
 }
@@ -307,14 +362,18 @@ function retry_failed(c, only_fatal) {
  * @returns {unknown}
  */
 function save_error(error, depth = 0) {
-	if (!(error instanceof Error)) return error
+	if (!(error instanceof Error)) {
+		return error
+	}
 	/** @type {Record<string, unknown>} */
 	const saved = {
 		...error,
 		message: error.message,
 		name: error.name
 	}
-	if (error.cause !== void 0 && depth < 8) saved["cause"] = save_error(error.cause, depth + 1)
+	if (error.cause !== void 0 && depth < 8) {
+		saved["cause"] = save_error(error.cause, depth + 1)
+	}
 	return saved
 }
 /**
@@ -322,7 +381,9 @@ function save_error(error, depth = 0) {
  * @returns {void}
  */
 export function schedule(c) {
-	if (c.scheduled) return
+	if (c.scheduled) {
+		return
+	}
 	c.scheduled = true
 	queueMicrotask(
 		() => {
@@ -353,20 +414,28 @@ export function start_run(
 	const { edges, incoming } = program
 	c.edges = edges
 	c.incoming = incoming
-	if (run_options.id != null && !(typeof run_options.id == "string" && run_options.id)) throw TypeError(
-		"The id of a run must be a non-empty string"
-	)
+	if (run_options.id != null && !(typeof run_options.id == "string" && run_options.id)) {
+		throw TypeError(
+			"The id of a run must be a non-empty string"
+		)
+	}
 	const { snapshot } = run_options
 	if (snapshot != null) {
-		if (typeof snapshot != "object" || !snapshot.nodes || typeof snapshot.nodes != "object") throw TypeError(
-			"Invalid flow snapshot: pass the result of run.snapshot()"
-		)
-		if (snapshot.version !== 1) throw TypeError(
-			`Unknown flow snapshot version ${String(snapshot.version)}: pass the result of run.snapshot()`
-		)
-		if (run_options.id != null && snapshot.id != null && snapshot.id !== run_options.id) throw TypeError(
-			`The id "${run_options.id}" of the run is not the id "${snapshot.id}" of its snapshot`
-		)
+		if (typeof snapshot != "object" || !snapshot.nodes || typeof snapshot.nodes != "object") {
+			throw TypeError(
+				"Invalid flow snapshot: pass the result of run.snapshot()"
+			)
+		}
+		if (snapshot.version !== 1) {
+			throw TypeError(
+				`Unknown flow snapshot version ${String(snapshot.version)}: pass the result of run.snapshot()`
+			)
+		}
+		if (run_options.id != null && snapshot.id != null && snapshot.id !== run_options.id) {
+			throw TypeError(
+				`The id "${run_options.id}" of the run is not the id "${snapshot.id}" of its snapshot`
+			)
+		}
 	}
 	const run_id = snapshot?.id ?? run_options.id ?? run_options[RUN_ID] ?? random_key()
 	c.run_id = run_id
@@ -498,12 +567,16 @@ export function start_run(
 	if (snapshot != null) {
 		for (const [ name, data ] of Object.entries(snapshot.nodes)) {
 			const record = records.get(name)
-			if (!record) throw Error(
-				`The snapshot has unknown flow node "${name}"`
-			)
+			if (!record) {
+				throw Error(
+					`The snapshot has unknown flow node "${name}"`
+				)
+			}
 			record.abandoned = !!data.abandoned
 			record.activated = data.activated
-			for (const source of data.activators ?? (data.activated && incoming.has(name) ? [ "*" ] : [])) record.activators.add(source)
+			for (const source of data.activators ?? (data.activated && incoming.has(name) ? [ "*" ] : [])) {
+				record.activators.add(source)
+			}
 			record.backlog = data.backlog ?? []
 			record.backlog_head = 0
 			record.buffer = data.buffer
@@ -517,45 +590,61 @@ export function start_run(
 				)
 			}
 			record.resume_subs = data.subs
-			if (data.sends) record.sends = new Map(Object.entries(data.sends))
+			if (data.sends) {
+				record.sends = new Map(Object.entries(data.sends))
+			}
 			record.resume_runs = data.runs
 			record.resume_deadline = data.deadline
 			record.serial = data.serial ?? 0
 			record.fatal = data.status == "failed" && !!data.fatal
 			record.holding = data.status == "failed" && !data.fatal && !!data.queued
-			if (record.fatal) resumes_failure = true
+			if (record.fatal) {
+				resumes_failure = true
+			}
 			set_status(c, record, data.status)
 			if (data.status == "done") {
 				record.items = data.items
 				record.result = data.items ? data.items.map(item => item?.value) : data.result
 				results[name] = record.result
-			} else record.resume_items = data.items
+			} else {
+				record.resume_items = data.items
+			}
 		}
 		Object.assign(errors, snapshot.errors)
 		for (const record of records.values()) {
 			const { arrive, deps } = record.node
 			if (record.backlog.length && deps.some(
 				dep => arrive?.[dep] != "queue" && !settled_statuses.has(get_record(c, dep).status)
-			)) record.retrigger = true
+			)) {
+				record.retrigger = true
+			}
 		}
 	}
 	/** @type {FlowRunner} */
 	const run = {
 		cancel(reason) {
 			stop_pumps(c)
-			for (const source of streams.values()) source.close()
+			for (const source of streams.values()) {
+				source.close()
+			}
 			streams.clear()
-			if (c.run_status != "running") return
+			if (c.run_status != "running") {
+				return
+			}
 			const error = new CancelError(
 				reason ?? "The flow was cancelled"
 			)
 			release_all(c, error)
 			stop_all(c, "cancelled", error)
 			c.run_status = "cancelled"
-			if (!c.cycle.settled) close_cycle(c, error, void 0)
+			if (!c.cycle.settled) {
+				close_cycle(c, error, void 0)
+			}
 		},
 		get errors() {
-			if (errors_cache && errors_version == c.version) return errors_cache
+			if (errors_cache && errors_version == c.version) {
+				return errors_cache
+			}
 			/** @type {Record<string, unknown>} */
 			const all = { ...errors }
 			for (const [ name, record ] of records) {
@@ -571,7 +660,9 @@ export function start_run(
 						]
 					)
 				for (const [ key, sub_errors ] of subs) {
-					for (const [ sub_key, error ] of Object.entries(sub_errors)) all[(key ? name + "." + key : name) + "." + sub_key] = error
+					for (const [ sub_key, error ] of Object.entries(sub_errors)) {
+						all[(key ? name + "." + key : name) + "." + sub_key] = error
+					}
 				}
 			}
 			errors_cache = all
@@ -581,9 +672,15 @@ export function start_run(
 		[STOP]: stop_pumps.bind(void 0, c),
 		[FAILURES]() {
 			for (const record of records.values()) {
-				if (record.status == "failed" && !record.fatal) return true
-				if ((record.items ?? record.resume_items)?.some(item => item?.failed)) return true
-				if (failed_sub_keys(record).length) return true
+				if (record.status == "failed" && !record.fatal) {
+					return true
+				}
+				if ((record.items ?? record.resume_items)?.some(item => item?.failed)) {
+					return true
+				}
+				if (failed_sub_keys(record).length) {
+					return true
+				}
 			}
 			return false
 		},
@@ -599,7 +696,9 @@ export function start_run(
 		},
 		idle() {
 			watch(c)
-			if (run.status != "running") return Promise.resolve()
+			if (run.status != "running") {
+				return Promise.resolve()
+			}
 			return /** @type {Promise<void>} */(new Promise(
 				resolve => waiters.push(() => resolve())
 			))/**/
@@ -618,7 +717,9 @@ export function start_run(
 			}
 			const record = get_record(c, name_or_throw(c, target))
 			let queued = active_statuses.has(record.status) ? 1 : 0
-			for (const waiting of record.queued?.values() ?? []) queued = Math.max(queued, waiting.length)
+			for (const waiting of record.queued?.values() ?? []) {
+				queued = Math.max(queued, waiting.length)
+			}
 			return record.backlog.length - record.backlog_head + queued - (record.holding ? 1 : 0)
 		},
 		reload(target) {
@@ -629,15 +730,21 @@ export function start_run(
 			}
 			const name = target == null ? void 0 : name_or_throw(c, target)
 			begin(c)
-			if (c.run_status != "running") return
+			if (c.run_status != "running") {
+				return
+			}
 			if (name == null) {
 				for (const record of records.values()) {
 					clear_record(c, record)
 					record.activators.clear()
 					record.activated = !incoming.has(record.node.name)
 				}
-			} else enter(c, [ name ], "*", true)
-			for (const node_name of records.keys()) try_start(c, node_name)
+			} else {
+				enter(c, [ name ], "*", true)
+			}
+			for (const node_name of records.keys()) {
+				try_start(c, node_name)
+			}
 			drain(c)
 			schedule(c)
 		},
@@ -658,41 +765,57 @@ export function start_run(
 			}
 			const name = name_or_throw(c, target)
 			const record = get_record(c, name)
-			if (record.node.kind != "input") throw Error(
-				`Flow node "${name}" is not an input`
-			)
+			if (record.node.kind != "input") {
+				throw Error(
+					`Flow node "${name}" is not an input`
+				)
+			}
 			if (record.status == "waiting" && c.run_status == "running") {
 				settle(c, name, "done", value)
 				return
 			}
-			if (record.abandoned) return
+			if (record.abandoned) {
+				return
+			}
 			record.buffer = { value }
 			if (settled_statuses.has(record.status) || record.status == "cancelled") {
 				begin(c)
-				if (c.run_status != "running") return
+				if (c.run_status != "running") {
+					return
+				}
 				enter(c, [ name ], "*")
-				for (const node_name of records.keys()) try_start(c, node_name)
+				for (const node_name of records.keys()) {
+					try_start(c, node_name)
+				}
 				drain(c)
 				schedule(c)
 			}
 		},
 		snapshot() {
-			if (!run_options[ON_CHANGE]) check_snapshot_names(program, "")
+			if (!run_options[ON_CHANGE]) {
+				check_snapshot_names(program, "")
+			}
 			/** @type {Record<string, SavedNode>} */
 			const snapshot_nodes = {}
 			/** @type {Set<string>} */
 			const held = new Set()
 			for (const [ name, record ] of records) {
-				if (record.node.options.release && record.status == "done" && !record.released) held.add(name)
+				if (record.node.options.release && record.status == "done" && !record.released) {
+					held.add(name)
+				}
 			}
 			const redone = new Set(held)
 			for (const name of redone) {
 				for (const dependent of get_record(c, name).node.dependents) {
-					if (get_record(c, dependent).status == "done") redone.add(dependent)
+					if (get_record(c, dependent).status == "done") {
+						redone.add(dependent)
+					}
 				}
 			}
 			for (const [ name, record ] of records) {
-				if (record.node.options.release && record.status == "done") redone.add(name)
+				if (record.node.options.release && record.status == "done") {
+					redone.add(name)
+				}
 			}
 			for (const [ name, record ] of records) {
 				const { status } = record
@@ -702,22 +825,42 @@ export function start_run(
 					activated: record.activated,
 					status: is_kept ? /** @type {"done" | "failed" | "skipped"} */(status)/**/ : "idle"
 				}
-				if (record.abandoned) data.abandoned = true
-				if (record.activators.size) data.activators = [ ...record.activators ]
-				if (record.fatal && status == "failed") data.fatal = true
-				if (status == "done") data.result = record.result
-				if (record.previous !== void 0) data.previous = record.previous
-				if (record.buffer) data.buffer = { value: record.buffer.value }
-				if (record.sends?.size) data.sends = Object.fromEntries(record.sends)
-				if (status == "waiting" && record.deadline != null) data.deadline = record.deadline
-				if (record.serial) data.serial = record.serial
+				if (record.abandoned) {
+					data.abandoned = true
+				}
+				if (record.activators.size) {
+					data.activators = [ ...record.activators ]
+				}
+				if (record.fatal && status == "failed") {
+					data.fatal = true
+				}
+				if (status == "done") {
+					data.result = record.result
+				}
+				if (record.previous !== void 0) {
+					data.previous = record.previous
+				}
+				if (record.buffer) {
+					data.buffer = { value: record.buffer.value }
+				}
+				if (record.sends?.size) {
+					data.sends = Object.fromEntries(record.sends)
+				}
+				if (status == "waiting" && record.deadline != null) {
+					data.deadline = record.deadline
+				}
+				if (record.serial) {
+					data.serial = record.serial
+				}
 				const is_stale = status == "done"
 					? redone.has(name)
 					: !(record.node.options.overlap == "queue" && active_statuses.has(status)) && !!record.args && (!same_args(c, record) || record.node.deps.some(dep => redone.has(dep)))
 				const is_moved = is_stale || status == "done" && !!(record.runs.size || record.resume_runs || record.sub_runs.size || record.resume_subs) && !!record.args && !same_args(c, record)
 				if (!is_moved && (record.runs.size || record.resume_runs)) {
 					data.runs = { ...record.resume_runs }
-					for (const [ unit, run_state ] of record.runs) data.runs[unit] = save_run(run_state)
+					for (const [ unit, run_state ] of record.runs) {
+						data.runs[unit] = save_run(run_state)
+					}
 				} else if (held.has(name) && same_args(c, record) && !record.node.deps.some(dep => redone.has(dep))) {
 					data.runs = {
 						"": {
@@ -728,7 +871,9 @@ export function start_run(
 					}
 				}
 				for (const [ dep, values ] of record.queued ?? []) {
-					if (values.length) (data.queued ??= {})[dep] = [ ...values ]
+					if (values.length) {
+						(data.queued ??= {})[dep] = [ ...values ]
+					}
 				}
 				const in_flight = record.node.options.overlap == "queue" && active_statuses.has(status) && record.args
 				const backlog = in_flight
@@ -741,27 +886,34 @@ export function start_run(
 						...record.backlog.slice(record.backlog_head)
 					]
 					: record.backlog.slice(record.backlog_head)
-				if (backlog.length) data.backlog = backlog.map(
-					entry => entry.resume
-						? {
-							args: [ ...entry.args ],
-							resume: true,
-							skipped: entry.skipped
-						}
-						: {
-							args: [ ...entry.args ],
-							skipped: entry.skipped
-						}
-				)
+				if (backlog.length) {
+					data.backlog = backlog.map(
+						entry => entry.resume
+							? {
+								args: [ ...entry.args ],
+								resume: true,
+								skipped: entry.skipped
+							}
+							: {
+								args: [ ...entry.args ],
+								skipped: entry.skipped
+							}
+					)
+				}
 				const items = record.items ?? record.resume_items
 				const has_failed_items = !!items?.some(item => item?.failed)
 				if (!is_stale && (!is_kept || status == "failed" || has_failed_items || failed_sub_keys(record).length)) {
-					if (items) data.items = Array.from(
-						{ length: items.length },
-						(_, index) => items[index] ?? null
-					)
-					if (!is_moved && record.sub_runs.size) data.subs = snapshot_subs(record)
-					else if (!is_moved && record.resume_subs) data.subs = record.resume_subs
+					if (items) {
+						data.items = Array.from(
+							{ length: items.length },
+							(_, index) => items[index] ?? null
+						)
+					}
+					if (!is_moved && record.sub_runs.size) {
+						data.subs = snapshot_subs(record)
+					} else if (!is_moved && record.resume_subs) {
+						data.subs = record.resume_subs
+					}
 				}
 				snapshot_nodes[name] = data
 			}
@@ -770,11 +922,15 @@ export function start_run(
 			for (const [ key, error ] of Object.entries(errors)) {
 				const dot = key.indexOf(".")
 				const data = snapshot_nodes[dot < 0 ? key : key.slice(0, dot)]
-				if (!data) continue
+				if (!data) {
+					continue
+				}
 				const is_kept = dot < 0 || !data.items || data.fatal
 					? data.status != "idle"
 					: data.items[Number(key.slice(dot + 1))] != null
-				if (is_kept) snapshot_errors[key] = save_error(error)
+				if (is_kept) {
+					snapshot_errors[key] = save_error(error)
+				}
 			}
 			return {
 				errors: snapshot_errors,
@@ -787,15 +943,23 @@ export function start_run(
 			return state
 		},
 		get status() {
-			if (c.run_status != "running") return c.run_status
+			if (c.run_status != "running") {
+				return c.run_status
+			}
 			let waiting = false
 			for (const record of records.values()) {
-				if (record.delaying) return "running"
+				if (record.delaying) {
+					return "running"
+				}
 				if (record.status == "running") {
-					if (record.sub_running || !record.sub_waiting) return "running"
+					if (record.sub_running || !record.sub_waiting) {
+						return "running"
+					}
 					waiting = true
 				}
-				if (record.status == "waiting") waiting = true
+				if (record.status == "waiting") {
+					waiting = true
+				}
 			}
 			return waiting ? "waiting" : "running"
 		},
@@ -816,7 +980,9 @@ export function start_run(
 			}
 		},
 		then(on_fulfilled, on_rejected) {
-			if (on_rejected) c.observed = true
+			if (on_rejected) {
+				c.observed = true
+			}
 			return c.cycle.promise.then(on_fulfilled, on_rejected)
 		}
 	}
@@ -860,8 +1026,12 @@ export function start_run(
 		signal_target,
 		run_options.signal
 	)
-	if (resumes_failure) retry_failed(c, true)
-	for (const name of records.keys()) try_start(c, name)
+	if (resumes_failure) {
+		retry_failed(c, true)
+	}
+	for (const name of records.keys()) {
+		try_start(c, name)
+	}
 	start_pumps(c)
 	schedule(c)
 	return run
@@ -871,7 +1041,9 @@ export function start_run(
  * @returns {void}
  */
 function watch(c) {
-	if (c.watched) return
+	if (c.watched) {
+		return
+	}
 	c.watched = true
 	c.cycle.promise.catch(noop)
 }

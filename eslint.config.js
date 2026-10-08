@@ -4,6 +4,8 @@ import lube from "eslint-plugin-lube"
 export default [
 	{
 		ignores: [
+			".claude/settings*.json",
+			".scratch/**",
 			"coverage/**",
 			"packages/*/types/**"
 		]
@@ -24,10 +26,17 @@ export default [
 		rules: { ...lube.configs.strict.rules }
 	},
 	{
-		files: [
-			"packages/async-lube/src/**/*.js",
-			"test/async-lube/**/*.js"
-		],
-		rules: { "no-await-in-loop": "off" }
+		files: [ "**/*.js" ],
+		languageOptions: {
+			parserOptions: {
+				projectService: {
+					allowDefaultProject: [
+						"vitest.browser.config.js",
+						"vitest.config.js"
+					]
+				},
+				tsconfigRootDir: import.meta.dirname
+			}
+		}
 	}
 ]

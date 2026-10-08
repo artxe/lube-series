@@ -1,8 +1,11 @@
 import { Linter } from "eslint"
 import lube from "eslint-plugin-lube"
+import { builtinRules } from "eslint/use-at-your-own-risk"
 import { assert, describe, it } from "vitest"
-const recommended_rules = /** @type {import("eslint").Linter.RulesRecord} */(lube.configs.recommended.rules)/**/
-const strict_rules = /** @type {import("eslint").Linter.RulesRecord} */(lube.configs.strict.rules)/**/
+/** @type {import("eslint").Linter.RulesRecord} */
+const recommended_rules = lube.configs.recommended.rules
+/** @type {import("eslint").Linter.RulesRecord} */
+const strict_rules = lube.configs.strict.rules
 const lube_rules = /** @type {Record<string, import("eslint").Rule.RuleModule>} */(lube.rules)/**/
 /**
  * @param {string} name
@@ -10,8 +13,11 @@ const lube_rules = /** @type {Record<string, import("eslint").Rule.RuleModule>} 
  */
 function rule_of(name) {
 	const [ prefix, rule ] = name.split("/")
-	if (rule === undefined) return undefined
-	const plugins = /** @type {Record<string, import("eslint").ESLint.Plugin>} */(lube.configs.strict.plugins)/**/
+	if (rule === undefined) {
+		return undefined
+	}
+	/** @type {Record<string, import("eslint").ESLint.Plugin>} */
+	const plugins = lube.configs.strict.plugins
 	return plugins[/** @type {string} */(prefix)/**/]?.rules?.[rule]
 }
 describe(
@@ -39,7 +45,9 @@ describe(
 		it(
 			"keeps the whole house style in strict",
 			() => {
-				for (const name of Object.keys(recommended_rules)) assert.property(strict_rules, name)
+				for (const name of Object.keys(recommended_rules)) {
+					assert.property(strict_rules, name)
+				}
 				for (const [ name, setting ] of /** @type {[string, unknown][]} */([
 					[
 						"@stylistic/eol-last",
@@ -61,11 +69,13 @@ describe(
 						"lube/svelte-naming-convention",
 						"error"
 					],
-					[ "no-await-in-loop", "warn" ],
+					[ "lube/curly", [ "error", "all" ] ],
 					[ "no-shadow", "error" ]
 				])/**/) {
 					assert.deepStrictEqual(strict_rules[name], setting, name)
 				}
+				assert.notProperty(strict_rules, "curly")
+				assert.notProperty(strict_rules, "no-await-in-loop")
 			}
 		)
 		it(
@@ -84,6 +94,7 @@ describe(
 					)
 				}
 				for (const name of [
+					"lube/curly",
 					"lube/svelte-naming-convention",
 					"@stylistic/max-statements-per-line",
 					"func-style",
@@ -92,7 +103,9 @@ describe(
 					"no-shadow",
 					"one-var",
 					"prefer-const"
-				]) assert.notProperty(recommended_rules, name)
+				]) {
+					assert.notProperty(recommended_rules, name)
+				}
 				assert.deepStrictEqual(
 					recommended_rules["lube/ascii-order"],
 					[
@@ -125,14 +138,21 @@ describe(
 			() => {
 				const linter = new Linter()
 				for (const [ name, rule ] of Object.entries(lube_rules)) {
-					const schema = /** @type {unknown[]} */(rule.meta?.schema)/**/
-					assert.isArray(schema, name)
-					for (const option of schema) {
+					if (name == "curly") {
 						assert.strictEqual(
-							/** @type {{ additionalProperties?: boolean }} */(option)/**/.additionalProperties,
-							false,
-							name
+							rule.meta?.schema,
+							builtinRules.get("curly")?.meta?.schema
 						)
+					} else {
+						const schema = /** @type {unknown[]} */(rule.meta?.schema)/**/
+						assert.isArray(schema, name)
+						for (const option of schema) {
+							assert.strictEqual(
+								/** @type {{ additionalProperties?: boolean }} */(option)/**/.additionalProperties,
+								false,
+								name
+							)
+						}
 					}
 					assert.throws(
 						() => linter.verify(
@@ -146,7 +166,7 @@ describe(
 								}
 							]
 						),
-						/should NOT have additional properties|should NOT have more than 0 items/,
+						/should NOT have additional properties|should NOT have more than 0 items|should match some schema in anyOf/,
 						name
 					)
 				}

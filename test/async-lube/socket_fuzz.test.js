@@ -41,14 +41,20 @@ function check_statuses(statuses) {
 	/** @type {string[]} */
 	const problems = []
 	for (let i = 1; i < statuses.length; i++) {
-		if (statuses[i] == statuses[i - 1]) problems.push(
-			`status ${statuses[i]} twice in a row`
+		if (statuses[i] == statuses[i - 1]) {
+			problems.push(
+				`status ${statuses[i]} twice in a row`
+			)
+		}
+	}
+	if (statuses.at(-1) != "closed") {
+		problems.push(
+			`status ${statuses.at(-1)} after cancel()`
 		)
 	}
-	if (statuses.at(-1) != "closed") problems.push(
-		`status ${statuses.at(-1)} after cancel()`
-	)
-	if (statuses.indexOf("closed") != statuses.length - 1) problems.push("status left closed")
+	if (statuses.indexOf("closed") != statuses.length - 1) {
+		problems.push("status left closed")
+	}
 	return problems
 }
 /**
@@ -56,13 +62,27 @@ function check_statuses(statuses) {
  * @returns {string}
  */
 function kind_of(error) {
-	if (error === void 0) return "end"
-	if (error instanceof CancelError) return "cancel"
-	if (error instanceof SocketError) return "socket " + error.code
-	if (error instanceof HttpError) return "http " + error.status
-	if (error instanceof NetworkError) return "network"
-	if (error instanceof TimeoutError) return "timeout"
-	if (error instanceof TypeError) return "type: " + error.message
+	if (error === void 0) {
+		return "end"
+	}
+	if (error instanceof CancelError) {
+		return "cancel"
+	}
+	if (error instanceof SocketError) {
+		return "socket " + error.code
+	}
+	if (error instanceof HttpError) {
+		return "http " + error.status
+	}
+	if (error instanceof NetworkError) {
+		return "network"
+	}
+	if (error instanceof TimeoutError) {
+		return "timeout"
+	}
+	if (error instanceof TypeError) {
+		return "type: " + error.message
+	}
 	return "other: " + String(error)
 }
 /**
@@ -82,7 +102,9 @@ function sleep(ms) {
 async function until(condition, ms) {
 	const started = Date.now()
 	while (!condition()) {
-		if (Date.now() - started > ms) return false
+		if (Date.now() - started > ms) {
+			return false
+		}
 		await sleep(5)
 	}
 	return true
@@ -162,15 +184,19 @@ describe(
 						"Content-Type": "text/event-stream"
 					}
 				)
-				if (connection.retry != null) response.write(
-					`retry: ${connection.retry}\n\n`
-				)
+				if (connection.retry != null) {
+					response.write(
+						`retry: ${connection.retry}\n\n`
+					)
+				}
 				state.open.add(response)
 				const stream = state
 				const events = connection
 				let sent = 0
 				function tick() {
-					if (response.destroyed) return
+					if (response.destroyed) {
+						return
+					}
 					if (sent < events.n) {
 						sent++
 						stream.next_id = Math.max(last_id, stream.next_id) + 1
@@ -178,8 +204,11 @@ describe(
 							`id: ${stream.next_id}\ndata: {"id":${stream.next_id}}\n\n`
 						)
 						setTimeout(tick, events.gap)
-					} else if (events.then == "end") response.end()
-					else if (events.then == "drop") response.socket?.destroy()
+					} else if (events.then == "end") {
+						response.end()
+					} else if (events.then == "drop") {
+						response.socket?.destroy()
+					}
 				}
 				setTimeout(tick, 1)
 			}
@@ -219,7 +248,9 @@ describe(
 					)
 					return
 				}
-				if (connection.k == "hang") return
+				if (connection.k == "hang") {
+					return
+				}
 				const accept = createHash("sha1")
 					.update(
 						request.headers["sec-websocket-key"] + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
@@ -237,18 +268,22 @@ describe(
 						}
 						const text = payload.toString()
 						state.received.push(text)
-						if (connection.pong && text.includes("ping")) write_frame(
-							socket,
-							1,
-							Buffer.from("{\"pong\":true}")
-						)
+						if (connection.pong && text.includes("ping")) {
+							write_frame(
+								socket,
+								1,
+								Buffer.from("{\"pong\":true}")
+							)
+						}
 					}
 				)
 				const known = state
 				const accepted = connection
 				let sent = 0
 				function tick() {
-					if (socket.destroyed || !socket.writable) return
+					if (socket.destroyed || !socket.writable) {
+						return
+					}
 					if (sent < accepted.messages) {
 						sent++
 						write_frame(
@@ -261,8 +296,11 @@ describe(
 						setTimeout(tick, accepted.gap)
 						return
 					}
-					if (accepted.then == "terminate") socket.destroy()
-					else if (typeof accepted.then == "number") close_frame(socket, accepted.then, "")
+					if (accepted.then == "terminate") {
+						socket.destroy()
+					} else if (typeof accepted.then == "number") {
+						close_frame(socket, accepted.then, "")
+					}
 				}
 				setTimeout(tick, 1)
 			}
@@ -274,7 +312,9 @@ describe(
 					"unhandledRejection",
 					on_unhandled
 				)
-				for (const socket of upgrades) socket.destroy()
+				for (const socket of upgrades) {
+					socket.destroy()
+				}
 				server.closeAllConnections()
 				await new Promise(
 					resolve => server.close(resolve)
@@ -309,15 +349,21 @@ describe(
 				{ length: 10 },
 				() => {
 					const roll = random.next()
-					if (roll < 0.2) return {
-						k: "status",
-						retry_after: random.chance(0.5) ? "0" : void 0,
-						status: random.pick(
-							[ 204, 401, 404, 429, 500, 503, 503 ]
-						)
+					if (roll < 0.2) {
+						return {
+							k: "status",
+							retry_after: random.chance(0.5) ? "0" : void 0,
+							status: random.pick(
+								[ 204, 401, 404, 429, 500, 503, 503 ]
+							)
+						}
 					}
-					if (roll < 0.25) return { k: "wrong-type" }
-					if (roll < 0.3) return { k: "hang" }
+					if (roll < 0.25) {
+						return { k: "wrong-type" }
+					}
+					if (roll < 0.3) {
+						return { k: "hang" }
+					}
 					return {
 						gap: random.int(6),
 						k: "events",
@@ -389,13 +435,17 @@ describe(
 						? void 0
 						: data => {
 							parsed++
-							if (parse_mode == "fail" && parsed == fail_at) throw TypeError("bad event")
-							if (parse_mode == "async") return new Promise(
-								resolve => setTimeout(
-									() => resolve(data),
-									random.int(4)
+							if (parse_mode == "fail" && parsed == fail_at) {
+								throw TypeError("bad event")
+							}
+							if (parse_mode == "async") {
+								return new Promise(
+									resolve => setTimeout(
+										() => resolve(data),
+										random.int(4)
+									)
 								)
-							)
+							}
 							return data
 						},
 					reconnect,
@@ -416,8 +466,12 @@ describe(
 			const timer = setTimeout(
 				() => {
 					acted = true
-					if (action == "cancel") events.cancel()
-					if (action == "abort") controller.abort()
+					if (action == "cancel") {
+						events.cancel()
+					}
+					if (action == "abort") {
+						controller.abort()
+					}
 				},
 				between(random, 5, 200)
 			)
@@ -427,14 +481,17 @@ describe(
 				const loop = (async () => {
 					try {
 						for await (const event of events) {
-							const data = as == "json"
-								? /** @type {{ id: number }} */(/** @type {unknown} */(event.data))/**/
-								: /** @type {{ id: number }} */(JSON.parse(String(event.data)))/**/
+							/** @type {{ id: number }} */
+							const data = as == "json" ? event.data : JSON.parse(String(event.data))
 							seen.push(data.id)
-							if (String(data.id) != event.id) problems.push(
-								`event id ${event.id} with data ${data.id}`
-							)
-							if (++got > most) return "break"
+							if (String(data.id) != event.id) {
+								problems.push(
+									`event id ${event.id} with data ${data.id}`
+								)
+							}
+							if (++got > most) {
+								return "break"
+							}
 						}
 						return "end"
 					} catch (error) {
@@ -448,9 +505,11 @@ describe(
 					]
 				)
 				if (end == "pending") {
-					if (acted && (action == "cancel" || action == "abort" && use_signal)) problems.push(
-						"a loop was pending after cancel or abort"
-					)
+					if (acted && (action == "cancel" || action == "abort" && use_signal)) {
+						problems.push(
+							"a loop was pending after cancel or abort"
+						)
+					}
 					events.cancel()
 					const late = await Promise.race(
 						[
@@ -458,40 +517,60 @@ describe(
 							sleep(1000).then(() => "pending")
 						]
 					)
-					if (late == "pending") problems.push(
-						"a loop was pending after cancel()"
-					)
+					if (late == "pending") {
+						problems.push(
+							"a loop was pending after cancel()"
+						)
+					}
 					ends.push("pending, then " + late)
 					break
 				}
 				ends.push(end)
-				if (end.startsWith("other")) problems.push(`a loop failed with ${end}`)
-				if (end.startsWith("type") && !(parse_mode == "fail" || end.includes("event-stream"))) problems.push(`a loop failed with ${end}`)
-				if (on_status && !acted && statuses.at(-1) != "idle") problems.push(
-					`status ${statuses.at(-1)} after the loop ended with ${end}`
-				)
+				if (end.startsWith("other")) {
+					problems.push(`a loop failed with ${end}`)
+				}
+				if (end.startsWith("type") && !(parse_mode == "fail" || end.includes("event-stream"))) {
+					problems.push(`a loop failed with ${end}`)
+				}
+				if (on_status && !acted && statuses.at(-1) != "idle") {
+					problems.push(
+						`status ${statuses.at(-1)} after the loop ended with ${end}`
+					)
+				}
 			}
 			clearTimeout(timer)
 			events.cancel()
 			await sleep(20)
 			for (let i = 1; i < seen.length; i++) {
-				if (/** @type {number} */(seen[i])/**/ <= /** @type {number} */(seen[i - 1])/**/) problems.push(`event ids went back: ${seen}`)
+				if (/** @type {number} */(seen[i])/**/ <= /** @type {number} */(seen[i - 1])/**/) {
+					problems.push(`event ids went back: ${seen}`)
+				}
 			}
-			if (on_status) problems.push(...check_statuses(statuses))
-			if (events.status != "closed") problems.push(
-				`events.status ${events.status}`
-			)
-			if (errors.some(
-				error => error instanceof CancelError
-			)) problems.push(
-				"the error hook got a CancelError"
-			)
-			for (let i = 1; i < state.last_ids.length; i++) {
-				if (/** @type {number} */(state.last_ids[i])/**/ < /** @type {number} */(state.last_ids[i - 1])/**/) problems.push(
-					`Last-Event-ID went back: ${state.last_ids}`
+			if (on_status) {
+				problems.push(...check_statuses(statuses))
+			}
+			if (events.status != "closed") {
+				problems.push(
+					`events.status ${events.status}`
 				)
 			}
-			for (const response of state.open) response.destroy()
+			if (errors.some(
+				error => error instanceof CancelError
+			)) {
+				problems.push(
+					"the error hook got a CancelError"
+				)
+			}
+			for (let i = 1; i < state.last_ids.length; i++) {
+				if (/** @type {number} */(state.last_ids[i])/**/ < /** @type {number} */(state.last_ids[i - 1])/**/) {
+					problems.push(
+						`Last-Event-ID went back: ${state.last_ids}`
+					)
+				}
+			}
+			for (const response of state.open) {
+				response.destroy()
+			}
 			streams.delete(id)
 			return problems.length
 				? [
@@ -514,8 +593,12 @@ describe(
 				{ length: 8 },
 				() => {
 					const roll = random.next()
-					if (roll < 0.12) return { k: "refuse" }
-					if (roll < 0.2) return { k: "hang" }
+					if (roll < 0.12) {
+						return { k: "refuse" }
+					}
+					if (roll < 0.2) {
+						return { k: "hang" }
+					}
 					return {
 						gap: random.int(6),
 						k: "accept",
@@ -602,13 +685,17 @@ describe(
 						? void 0
 						: data => {
 							parsed++
-							if (parse_mode == "fail" && parsed == fail_at) throw TypeError("bad message")
-							if (parse_mode == "async") return new Promise(
-								resolve => setTimeout(
-									() => resolve(data),
-									random.int(4)
+							if (parse_mode == "fail" && parsed == fail_at) {
+								throw TypeError("bad message")
+							}
+							if (parse_mode == "async") {
+								return new Promise(
+									resolve => setTimeout(
+										() => resolve(data),
+										random.int(4)
+									)
 								)
-							)
+							}
 							return data
 						},
 					reconnect,
@@ -632,12 +719,16 @@ describe(
 					try {
 						for await (const message of socket) {
 							const { seq } = /** @type {{ seq?: number }} */(message)/**/
-							if (seq) result.seqs.push(seq)
+							if (seq) {
+								result.seqs.push(seq)
+							}
 							if (result.seqs.length > most) {
 								result.end = "break"
 								return
 							}
-							if (limit && random.chance(0.3)) await sleep(between(random, 1, 10))
+							if (limit && random.chance(0.3)) {
+								await sleep(between(random, 1, 10))
+							}
 						}
 						result.end = "end"
 					} catch (error) {
@@ -664,12 +755,18 @@ describe(
 					socket.send("m" + i)
 					sent.push("m" + i)
 				} catch (error) {
-					if (!(error instanceof CancelError)) problems.push(`send threw ${String(error)}`)
+					if (!(error instanceof CancelError)) {
+						problems.push(`send threw ${String(error)}`)
+					}
 				}
 			}
 			await sleep(action_at)
-			if (action == "cancel") socket.cancel()
-			if (action == "abort" && use_signal) controller.abort()
+			if (action == "cancel") {
+				socket.cancel()
+			}
+			if (action == "abort" && use_signal) {
+				controller.abort()
+			}
 			const closed_by_us = action == "cancel" || action == "abort" && use_signal
 			const settled = await until(
 				() => results.every(
@@ -677,9 +774,11 @@ describe(
 				),
 				closed_by_us ? 1000 : 3000
 			)
-			if (closed_by_us && !settled) problems.push(
-				`loops still pending after ${action}`
-			)
+			if (closed_by_us && !settled) {
+				problems.push(
+					`loops still pending after ${action}`
+				)
+			}
 			socket.cancel()
 			await Promise.race(
 				[
@@ -689,37 +788,51 @@ describe(
 			)
 			if (results.some(
 				result => result.end == "pending"
-			)) problems.push(
-				"loops still pending after cancel()"
-			)
-			for (const result of results) {
-				for (let i = 1; i < result.seqs.length; i++) {
-					if (/** @type {number} */(result.seqs[i])/**/ <= /** @type {number} */(result.seqs[i - 1])/**/) problems.push(
-						`messages out of order ${result.seqs}`
-					)
-				}
-				if (result.end.startsWith("other") || result.end.startsWith("type") && !(parse_mode == "fail" && result.end.includes("bad message"))) problems.push(
-					`a loop failed with ${result.end}`
+			)) {
+				problems.push(
+					"loops still pending after cancel()"
 				)
 			}
+			for (const result of results) {
+				for (let i = 1; i < result.seqs.length; i++) {
+					if (/** @type {number} */(result.seqs[i])/**/ <= /** @type {number} */(result.seqs[i - 1])/**/) {
+						problems.push(
+							`messages out of order ${result.seqs}`
+						)
+					}
+				}
+				if (result.end.startsWith("other") || result.end.startsWith("type") && !(parse_mode == "fail" && result.end.includes("bad message"))) {
+					problems.push(
+						`a loop failed with ${result.end}`
+					)
+				}
+			}
 			problems.push(...check_statuses(statuses))
-			if (socket.status != "closed") problems.push(
-				`socket.status ${socket.status}`
-			)
-			const delivered = state.received.filter(text => /^m\d/.test(text))
-			if (new Set(delivered).size != delivered.length) problems.push(
-				`a message was sent twice: ${delivered}`
-			)
-			for (let i = 1; i < delivered.length; i++) {
-				if (Number(delivered[i]?.slice(1)) < Number(delivered[i - 1]?.slice(1))) problems.push(
-					`messages sent out of order: ${delivered}`
+			if (socket.status != "closed") {
+				problems.push(
+					`socket.status ${socket.status}`
 				)
+			}
+			const delivered = state.received.filter(text => /^m\d/.test(text))
+			if (new Set(delivered).size != delivered.length) {
+				problems.push(
+					`a message was sent twice: ${delivered}`
+				)
+			}
+			for (let i = 1; i < delivered.length; i++) {
+				if (Number(delivered[i]?.slice(1)) < Number(delivered[i - 1]?.slice(1))) {
+					problems.push(
+						`messages sent out of order: ${delivered}`
+					)
+				}
 			}
 			if (errors.some(
 				error => error instanceof CancelError
-			)) problems.push(
-				"the error hook got a CancelError"
-			)
+			)) {
+				problems.push(
+					"the error hook got a CancelError"
+				)
+			}
 			sockets.delete(id)
 			return problems.length
 				? [
@@ -748,12 +861,14 @@ describe(
 								while (next < seeds.length) {
 									const seed = /** @type {number} */(seeds[next++])/**/
 									const problems = await fuzz(seed)
-									if (problems.length) failures.push(
-										[
-											`SIM_MODE=${mode} SIM_SEED=${seed}`,
-											...problems
-										].join("\n")
-									)
+									if (problems.length) {
+										failures.push(
+											[
+												`SIM_MODE=${mode} SIM_SEED=${seed}`,
+												...problems
+											].join("\n")
+										)
+									}
 								}
 							}
 						)

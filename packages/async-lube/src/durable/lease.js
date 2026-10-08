@@ -12,7 +12,9 @@ export const SUSPENDED = Symbol("suspended")
  * @returns {void}
  */
 export function check_halted(d) {
-	if (d.halted) throw new CancelError("The worker stopped")
+	if (d.halted) {
+		throw new CancelError("The worker stopped")
+	}
 }
 /**
  * @param {DurableWorker} d
@@ -37,7 +39,9 @@ export async function claim(d, key, saved, input) {
 		}
 		next.status = "failed"
 	} else {
-		if (next.status == "pending") next.input = copy(input)
+		if (next.status == "pending") {
+			next.input = copy(input)
+		}
 		next.lease = Date.now() + d.lease_ms
 		next.owner = d.owner
 		next.revision = d.revision
@@ -59,7 +63,9 @@ export function expiring(d, execution) {
  * @returns {boolean}
  */
 export function is_due(d, saved) {
-	if (saved.status == "running") return is_free(d, saved)
+	if (saved.status == "running") {
+		return is_free(d, saved)
+	}
 	return (saved.status == "sleeping" || saved.status == "waiting") && saved.wake != null && saved.wake <= Date.now()
 }
 /**
@@ -76,7 +82,9 @@ function is_free(d, saved) {
  * @returns {void}
  */
 export function lose(execution, reason) {
-	if (execution.lost) return
+	if (execution.lost) {
+		return
+	}
 	execution.lost = true
 	execution.controller.abort(reason)
 	execution.interrupt(LOST)
@@ -86,7 +94,9 @@ export function lose(execution, reason) {
  * @returns {Promise<never> | undefined}
  */
 export function refuse(execution) {
-	if (!execution.lost && !execution.finished) return
+	if (!execution.lost && !execution.finished) {
+		return
+	}
 	const { signal } = execution.controller
 	return Promise.reject(
 		signal.aborted ? signal.reason : new CancelError("The run left this worker")

@@ -14,7 +14,9 @@ export function encode_cp949(text) {
 			continue
 		}
 		const pair = table.get(char)
-		if (pair == null) return
+		if (pair == null) {
+			return
+		}
 		bytes += String.fromCharCode(pair >> 8, pair & 0xff)
 	}
 	return bytes
@@ -23,7 +25,9 @@ export function encode_cp949(text) {
  * @returns {Map<string, number>}
  */
 function get_codes() {
-	if (codes) return codes
+	if (codes) {
+		return codes
+	}
 	const decoder = new TextDecoder("euc-kr", { fatal: true })
 	/** @type {Map<string, number>} */
 	const found = new Map()
@@ -37,7 +41,9 @@ function get_codes() {
 			} catch {
 				continue
 			}
-			if (char.length == 1 && char.charCodeAt(0) >= 0xa0 && !found.has(char)) found.set(char, lead * 256 + trail)
+			if (char.length == 1 && char.charCodeAt(0) >= 0xa0 && !found.has(char)) {
+				found.set(char, lead * 256 + trail)
+			}
 		}
 	}
 	codes = found

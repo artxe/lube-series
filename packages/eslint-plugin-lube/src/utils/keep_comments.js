@@ -37,7 +37,9 @@ function keep_comment_order(rule) {
 										)]
 										return !!comment && comment.range[1] <= item.range[1]
 									}
-								)) return
+								)) {
+									return
+								}
 								context.report(descriptor)
 							}
 						}
@@ -83,7 +85,9 @@ function keep_comments(rule) {
 										text.slice(item.range[0], item.range[1])
 									)
 										|| ends.has(item.range[0]) && !line_break_regex.test(item.text)
-								)) return
+								)) {
+									return
+								}
 								context.report(descriptor)
 							}
 						}

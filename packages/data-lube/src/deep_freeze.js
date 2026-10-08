@@ -18,8 +18,12 @@ const set_values = Set.prototype.values
 function freeze_all(value, state) {
 	visit(value, 0, state)
 	const pending = state.pending
-	if (!pending) return
-	for (let item = pending.pop(); item; item = pending.pop()) visit(item, 0, state)
+	if (!pending) {
+		return
+	}
+	for (let item = pending.pop(); item; item = pending.pop()) {
+		visit(item, 0, state)
+	}
 }
 /**
  * @param {WeakKey[]} values
@@ -30,7 +34,9 @@ export function freeze_except(values, skip) {
 	/** @type {{ budget: number, frozen?: Set<WeakKey>, pending?: WeakKey[], skip?: (value: WeakKey) => boolean }} */
 	const state = { budget: 100000, skip }
 	for (const value of values) {
-		if (!state.frozen?.has(value)) freeze_all(value, state)
+		if (!state.frozen?.has(value)) {
+			freeze_all(value, state)
+		}
 	}
 }
 /**
@@ -51,7 +57,9 @@ function visit(value, depth, state) {
 	} else if (--state.budget < 0 || depth > 64) {
 		state.frozen = new Set([ value ])
 	}
-	if (ArrayBuffer.isView(value) || state.skip?.(value)) return
+	if (ArrayBuffer.isView(value) || state.skip?.(value)) {
+		return
+	}
 	freeze(value)
 	/** @type {Prototype | null} */
 	const proto = getPrototypeOf(value)
@@ -74,32 +82,44 @@ function visit(value, depth, state) {
 					? /** @type {number} */(indices[i])/**/
 					: i
 			]
-			if (item && typeof item == "object" && !state.frozen?.has(item)) visit(item, depth, state)
+			if (item && typeof item == "object" && !state.frozen?.has(item)) {
+				visit(item, depth, state)
+			}
 		}
 		return
 	}
 	const names = get_own_property_names(value)
 	for (let i = 0; i < names.length; i++) {
 		const item = /** @type {Record<PropertyKey, unknown>} */(value)/**/[/** @type {string} */(names[i])/**/]
-		if (item && typeof item == "object" && !state.frozen?.has(item)) visit(item, depth, state)
+		if (item && typeof item == "object" && !state.frozen?.has(item)) {
+			visit(item, depth, state)
+		}
 	}
 	const symbols = get_own_property_symbols(value)
 	for (let i = 0; i < symbols.length; i++) {
 		const item = /** @type {Record<PropertyKey, unknown>} */(value)/**/[/** @type {symbol} */(symbols[i])/**/]
-		if (item && typeof item == "object" && !state.frozen?.has(item)) visit(item, depth, state)
+		if (item && typeof item == "object" && !state.frozen?.has(item)) {
+			visit(item, depth, state)
+		}
 	}
 	if (kind == "Map") {
 		for (const [ key, item ] of map_entries.call(
 			/** @type {Map<unknown, unknown>} */(value)/**/
 		)) {
-			if (key && typeof key == "object" && !state.frozen?.has(key)) visit(key, depth, state)
-			if (item && typeof item == "object" && !state.frozen?.has(item)) visit(item, depth, state)
+			if (key && typeof key == "object" && !state.frozen?.has(key)) {
+				visit(key, depth, state)
+			}
+			if (item && typeof item == "object" && !state.frozen?.has(item)) {
+				visit(item, depth, state)
+			}
 		}
 	} else if (kind == "Set") {
 		for (const item of set_values.call(
 			/** @type {Set<unknown>} */(value)/**/
 		)) {
-			if (item && typeof item == "object" && !state.frozen?.has(item)) visit(item, depth, state)
+			if (item && typeof item == "object" && !state.frozen?.has(item)) {
+				visit(item, depth, state)
+			}
 		}
 	}
 }
@@ -114,6 +134,8 @@ function visit(value, depth, state) {
  * @returns {import("../public.js").DeepReadonly<T>}
  */
 export default function(value) {
-	if (value && typeof value == "object") freeze_all(value, { budget: 100000 })
+	if (value && typeof value == "object") {
+		freeze_all(value, { budget: 100000 })
+	}
 	return /** @type {import("../public.js").DeepReadonly<T>} */(value)/**/
 }

@@ -20,7 +20,9 @@ describe(
 			async () => {
 				const spin = offload(
 					(/** @type {number} */ value) => {
-						if (value) for (;;);
+						if (value) {
+							for (;;) { }
+						}
 						return "done"
 					}
 				)
@@ -195,7 +197,9 @@ describe(
 				)
 				const started = Date.now()
 				while (Atomics.load(cells, 0) < 2) {
-					if (Date.now() - started > 5000) assert.fail("Timed out")
+					if (Date.now() - started > 5000) {
+						assert.fail("Timed out")
+					}
 					await new Promise(
 						resolve => setTimeout(resolve, 5)
 					)

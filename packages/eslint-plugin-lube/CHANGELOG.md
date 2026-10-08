@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.7.0
+
+### Breaking
+
+- **The strict config requires braces on every block** with `lube/curly` (`all`): `if`, `else`, `for`,
+  `while` and `do` bodies are wrapped in `{ }`. It has a fix, so run `eslint --fix` once.
+- **The strict config no longer reports `await` in a loop:** `no-await-in-loop` is gone from it.
+- **The strict config moves the type cast of a declaration's value into a `@type` tag** with the new
+  `prefer-type-tag`, in a project linted with type information: `const a = /** @type {T} */(b)/**/`
+  becomes `/** @type {T} */` on the line before `const a = b`. Run `eslint --fix` once.
+
+### Added
+
+- `prefer-type-tag`, in the strict config: reports the cast of the whole value of a declaration,
+  `const a = /** @type {T} */(b)/**/`, when TypeScript would accept a `/** @type {T} */` tag on the
+  declaration instead, and fixes it into one. A cast that narrows, such as `/** @type {T} */(list[0])/**/`
+  under `noUncheckedIndexedAccess`, one that widens to a union, such as `/** @type {T | null} */(null)/**/`,
+  one through `unknown` and `/** @type {const} */` stay. It reads types from the program of
+  `@typescript-eslint/parser` with `projectService` and checks nothing without one.
+- `curly`, ESLint's own rule with the same options, whose fix puts the braces around a comment in
+  front of the body: `if (a) /** @type {A} */(b).c = 1` becomes `if (a) {/** @type {A} */(b).c = 1}`,
+  where ESLint's fix turned the cast into a comment before the brace, `if (a) /** @type {A} */{(b).c = 1}`.
+
 ## 0.6.0
 
 ### Breaking

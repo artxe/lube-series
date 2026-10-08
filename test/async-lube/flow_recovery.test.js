@@ -89,7 +89,9 @@ describe(
 				)
 				/** @type {number[]} */
 				const values = []
-				for await (const value of stream) values.push(value)
+				for await (const value of stream) {
+					values.push(value)
+				}
 				assert.deepEqual(values, [ 1 ])
 			}
 		)
@@ -107,7 +109,9 @@ describe(
 				) {
 					calls.push(n + " " + key)
 					await sleep(5)
-					if (failing.delete(n)) throw Error("down " + n)
+					if (failing.delete(n)) {
+						throw Error("down " + n)
+					}
 					return n
 				}
 				/** @type {[string, () => import("async-lube").Flow<unknown, unknown>][]} */
@@ -133,7 +137,9 @@ describe(
 					calls.length = 0
 					failing.add(2)
 					const run = build().run(void 0, { id: "r" })
-					for (const n of [ 1, 2, 3 ]) run.send(value, n)
+					for (const n of [ 1, 2, 3 ]) {
+						run.send(value, n)
+					}
 					await rejection(run)
 					assert.equal(run.pending("w"), 2, kind)
 					const saved = JSON.parse(JSON.stringify(run.snapshot()))
@@ -160,7 +166,9 @@ describe(
 					calls.length = 0
 					failing.add(2)
 					const sent = build().run(void 0, { id: "r" })
-					for (const n of [ 1, 2, 3 ]) sent.send(value, n)
+					for (const n of [ 1, 2, 3 ]) {
+						sent.send(value, n)
+					}
 					await rejection(sent)
 					sent.send(value, 4)
 					assert.equal(await sent, 4, kind)
@@ -191,7 +199,9 @@ describe(
 						{ name: "log" }
 					)
 					.run(void 0, { id: "r" })
-				for (const n of [ 1, 2, 3 ]) caught.send(value, n)
+				for (const n of [ 1, 2, 3 ]) {
+					caught.send(value, n)
+				}
 				assert.equal(await caught, 3)
 				assert.deepEqual(results, [ 1, -2, 3 ])
 				assert.deepEqual(
@@ -210,7 +220,9 @@ describe(
 					}
 				)
 					.run(void 0, { id: "r" })
-				for (const n of [ 1, 2, 3 ]) optional.send(value, n)
+				for (const n of [ 1, 2, 3 ]) {
+					optional.send(value, n)
+				}
 				assert.equal(await optional, 3)
 				optional.retry()
 				assert.equal(await optional, 3)
@@ -221,7 +233,9 @@ describe(
 				calls.length = 0
 				let rejected = true
 				function check(/** @type {unknown} */ n) {
-					if (n == 2 && rejected) throw Error("rejected")
+					if (n == 2 && rejected) {
+						throw Error("rejected")
+					}
 					return n
 				}
 				const other = flow().add(
@@ -261,15 +275,21 @@ describe(
 					for (const watch of [ "catch", "idle", "subscribe" ]) {
 						const alarms = channel()
 						function handle(/** @type {unknown} */ n) {
-							if (n == 2) throw Error("alarm " + n)
+							if (n == 2) {
+								throw Error("alarm " + n)
+							}
 							return n
 						}
 						const run = flow().add(alarms, { name: "alarms" })
 							.add(handle, flow.queue(alarms))
 							.run()
-						if (watch == "catch") run.catch(() => {})
-						else if (watch == "idle") void run.idle()
-						else run.subscribe(() => {})
+						if (watch == "catch") {
+							run.catch(() => {})
+						} else if (watch == "idle") {
+							void run.idle()
+						} else {
+							run.subscribe(() => {})
+						}
 						alarms.send(1)
 						await pause(10)
 						assert.equal(run.status, "done", watch)
@@ -301,7 +321,9 @@ describe(
 				try {
 					let fails = true
 					function work() {
-						if (fails) throw Error("down")
+						if (fails) {
+							throw Error("down")
+						}
 						return "up"
 					}
 					const code = flow.input("code")
@@ -310,8 +332,11 @@ describe(
 						const run = flow().add(code)
 							.add(work, code)
 							.run()
-						if (watch == "idle") await run.idle()
-						else run.subscribe(() => {})
+						if (watch == "idle") {
+							await run.idle()
+						} else {
+							run.subscribe(() => {})
+						}
 						run.send(code, 1)
 						await pause(10)
 						assert.equal(run.status, "failed", watch)
@@ -760,7 +785,9 @@ describe(
 						m + " " + key.slice(key.lastIndexOf(":") + 1)
 					)
 					await sleep(30)
-					if (failing.delete(m)) throw Error("down " + m)
+					if (failing.delete(m)) {
+						throw Error("down " + m)
+					}
 					return m
 				}
 				const cancelled = flow().add(
@@ -1015,7 +1042,9 @@ describe(
 				) {
 					log.push(q + " " + key)
 					await sleep(10)
-					if (q == "quote A") throw Error("declined")
+					if (q == "quote A") {
+						throw Error("declined")
+					}
 					return "receipt " + q
 				}
 				async function quote(
@@ -1148,7 +1177,9 @@ describe(
 					return tx
 				}
 				function open() {
-					if (++opened == 2) throw Error("busy")
+					if (++opened == 2) {
+						throw Error("busy")
+					}
 					return opened
 				}
 				function second(/** @type {unknown} */ tx) {
@@ -1219,7 +1250,9 @@ describe(
 				function decide(
 					/** @type {unknown} */ approved
 				) {
-					if (broken) throw Error("down")
+					if (broken) {
+						throw Error("down")
+					}
 					return approved
 				}
 				const review = flow().add(approve)
@@ -1331,7 +1364,9 @@ describe(
 					/** @type {Context} */ { attempt }
 				) {
 					attempts.push(attempt)
-					if (broken) throw TypeError("declined")
+					if (broken) {
+						throw TypeError("declined")
+					}
 					return "paid"
 				}
 				const checkout = flow().add(charge, { retry: 1 })

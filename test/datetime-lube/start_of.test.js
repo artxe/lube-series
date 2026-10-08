@@ -241,8 +241,11 @@ describe(
 						Date.parse("1921-02-14T20:00:00.000Z")
 					)
 				} finally {
-					if (tz === undefined) delete process.env["TZ"]
-					else process.env["TZ"] = tz
+					if (tz === undefined) {
+						delete process.env["TZ"]
+					} else {
+						process.env["TZ"] = tz
+					}
 				}
 			}
 		)
@@ -461,13 +464,18 @@ describe(
 						/** @type {number[]} */
 						const transitions = []
 						for (let time = Date.parse("1880-01-01T00:00:00Z"); time < Date.parse("2030-01-01T00:00:00Z"); time += 86400000) {
-							if (offset(time).slice(-9) === offset(time + 86400000).slice(-9)) continue
+							if (offset(time).slice(-9) === offset(time + 86400000).slice(-9)) {
+								continue
+							}
 							let low = time
 							let high = time + 86400000
 							while (high - low > 1) {
 								const middle = Math.floor((low + high) / 2)
-								if (offset(middle).slice(-9) === offset(high).slice(-9)) high = middle
-								else low = middle
+								if (offset(middle).slice(-9) === offset(high).slice(-9)) {
+									high = middle
+								} else {
+									low = middle
+								}
 							}
 							transitions.push(high)
 						}

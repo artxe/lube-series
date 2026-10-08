@@ -17,12 +17,16 @@ async function collect_items(iterator, signal) {
 		for (;;) {
 			const step = iterator.next()
 			const { done, value } = signal ? await race_signal(step, signal) : await step
-			if (done) return items
+			if (done) {
+				return items
+			}
 			items.push(value)
 		}
 	} finally {
-		if (signal?.aborted) await iterator.return?.()
-			.catch(noop)
+		if (signal?.aborted) {
+			await iterator.return?.()
+				.catch(noop)
+		}
 	}
 }
 /**
@@ -31,9 +35,11 @@ async function collect_items(iterator, signal) {
  */
 export function each(target) {
 	const is_flow = !!target?.[DEFINITION]
-	if (!is_flow && typeof target != "function") throw TypeError(
-		"flow.each() needs a function or a flow"
-	)
+	if (!is_flow && typeof target != "function") {
+		throw TypeError(
+			"flow.each() needs a function or a flow"
+		)
+	}
 	/** @type {TaskRef} */
 	const run_all = is_flow
 		? async (/** @type {unknown} */ items) => Promise.all(
@@ -79,10 +85,14 @@ export async function run_each(c, record, token) {
 			: to_items(source, parent)
 		items = Array.isArray(collected) ? collected : await collected
 	} catch (error) {
-		if (token != record.token || parent.aborted) return { kind: "stale" }
+		if (token != record.token || parent.aborted) {
+			return { kind: "stale" }
+		}
 		return { kind: "error", value: error }
 	}
-	if (token != record.token) return { kind: "stale" }
+	if (token != record.token) {
+		return { kind: "stale" }
+	}
 	record.item_list = items
 	record.item_source = source
 	const controller = new AbortController()
@@ -111,7 +121,9 @@ export async function run_each(c, record, token) {
 	async function worker() {
 		while (!failure && next < items.length) {
 			const index = next++
-			if (done[index]) continue
+			if (done[index]) {
+				continue
+			}
 			const item = items[index]
 			const key = String(index)
 			const outcome = await run_attempts(
@@ -143,7 +155,9 @@ export async function run_each(c, record, token) {
 						)
 					)
 			)
-			if (token != record.token || outcome.kind == "stale") return
+			if (token != record.token || outcome.kind == "stale") {
+				return
+			}
 			if (outcome.kind == "done") {
 				if (is_sentinel(outcome.value)) {
 					stop(
@@ -172,14 +186,20 @@ export async function run_each(c, record, token) {
 							record.runs.get(key)
 						)
 					)
-					if (token != record.token) return
-					if (is_sentinel(value)) throw TypeError(
-						`The catch of flow node "${name}" cannot return goto() or skip() for an item`
-					)
+					if (token != record.token) {
+						return
+					}
+					if (is_sentinel(value)) {
+						throw TypeError(
+							`The catch of flow node "${name}" cannot return goto() or skip() for an item`
+						)
+					}
 					c.errors[name + "." + key] = outcome.value
 					done[index] = { value }
 				} catch (catch_error) {
-					if (token == record.token) stop(catch_error, index)
+					if (token == record.token) {
+						stop(catch_error, index)
+					}
 					return
 				}
 			} else if (options.optional) {
@@ -202,17 +222,23 @@ export async function run_each(c, record, token) {
 	} finally {
 		unlink()
 	}
-	if (token != record.token) return { kind: "stale" }
-	if (failure) return {
-		index: failure.index,
-		items: true,
-		kind: "error",
-		value: failure.error
+	if (token != record.token) {
+		return { kind: "stale" }
+	}
+	if (failure) {
+		return {
+			index: failure.index,
+			items: true,
+			kind: "error",
+			value: failure.error
+		}
 	}
 	const values = items.map(
 		(_, index) => done[index]?.value
 	)
-	if (!done.some(item => item?.failed) && !failed_sub_keys(record).length) record.items = void 0
+	if (!done.some(item => item?.failed) && !failed_sub_keys(record).length) {
+		record.items = void 0
+	}
 	return { kind: "done", value: values }
 }
 /**
@@ -221,13 +247,19 @@ export async function run_each(c, record, token) {
  * @returns {unknown[] | Promise<unknown[]>}
  */
 export function to_items(source, signal) {
-	if (source == null) return []
-	if (typeof /** @type {Partial<Iterable<unknown>>} */(source)/**/[Symbol.iterator] == "function") return Array.from(
+	if (source == null) {
+		return []
+	}
+	if (typeof /** @type {Partial<Iterable<unknown>>} */(source)/**/[Symbol.iterator] == "function") {
+		return Array.from(
 		/** @type {Iterable<unknown>} */(source)/**/
-	)
-	if (typeof /** @type {Partial<AsyncIterable<unknown>>} */(source)/**/[Symbol.asyncIterator] != "function") throw TypeError(
-		"flow.each() needs an iterable or an async iterable as the first dependency"
-	)
+		)
+	}
+	if (typeof /** @type {Partial<AsyncIterable<unknown>>} */(source)/**/[Symbol.asyncIterator] != "function") {
+		throw TypeError(
+			"flow.each() needs an iterable or an async iterable as the first dependency"
+		)
+	}
 	return collect_items(
 		/** @type {AsyncIterable<unknown>} */(source)/**/[Symbol.asyncIterator](),
 		signal

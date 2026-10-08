@@ -92,15 +92,19 @@ describe(
 						)
 						uninstall()
 						install()
-						if (problems.length) seeds.push(seed)
-						if (problems.length) failures.push(
-							[
-								`SIM_MODE=${mode} SIM_SEED=${seed}`,
-								...problems,
-								...programs,
-								...log
-							].join("\n")
-						)
+						if (problems.length) {
+							seeds.push(seed)
+						}
+						if (problems.length) {
+							failures.push(
+								[
+									`SIM_MODE=${mode} SIM_SEED=${seed}`,
+									...problems,
+									...programs,
+									...log
+								].join("\n")
+							)
+						}
 					}
 					assert.deepEqual(
 						{

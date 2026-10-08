@@ -51,19 +51,30 @@ function add_months(date, months, zone) {
  */
 function compile(sum) {
 	let steps = durations.get(sum)
-	if (steps) return steps
+	if (steps) {
+		return steps
+	}
 	steps = []
 	if (!/\S/.test(sum) || /\S/.test(
 		sum.replace(duration_regex, "")
-	)) throw new RangeError(
-		`add: Invalid duration "${String(sum)}"`
-	)
-	for (const [ , value = "", unit = "" ] of sum.matchAll(duration_regex)) {
-		if (!+value) continue
-		if (unit == "W") steps.push("D", +value * 7)
-		else steps.push(unit, +value)
+	)) {
+		throw new RangeError(
+			`add: Invalid duration "${String(sum)}"`
+		)
 	}
-	if (durations.size >= 1000) durations.clear()
+	for (const [ , value = "", unit = "" ] of sum.matchAll(duration_regex)) {
+		if (!+value) {
+			continue
+		}
+		if (unit == "W") {
+			steps.push("D", +value * 7)
+		} else {
+			steps.push(unit, +value)
+		}
+	}
+	if (durations.size >= 1000) {
+		durations.clear()
+	}
 	durations.set(sum, steps)
 	return steps
 }
@@ -104,22 +115,28 @@ export default function(date, sum, zone) {
 	const steps = compile(sum)
 	check_zone("add", zone)
 	const result = new Date(time)
-	if (isNaN(time)) return result
+	if (isNaN(time)) {
+		return result
+	}
 	if (zone === undefined) {
 		for (let i = 0; i < steps.length; i += 2) {
 			const unit = /** @type {string} */(steps[i])/**/
 			const value = /** @type {number} */(steps[i + 1])/**/
 			const ms = unit_ms[unit]
-			if (ms) result.setTime(result.getTime() + value * ms)
-			else if (unit == "D") result.setDate(result.getDate() + value)
-			else result.setTime(
-				add_months(
-					result,
-					unit == "Y"
-						? value * 12
-						: value
-				).getTime()
-			)
+			if (ms) {
+				result.setTime(result.getTime() + value * ms)
+			} else if (unit == "D") {
+				result.setDate(result.getDate() + value)
+			} else {
+				result.setTime(
+					add_months(
+						result,
+						unit == "Y"
+							? value * 12
+							: value
+					).getTime()
+				)
+			}
 		}
 		return result
 	}

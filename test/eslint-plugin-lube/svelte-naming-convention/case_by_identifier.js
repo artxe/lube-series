@@ -441,7 +441,9 @@ function invalid_case(code, names, extra) {
 				: line.replace(
 					identifier_regex,
 					(name, offset) => {
-						if (!reported.has(name)) return name
+						if (!reported.has(name)) {
+							return name
+						}
 						errors.push(
 							{
 								column: offset + 1,
@@ -460,7 +462,9 @@ function invalid_case(code, names, extra) {
 		errors,
 		output: extra?.output ?? output
 	}
-	if (extra?.options) test_case.options = extra.options
+	if (extra?.options) {
+		test_case.options = extra.options
+	}
 	return test_case
 }
 /**

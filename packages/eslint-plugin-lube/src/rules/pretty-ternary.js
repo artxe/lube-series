@@ -40,7 +40,9 @@ export default {
 				|| !colon
 				|| question.range[1] > parts.consequent.range[0]
 				|| colon.range[1] > parts.alternate.range[0]
-			) return false
+			) {
+				return false
+			}
 			for (const operator of [ question, colon ]) {
 				const before = /** @type {import("eslint").AST.Token | import("estree").Comment} */(source_code.getTokenBefore(
 					operator,
@@ -50,7 +52,9 @@ export default {
 					operator,
 					{ includeComments: true }
 				))/**/
-				if (after.type == "Line") return false
+				if (after.type == "Line") {
+					return false
+				}
 				gaps.push(
 					{
 						depth,
@@ -70,7 +74,9 @@ export default {
 				parts.consequent,
 				parts.alternate
 			]) {
-				if (is_chained(branch) && !collect(branch, depth + 1, gaps)) return false
+				if (is_chained(branch) && !collect(branch, depth + 1, gaps)) {
+					return false
+				}
 			}
 			return true
 		}
@@ -97,9 +103,13 @@ export default {
 		 */
 		function is_chained(node) {
 			const parent = node.parent
-			if (!parent || !is_ternary(node) || parent.type != node.type) return false
+			if (!parent || !is_ternary(node) || parent.type != node.type) {
+				return false
+			}
 			const parts = get_parts(parent)
-			if (node != parts.consequent && node != parts.alternate) return false
+			if (node != parts.consequent && node != parts.alternate) {
+				return false
+			}
 			const before = source_code.getTokenBefore(
 				/** @type {import("estree").Node} */(/** @type {unknown} */(node))/**/
 			)
@@ -117,19 +127,27 @@ export default {
 		 * @returns {void}
 		 */
 		function push(node) {
-			if (!ignore_template_literal || node.range[0] >= template_end) nodes.push(node)
+			if (!ignore_template_literal || node.range[0] >= template_end) {
+				nodes.push(node)
+			}
 		}
 		/**
 		 * @param {import("../../private.js").TernaryNode} node
 		 * @returns {void}
 		 */
 		function verify(node) {
-			if (is_chained(node)) return
+			if (is_chained(node)) {
+				return
+			}
 			/** @type {import("../../private.js").TernaryGap[]} */
 			const gaps = []
-			if (!collect(node, 0, gaps)) return
+			if (!collect(node, 0, gaps)) {
+				return
+			}
 			let length = node.range[1] - node.range[0]
-			for (const gap of gaps) length -= gap.end - gap.start - 1
+			for (const gap of gaps) {
+				length -= gap.end - gap.start - 1
+			}
 			const reason = gaps.length > 4
 				? "a branch is another ternary"
 				: length > max_length
@@ -152,15 +170,21 @@ export default {
 			for (const gap of gaps) {
 				const current = text.slice(gap.start, gap.end)
 				const breaks = multiline && gap.line_break
-				if (breaks && line_break_regex.test(current)) continue
+				if (breaks && line_break_regex.test(current)) {
+					continue
+				}
 				const value = breaks
 					? eol + line_indent + indent.repeat(gap.depth + 1)
 					: " "
-				if (current == value) continue
+				if (current == value) {
+					continue
+				}
 				ranges.push([ gap.start, gap.end ])
 				values.push(value)
 			}
-			if (!ranges.length) return
+			if (!ranges.length) {
+				return
+			}
 			context.report(
 				{
 					data: { reason },
@@ -185,7 +209,9 @@ export default {
 				)
 			},
 			"Program:exit": () => {
-				for (const node of nodes) verify(node)
+				for (const node of nodes) {
+					verify(node)
+				}
 			},
 			/** @param {import("estree").Node} node */
 			TSConditionalType(node) {
@@ -196,7 +222,9 @@ export default {
 			/** @param {import("estree").TemplateLiteral} node */
 			TemplateLiteral(node) {
 				const end = /** @type {[number, number]} */(node.range)/**/[1]
-				if (end > template_end) template_end = end
+				if (end > template_end) {
+					template_end = end
+				}
 			}
 		}
 	},

@@ -10,13 +10,19 @@ const trailing_slash_regex = /\/+$/
  * @returns {string}
  */
 function add_query(url, query, first) {
-	if (!query) return url
+	if (!query) {
+		return url
+	}
 	const hash_index = url.indexOf("#")
 	const without_hash = hash_index < 0 ? url : url.slice(0, hash_index)
 	const hash = hash_index < 0 ? "" : url.slice(hash_index)
 	const query_index = without_hash.indexOf("?")
-	if (query_index < 0) return without_hash + "?" + query + hash
-	if (!first) return without_hash + "&" + query + hash
+	if (query_index < 0) {
+		return without_hash + "?" + query + hash
+	}
+	if (!first) {
+		return without_hash + "&" + query + hash
+	}
 	const existing = without_hash.slice(query_index + 1)
 	return without_hash.slice(0, query_index + 1) + query + (existing ? "&" + existing : "") + hash
 }
@@ -27,17 +33,26 @@ function add_query(url, query, first) {
  * @returns {void}
  */
 function append_query(pairs, key, value) {
-	if (value == null) return
+	if (value == null) {
+		return
+	}
 	if (Array.isArray(value)) {
-		for (const item of /** @type {readonly import("../../public.js").QueryValue[]} */(value)/**/) append_query(pairs, key, item)
-	} else if (value instanceof Date) pairs.push([ key, value.toISOString() ])
-	else if (typeof value == "object") {
-		for (const name of Object.keys(value)) append_query(
-			pairs,
-			`${key}[${name}]`,
-			/** @type {{ readonly [key: string]: import("../../public.js").QueryValue }} */(value)/**/[name]
-		)
-	} else pairs.push([ key, String(value) ])
+		for (const item of /** @type {readonly import("../../public.js").QueryValue[]} */(value)/**/) {
+			append_query(pairs, key, item)
+		}
+	} else if (value instanceof Date) {
+		pairs.push([ key, value.toISOString() ])
+	} else if (typeof value == "object") {
+		for (const name of Object.keys(value)) {
+			append_query(
+				pairs,
+				`${key}[${name}]`,
+				/** @type {{ readonly [key: string]: import("../../public.js").QueryValue }} */(value)/**/[name]
+			)
+		}
+	} else {
+		pairs.push([ key, String(value) ])
+	}
 }
 /**
  * @param {string | undefined} base
@@ -73,12 +88,16 @@ export function build_url(
 					: value instanceof Date
 						? value.toISOString()
 						: String(value)
-				if (!value_text) throw TypeError(
-					`Missing path parameter "${name}" for ${text}`
-				)
-				if (dot_segment_regex.test(value_text)) throw TypeError(
-					`Path parameter "${name}" cannot be "${value_text}"`
-				)
+				if (!value_text) {
+					throw TypeError(
+						`Missing path parameter "${name}" for ${text}`
+					)
+				}
+				if (dot_segment_regex.test(value_text)) {
+					throw TypeError(
+						`Path parameter "${name}" cannot be "${value_text}"`
+					)
+				}
 				used.push(name)
 				return "/" + encodeURIComponent(value_text)
 			}
@@ -98,7 +117,9 @@ export function build_url(
 		url = base_path.replace(trailing_slash_regex, "") + (trimmed && !trimmed.startsWith("?") ? "/" : "") + trimmed
 		url = add_query(url, base_query, true)
 	}
-	for (const name of used) delete rest[name]
+	for (const name of used) {
+		delete rest[name]
+	}
 	return add_query(url, serialize(rest), false)
 }
 /**
@@ -108,7 +129,9 @@ export function build_url(
 export function serialize_query(params) {
 	/** @type {[string, string][]} */
 	const pairs = []
-	for (const key of Object.keys(params)) append_query(pairs, key, params[key])
+	for (const key of Object.keys(params)) {
+		append_query(pairs, key, params[key])
+	}
 	return pairs.map(
 		([ key, value ]) => encodeURIComponent(key) + "=" + encodeURIComponent(value)
 	)

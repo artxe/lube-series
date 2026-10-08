@@ -43,7 +43,9 @@ export async function cancel(d, key, reason) {
 	}
 	for (;;) {
 		const saved = await load(d.store, key)
-		if (!saved || saved.status == "cancelled" || saved.status == "done") return
+		if (!saved || saved.status == "cancelled" || saved.status == "done") {
+			return
+		}
 		const next = snapshot(saved)
 		delete next.inbox
 		next.error = saved_error(error)
@@ -65,18 +67,26 @@ export async function cancel(d, key, reason) {
 export async function enter(d, key, input, mode) {
 	if (mode != "join") {
 		const problem = json_problem(input)
-		if (problem) throw TypeError(
-			`The input of run "${key}" is not a JSON value: ${problem}`
-		)
+		if (problem) {
+			throw TypeError(
+				`The input of run "${key}" is not a JSON value: ${problem}`
+			)
+		}
 	}
 	for (;;) {
 		check_halted(d)
 		const running = d.live.get(key)
-		if (running) return mode == "start" ? false : follow(d, key, running.outcome)
+		if (running) {
+			return mode == "start" ? false : follow(d, key, running.outcome)
+		}
 		const saved = await load(d.store, key)
-		if (d.live.has(key)) continue
+		if (d.live.has(key)) {
+			continue
+		}
 		if (!saved) {
-			if (mode == "join") throw Error(`There is no run "${key}"`)
+			if (mode == "join") {
+				throw Error(`There is no run "${key}"`)
+			}
 			/** @type {SavedRun} */
 			const created = {
 				input: copy(input),
@@ -87,15 +97,25 @@ export async function enter(d, key, input, mode) {
 				status: "running",
 				version: 1
 			}
-			if (await d.store.put(key, created, void 0)) return launch(d, key, created, mode)
+			if (await d.store.put(key, created, void 0)) {
+				return launch(d, key, created, mode)
+			}
 			continue
 		}
-		if (mode == "start" && saved.status != "pending") return false
-		if (saved.status == "done") return saved.result
-		if (saved.status == "cancelled" || mode == "join" && saved.status == "failed") throw error_of(saved)
+		if (mode == "start" && saved.status != "pending") {
+			return false
+		}
+		if (saved.status == "done") {
+			return saved.result
+		}
+		if (saved.status == "cancelled" || mode == "join" && saved.status == "failed") {
+			throw error_of(saved)
+		}
 		if (mode != "join" && (saved.status == "failed" || saved.status == "pending") || is_due(d, saved)) {
 			const claimed = await claim(d, key, saved, input)
-			if (!claimed) continue
+			if (!claimed) {
+				continue
+			}
 			return launch(d, key, claimed, mode)
 		}
 		return outcome_of(d, key)
@@ -110,7 +130,8 @@ export async function enter(d, key, input, mode) {
 function execute(d, key, saved) {
 	/** @type {(reason: typeof LOST | typeof SUSPENDED | { cancel: unknown }) => void} */
 	let interrupt = noop
-	const interrupted = /** @type {Promise<typeof LOST | typeof SUSPENDED | { cancel: unknown }>} */(new Promise(resolve => interrupt = resolve))/**/
+	/** @type {Promise<typeof LOST | typeof SUSPENDED | { cancel: unknown }>} */
+	const interrupted = new Promise(resolve => interrupt = resolve)
 	/** @type {() => void} */
 	let leave = noop
 	/** @type {Promise<void>} */
@@ -147,17 +168,22 @@ function execute(d, key, saved) {
 	d.live.set(key, execution)
 	const renew = setInterval(
 		() => {
-			if (!execution.writing) void persist(d, execution)
-			else if (expiring(d, execution)) lose(
-				execution,
-				store_error(execution.fault)
-			)
+			if (!execution.writing) {
+				void persist(d, execution)
+			} else if (expiring(d, execution)) {
+				lose(
+					execution,
+					store_error(execution.fault)
+				)
+			}
 		},
 		d.renew_ms
 	)
 	execution.outcome = (async () => {
 		try {
-			if (saved.status == "failed") throw error_of(saved)
+			if (saved.status == "failed") {
+				throw error_of(saved)
+			}
 			const result = await Promise.race(
 				[
 					Promise.resolve()
@@ -171,42 +197,60 @@ function execute(d, key, saved) {
 					interrupted
 				]
 			)
-			if (result == LOST || result == SUSPENDED) return DETACHED
-			if ("cancel" in result) throw result.cancel
+			if (result == LOST || result == SUSPENDED) {
+				return DETACHED
+			}
+			if ("cancel" in result) {
+				throw result.cancel
+			}
 			const problem = json_problem(result.value)
-			if (problem) throw TypeError(
-				`The result of run "${key}" is not a JSON value: ${problem}`
-			)
+			if (problem) {
+				throw TypeError(
+					`The result of run "${key}" is not a JSON value: ${problem}`
+				)
+			}
 			execution.finished = true
 			saved.result = result.value
 			saved.status = "done"
 			unclaim(saved)
-			if (!await save(d, execution)) return DETACHED
+			if (!await save(d, execution)) {
+				return DETACHED
+			}
 			return { value: result.value }
 		} catch (error) {
-			if (execution.lost) return DETACHED
+			if (execution.lost) {
+				return DETACHED
+			}
 			execution.finished = true
 			if (saved.status != "cancelled") {
 				rewind(execution, error)
 				saved.error = saved_error(error)
 				saved.status = "failed"
 				unclaim(saved)
-				if (!await save(d, execution)) return DETACHED
+				if (!await save(d, execution)) {
+					return DETACHED
+				}
 			}
 			return { error }
 		} finally {
 			clearInterval(renew)
 			clearInterval(execution.inbox_timer)
 			for (const list of execution.waiters.values()) {
-				for (const waiter of list) waiter.clear()
+				for (const waiter of list) {
+					waiter.clear()
+				}
 			}
-			if (d.live.get(key) == execution) d.live.delete(key)
+			if (d.live.get(key) == execution) {
+				d.live.delete(key)
+			}
 			leave()
 		}
 	})()
 		.then(
 			outcome => {
-				if (!("detached" in outcome)) notify(d, key, outcome)
+				if (!("detached" in outcome)) {
+					notify(d, key, outcome)
+				}
 				return outcome
 			}
 		)
@@ -220,8 +264,12 @@ function execute(d, key, saved) {
  */
 async function follow(d, key, outcome) {
 	const settled = await outcome
-	if ("detached" in settled) return outcome_of(d, key)
-	if ("error" in settled) throw settled.error
+	if ("detached" in settled) {
+		return outcome_of(d, key)
+	}
+	if ("error" in settled) {
+		throw settled.error
+	}
 	return settled.value
 }
 /**
@@ -233,7 +281,9 @@ async function follow(d, key, outcome) {
  */
 function launch(d, key, saved, mode) {
 	const outcome = execute(d, key, saved)
-	if (mode != "start") return follow(d, key, outcome)
+	if (mode != "start") {
+		return follow(d, key, outcome)
+	}
 	void outcome.then(
 		settled => report(d, key, saved, settled)
 	)
@@ -247,8 +297,12 @@ function launch(d, key, saved, mode) {
  * @returns {void}
  */
 function report(d, key, saved, outcome) {
-	if (!("error" in outcome) || saved.status != "failed") return
-	for (const reporter of d.reporters) reporter(outcome.error, key)
+	if (!("error" in outcome) || saved.status != "failed") {
+		return
+	}
+	for (const reporter of d.reporters) {
+		reporter(outcome.error, key)
+	}
 }
 /**
  * @param {DurableWorker} d
@@ -256,12 +310,20 @@ function report(d, key, saved, outcome) {
  * @returns {Promise<void>}
  */
 export async function resume(d, key) {
-	if (d.halted || d.live.has(key)) return
+	if (d.halted || d.live.has(key)) {
+		return
+	}
 	const saved = await load(d.store, key)
-	if (!saved || d.live.has(key) || !is_due(d, saved)) return
-	if (d.halted) return
+	if (!saved || d.live.has(key) || !is_due(d, saved)) {
+		return
+	}
+	if (d.halted) {
+		return
+	}
 	const claimed = await claim(d, key, saved)
-	if (claimed && !d.live.has(key) && !d.halted) void execute(d, key, claimed).then(
-		outcome => report(d, key, claimed, outcome)
-	)
+	if (claimed && !d.live.has(key) && !d.halted) {
+		void execute(d, key, claimed).then(
+			outcome => report(d, key, claimed, outcome)
+		)
+	}
 }

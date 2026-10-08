@@ -11,9 +11,11 @@ export function entry_of(execution, name, type) {
 	const { journal } = execution.saved
 	const entry = journal[index]
 	if (entry) {
-		if (entry.name != name || entry.type != type) throw Error(
-			`The run "${execution.key}" changed: step ${index + 1} was "${entry.name}", now "${name}"`
-		)
+		if (entry.name != name || entry.type != type) {
+			throw Error(
+				`The run "${execution.key}" changed: step ${index + 1} was "${entry.name}", now "${name}"`
+			)
+		}
 		return entry
 	}
 	/** @type {JournalEntry} */
@@ -58,18 +60,26 @@ export function rewind(execution, error) {
 		seen.add(cause)
 		const failure = execution.failures.get(cause)
 		if (failure) {
-			if (execution.cursor > failure.reached) return
+			if (execution.cursor > failure.reached) {
+				return
+			}
 			const { saved } = execution
 			const index = saved.journal.indexOf(failure.entry)
-			if (index < 0) return
+			if (index < 0) {
+				return
+			}
 			for (const later of saved.journal.splice(index).reverse()) {
-				if (later.type != "wait" || !later.done || later.timed_out) continue
+				if (later.type != "wait" || !later.done || later.timed_out) {
+					continue
+				}
 				const events = saved.events ??= {}
 				;(events[later.name] ??= []).unshift({ at: 0, value: later.value })
 			}
 			return
 		}
-		if (!(cause instanceof Error)) return
+		if (!(cause instanceof Error)) {
+			return
+		}
 		cause = cause.cause
 	}
 }
@@ -81,7 +91,9 @@ export function rewind(execution, error) {
  */
 export function take_waiter(execution, name, at) {
 	const list = execution.waiters.get(name)
-	if (!list) return
+	if (!list) {
+		return
+	}
 	const index = list.findIndex(
 		waiter => waiter.entry.until == null || at <= waiter.entry.until
 	)
@@ -93,8 +105,12 @@ export function take_waiter(execution, name, at) {
  * @returns {void}
  */
 export function unblock(execution, waiter) {
-	if (!waiter.block) return
+	if (!waiter.block) {
+		return
+	}
 	const index = execution.blocked.indexOf(waiter.block)
-	if (index >= 0) execution.blocked.splice(index, 1)
+	if (index >= 0) {
+		execution.blocked.splice(index, 1)
+	}
 	waiter.block = void 0
 }

@@ -201,8 +201,11 @@ describe(
 						Date.parse("1974-11-02T13:59:59.999Z")
 					)
 				} finally {
-					if (tz === undefined) delete process.env["TZ"]
-					else process.env["TZ"] = tz
+					if (tz === undefined) {
+						delete process.env["TZ"]
+					} else {
+						process.env["TZ"] = tz
+					}
 				}
 			}
 		)

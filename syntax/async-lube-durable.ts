@@ -60,7 +60,9 @@ async function durable_syntax() {
 				await wait("close", { until: new Date() })
 				return approved ? paid : "declined"
 			} catch (error) {
-				if (error instanceof TimeoutError) return "expired"
+				if (error instanceof TimeoutError) {
+					return "expired"
+				}
 				throw error
 			}
 		},

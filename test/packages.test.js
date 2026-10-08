@@ -23,8 +23,12 @@ const packages = [
  * @returns {string[]}
  */
 function entry_paths(target) {
-	if (typeof target == "string") return [ posix.normalize(target) ]
-	if (target && typeof target == "object") return Object.values(target).flatMap(entry_paths)
+	if (typeof target == "string") {
+		return [ posix.normalize(target) ]
+	}
+	if (target && typeof target == "object") {
+		return Object.values(target).flatMap(entry_paths)
+	}
 	return []
 }
 /**
@@ -47,7 +51,8 @@ function packed_files(dir) {
 			stdio: [ "ignore", "pipe", "ignore" ]
 		}
 	)
-	const [ result ] = /** @type {{ files: { path: string }[] }[]} */(JSON.parse(output))/**/
+	/** @type {{ files: { path: string }[] }[]} */
+	const [ result ] = JSON.parse(output)
 	return /** @type {{ files: { path: string }[] }} */(result)/**/.files.map(file => file.path)
 }
 describe(
@@ -58,12 +63,13 @@ describe(
 				name,
 				() => {
 					const dir = join(packages_dir, name)
-					const manifest = /** @type {Record<string, unknown>} */(JSON.parse(
+					/** @type {Record<string, unknown>} */
+					const manifest = JSON.parse(
 						readFileSync(
 							join(dir, "package.json"),
 							"utf8"
 						)
-					))/**/
+					)
 					const files = packed_files(dir)
 					const packed = new Set(files)
 					assert.isArray(manifest["files"])
@@ -71,13 +77,17 @@ describe(
 						"CHANGELOG.md",
 						"LICENSE",
 						"README.md"
-					]) assert.include(files, doc)
+					]) {
+						assert.include(files, doc)
+					}
 					if (existsSync(join(dir, "docs"))) {
 						assert.include(
 							/** @type {string[]} */(manifest["files"])/**/,
 							"docs"
 						)
-						for (const doc of readdirSync(join(dir, "docs"))) assert.include(files, `docs/${doc}`)
+						for (const doc of readdirSync(join(dir, "docs"))) {
+							assert.include(files, `docs/${doc}`)
+						}
 					}
 					const readme = readFileSync(join(dir, "README.md"), "utf8")
 					for (const [ , doc ] of readme.matchAll(
@@ -85,7 +95,9 @@ describe(
 							`https://github\\.com/artxe/lube-series/blob/master/packages/${name}/(docs/[^)#]+)`,
 							"g"
 						)
-					)) assert.include(files, doc)
+					)) {
+						assert.include(files, doc)
+					}
 					for (const file of files) {
 						assert.notMatch(
 							file,
@@ -107,7 +119,9 @@ describe(
 						manifest["exports"]
 					].flatMap(entry_paths)
 					for (const entry of entries) {
-						if (existsSync(join(dir, entry))) assert.isTrue(packed.has(entry), entry)
+						if (existsSync(join(dir, entry))) {
+							assert.isTrue(packed.has(entry), entry)
+						}
 					}
 					const engines = /** @type {{ node?: string } | undefined} */(manifest["engines"])/**/
 					assert.isString(engines?.node, "engines.node")
@@ -123,10 +137,12 @@ describe(
 						}
 					)
 					assert.isNotEmpty(manifest["keywords"])
-					if (name != "eslint-plugin-lube") assert.isFalse(
-						manifest["sideEffects"],
-						"sideEffects"
-					)
+					if (name != "eslint-plugin-lube") {
+						assert.isFalse(
+							manifest["sideEffects"],
+							"sideEffects"
+						)
+					}
 					assert.equal(manifest["type"], "module")
 					const exports = /** @type {Record<string, Record<string, string>>} */(manifest["exports"])/**/
 					for (const [ subpath, target ] of Object.entries(exports)) {

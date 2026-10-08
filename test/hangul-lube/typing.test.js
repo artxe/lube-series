@@ -70,42 +70,50 @@ function check_word(seed) {
 		const index = Math.floor(random() * letters.length)
 		const [ initial, medial, final ] = /** @type {[string, string, string]} */(jamo(letters[index]))/**/
 		const change = Math.floor(random() * 5)
-		if (change == 0) letters[index] = syllable(
-			initial,
-			medial,
-			pick([ ...finals ])
-		)
-		else if (change == 1) letters[index] = syllable(
-			initial,
-			pick([ ...medials ]),
-			final
-		)
-		else if (change == 2) letters[index] = syllable(
-			pick([ ...initials ]),
-			medial,
-			final
-		)
-		else if (change == 3) letters.splice(
-			index + 1,
-			0,
-			random_syllable(true)
-		)
-		else letters[index] = pick(
-			[
+		if (change == 0) {
+			letters[index] = syllable(
 				initial,
 				medial,
-				...final == " " ? [] : [ final ]
-			]
-		)
-		if (random() < 0.3) letters.splice(
-			Math.floor(
-				random() * (letters.length + 1)
-			),
-			0,
-			pick(
-				[ "ㄱ", "ㄳ", "ㅘ", "a", "1", " " ]
+				pick([ ...finals ])
 			)
-		)
+		} else if (change == 1) {
+			letters[index] = syllable(
+				initial,
+				pick([ ...medials ]),
+				final
+			)
+		} else if (change == 2) {
+			letters[index] = syllable(
+				pick([ ...initials ]),
+				medial,
+				final
+			)
+		} else if (change == 3) {
+			letters.splice(
+				index + 1,
+				0,
+				random_syllable(true)
+			)
+		} else {
+			letters[index] = pick(
+				[
+					initial,
+					medial,
+					...final == " " ? [] : [ final ]
+				]
+			)
+		}
+		if (random() < 0.3) {
+			letters.splice(
+				Math.floor(
+					random() * (letters.length + 1)
+				),
+				0,
+				pick(
+					[ "ㄱ", "ㄳ", "ㅘ", "a", "1", " " ]
+				)
+			)
+		}
 		return letters.join("")
 	}
 	/**
@@ -141,7 +149,9 @@ function check_word(seed) {
 	function random_word() {
 		const rich = random() < 0.5
 		let word = ""
-		for (let count = 1 + Math.floor(random() * 4); count > 0; count--) word += random_syllable(rich)
+		for (let count = 1 + Math.floor(random() * 4); count > 0; count--) {
+			word += random_syllable(rich)
+		}
 		return word
 	}
 	const word = random_word()
@@ -161,11 +171,13 @@ function check_word(seed) {
 				: keys_of(word)
 		]
 	)
-	if (!by_initials) assert.equal(
-		states.at(-1),
-		latin + word,
-		`seed ${seed}`
-	)
+	if (!by_initials) {
+		assert.equal(
+			states.at(-1),
+			latin + word,
+			`seed ${seed}`
+		)
+	}
 	const text = `${pick([ "", "CNC-3호기 ", "(주)", "A라인/" ])}${latin.toUpperCase()}${word}${pick([ "", " 정비", "#2" ])}`
 	const spaced = [ ...text ].join(random() < 0.5 ? " " : "-")
 	for (const state of states) {
@@ -221,7 +233,9 @@ function create_random(seed) {
  */
 function jamo(letter) {
 	const code = (letter ?? "").charCodeAt(0) - 0xAC00
-	if (!(code >= 0 && code < 11172)) return undefined
+	if (!(code >= 0 && code < 11172)) {
+		return undefined
+	}
 	return [
 		/** @type {string} */(initials[Math.floor(code / 588)])/**/,
 		/** @type {string} */(medials[Math.floor(code / 28) % 21])/**/,
@@ -236,7 +250,9 @@ function keys_of(word) {
 	return [ ...word ].flatMap(
 		letter => {
 			const parts = jamo(letter)
-			if (!parts) return [ letter ]
+			if (!parts) {
+				return [ letter ]
+			}
 			const [ initial, medial, final ] = parts
 			return [
 				initial,
@@ -270,36 +286,57 @@ function reference_matches(query, text) {
 					const [ initial, medial, final ] = parts
 					const found = jamo(current)
 					if (index < last) {
-						if (current == letter) next.push(position + 1)
+						if (current == letter) {
+							next.push(position + 1)
+						}
 					} else if (final == " ") {
-						if (found?.[0] == initial && (medial_growths[medial] ?? medial).includes(found[1])) next.push(position + 1)
+						if (found?.[0] == initial && (medial_growths[medial] ?? medial).includes(found[1])) {
+							next.push(position + 1)
+						}
 					} else {
-						if (found?.[0] == initial && found[1] == medial && (final_growths[final] ?? final).includes(found[2])) next.push(position + 1)
+						if (found?.[0] == initial && found[1] == medial && (final_growths[final] ?? final).includes(found[2])) {
+							next.push(position + 1)
+						}
 						const pair = split_consonants[final]
 						if (current == syllable(
 							initial,
 							medial,
 							pair ? pair[0] : " "
-						) && jamo(letters[position + 1])?.[0] == (pair ? pair[1] : final)) next.push(position + 2)
+						) && jamo(letters[position + 1])?.[0] == (pair ? pair[1] : final)) {
+							next.push(position + 2)
+						}
 					}
 				} else if (split_consonants[letter]) {
-					const pair = /** @type {string} */(split_consonants[letter])/**/
-					if (current == letter) next.push(position + 1)
+					/** @type {string} */
+					const pair = split_consonants[letter]
+					if (current == letter) {
+						next.push(position + 1)
+					}
 					if (starts_with(
 						current,
 						/** @type {string} */(pair[0])/**/
 					) && starts_with(
 						letters[position + 1],
 						/** @type {string} */(pair[1])/**/
-					)) next.push(position + 2)
+					)) {
+						next.push(position + 2)
+					}
 				} else if (initials.includes(letter)) {
-					if (starts_with(current, letter) || (final_growths[letter] ?? "").includes(current ?? "@")) next.push(position + 1)
+					if (starts_with(current, letter) || (final_growths[letter] ?? "").includes(current ?? "@")) {
+						next.push(position + 1)
+					}
 				} else if (medials.includes(letter)) {
-					if ((medial_growths[letter] ?? letter).includes(current ?? "@")) next.push(position + 1)
-				} else if (current?.toLowerCase() == letter.toLowerCase()) next.push(position + 1)
+					if ((medial_growths[letter] ?? letter).includes(current ?? "@")) {
+						next.push(position + 1)
+					}
+				} else if (current?.toLowerCase() == letter.toLowerCase()) {
+					next.push(position + 1)
+				}
 			}
 			positions = next
-			if (!positions.length) return false
+			if (!positions.length) {
+				return false
+			}
 		}
 		return true
 	}
@@ -355,10 +392,15 @@ function type(typed) {
 			initial = medial = final = ""
 		} else if (!medials.includes(key)) {
 			const compound = compound_consonants[(final || initial) + key]
-			if (initial && !medial && compound) initial = compound
-			else if (medial && final && compound) final = compound
-			else if (initial && medial && !final && finals.includes(key)) final = key
-			else commit(key, "")
+			if (initial && !medial && compound) {
+				initial = compound
+			} else if (medial && final && compound) {
+				final = compound
+			} else if (initial && medial && !final && finals.includes(key)) {
+				final = key
+			} else {
+				commit(key, "")
+			}
 		} else if (initial && !medial) {
 			const pair = split_consonants[initial]
 			if (pair) {
@@ -371,8 +413,11 @@ function type(typed) {
 			const moved = pair ? /** @type {string} */(pair[1])/**/ : final
 			final = pair ? /** @type {string} */(pair[0])/**/ : ""
 			commit(moved, key)
-		} else if (medial && compound_medials[medial + key]) medial = /** @type {string} */(compound_medials[medial + key])/**/
-		else commit("", key)
+		} else if (medial && compound_medials[medial + key]) {
+			medial = /** @type {string} */(compound_medials[medial + key])/**/
+		} else {
+			commit("", key)
+		}
 		states.push(done + composing())
 	}
 	return states
@@ -385,7 +430,9 @@ describe(
 		it(
 			"every state while typing a word finds it in a longer text, and nothing the rule rejects",
 			() => {
-				for (const seed of words) check_word(seed)
+				for (const seed of words) {
+					check_word(seed)
+				}
 			},
 			60000 + words.length * 5
 		)

@@ -20,7 +20,9 @@ describe(
 		function chain(value) {
 			/** @type {Chain | { value: number }} */
 			let node = { value }
-			for (let i = 0; i < 20000; i++) node = { i, next: node, set: new Set([ i ]) }
+			for (let i = 0; i < 20000; i++) {
+				node = { i, next: node, set: new Set([ i ]) }
+			}
 			return /** @type {Chain} */(node)/**/
 		}
 		/**
@@ -30,7 +32,9 @@ describe(
 		function last(node) {
 			/** @type {Chain | { value: number }} */
 			let current = node
-			while ("next" in current) current = current.next
+			while ("next" in current) {
+				current = current.next
+			}
 			return current
 		}
 		it(
@@ -110,7 +114,8 @@ describe(
 						this.inner = inner
 					}
 				}
-				const foreign = /** @type {(value: unknown) => unknown[]} */(runInNewContext("value => [ value, 1 ]"))/**/
+				/** @type {(value: unknown) => unknown[]} */
+				const foreign = runInNewContext("value => [ value, 1 ]")
 				/** @type {((value: unknown) => unknown)[]} */
 				const wrappers = [
 					value => new Map([ [ "k", value ] ]),
@@ -128,7 +133,9 @@ describe(
 				function build(leaf) {
 					/** @type {unknown} */
 					let value = { leaf }
-					for (let i = 0; i < 3000; i++) value = /** @type {(value: unknown) => unknown} */(wrappers[i % wrappers.length])/**/(value)
+					for (let i = 0; i < 3000; i++) {
+						value = /** @type {(value: unknown) => unknown} */(wrappers[i % wrappers.length])/**/(value)
+					}
 					return value
 				}
 				const a = build(1)
@@ -157,12 +164,14 @@ describe(
 				function maps(leaf) {
 					/** @type {unknown} */
 					let value = leaf
-					for (let i = 0; i < 5000; i++) value = new Map(
-						[
-							[ { k: i }, value ],
-							[ { k: -1 }, 0 ]
-						]
-					)
+					for (let i = 0; i < 5000; i++) {
+						value = new Map(
+							[
+								[ { k: i }, value ],
+								[ { k: -1 }, 0 ]
+							]
+						)
+					}
 					return value
 				}
 				/**
@@ -172,7 +181,9 @@ describe(
 				function sets(leaf) {
 					/** @type {unknown} */
 					let value = leaf
-					for (let i = 0; i < 5000; i++) value = new Set([ { n: value }, { v: i } ])
+					for (let i = 0; i < 5000; i++) {
+						value = new Set([ { n: value }, { v: i } ])
+					}
 					return value
 				}
 				assert.isTrue(deepEqual(sets(1), sets(1)))
@@ -182,7 +193,9 @@ describe(
 				/** @type {unknown[]} */
 				const spread = []
 				spread.length = 2 ** 26
-				for (let i = 0; i < 5; i++) spread[2 ** 22 * i] = { i }
+				for (let i = 0; i < 5; i++) {
+					spread[2 ** 22 * i] = { i }
+				}
 				const start = performance.now()
 				assert.isTrue(
 					deepEqual(deepCopy(spread), spread)
@@ -200,7 +213,9 @@ describe(
 				function keyed(depth) {
 					/** @type {unknown} */
 					let value = 0
-					for (let i = 0; i < depth; i++) value = new Map([ [ {}, value ], [ {}, 0 ] ])
+					for (let i = 0; i < depth; i++) {
+						value = new Map([ [ {}, value ], [ {}, 0 ] ])
+					}
 					return value
 				}
 				assert.isTrue(
@@ -277,7 +292,9 @@ describe(
 				function wrap(leaf) {
 					/** @type {unknown} */
 					let value = leaf
-					for (let i = 0; i < 400; i++) value = new Map([ [ {}, value ], [ {}, 0 ] ])
+					for (let i = 0; i < 400; i++) {
+						value = new Map([ [ {}, value ], [ {}, 0 ] ])
+					}
 					return value
 				}
 				/** @type {[ () => unknown, () => unknown, boolean ][]} */
@@ -395,7 +412,9 @@ describe(
 					draft => {
 						/** @type {Chain | { value: number }} */
 						let node = draft
-						while ("next" in node) node = node.next
+						while ("next" in node) {
+							node = node.next
+						}
 						node.value = 3
 					}
 				)
@@ -444,7 +463,9 @@ describe(
 				const copy = deepCopy(ring())
 				/** @type {{ next: unknown }} */
 				let node = copy
-				for (let i = 0; i <= 20000; i++) node = /** @type {{ next: unknown }} */(node.next)/**/
+				for (let i = 0; i <= 20000; i++) {
+					node = /** @type {{ next: unknown }} */(node.next)/**/
+				}/**/
 				assert.equal(node, copy)
 				/** @type {unknown} */
 				let sets = 1
@@ -477,8 +498,12 @@ describe(
 				function ladder() {
 					/** @type {unknown} */
 					let value = { leaf: 1 }
-					for (let i = 0; i < 30; i++) value = { l: value, r: value }
-					for (let i = 0; i < 190; i++) value = { c: value }
+					for (let i = 0; i < 30; i++) {
+						value = { l: value, r: value }
+					}
+					for (let i = 0; i < 190; i++) {
+						value = { c: value }
+					}
 					return value
 				}
 				assert.lengthOf(deepDiff(ladder(), ladder()), 0)
@@ -518,13 +543,17 @@ describe(
 					draft => {
 						/** @type {unknown} */
 						let value = Object.freeze({ ref: draft.a })
-						for (let i = 0; i < 20000; i++) value = Object.freeze({ c: value })
+						for (let i = 0; i < 20000; i++) {
+							value = Object.freeze({ c: value })
+						}
 						draft.b = value
 					}
 				)
 				/** @type {{ c?: unknown, ref?: unknown }} */
 				let node = /** @type {{ c?: unknown }} */(frozen.b)/**/
-				while (node.c) node = /** @type {{ c?: unknown, ref?: unknown }} */(node.c)/**/
+				while (node.c) {
+					node = /** @type {{ c?: unknown, ref?: unknown }} */(node.c)/**/
+				}/**/
 				assert.equal(node.ref, frozen.a)
 			}
 		)
@@ -548,7 +577,9 @@ describe(
 						const copy = deepCopy(draft)
 						/** @type {{ next?: unknown }} */
 						let node = copy.head
-						while (node.next) node = /** @type {{ next?: unknown }} */(node.next)/**/
+						while (node.next) {
+							node = /** @type {{ next?: unknown }} */(node.next)/**/
+						}/**/
 						assert.equal(node, copy.tail)
 					},
 					{ graph: true }
@@ -580,7 +611,9 @@ describe(
 				)
 				/** @type {{ i?: number, next: unknown }} */
 				let current = turned.ring
-				for (let i = 0; i <= 20000; i++) current = /** @type {{ next: unknown }} */(current.next)/**/
+				for (let i = 0; i <= 20000; i++) {
+					current = /** @type {{ next: unknown }} */(current.next)/**/
+				}/**/
 				assert.equal(current, turned.ring)
 				assert.equal(
 					/** @type {Chain} */(turned.ring.next)/**/.i,
@@ -621,7 +654,9 @@ describe(
 				function nest(leaf, depth) {
 					/** @type {unknown} */
 					let value = leaf
-					for (let i = 0; i < depth; i++) value = { next: value }
+					for (let i = 0; i < depth; i++) {
+						value = { next: value }
+					}
 					return value
 				}
 				const before = build(1)
@@ -699,13 +734,15 @@ describe(
 						}
 					]
 				)
-				const foreign = /** @type {unknown[]} */(runInNewContext(
+				/** @type {unknown[]} */
+				const foreign = runInNewContext(
 					"const list = []; list[10000] = 1; list[2] = 'a'; list"
-				))/**/
+				)
 				const foreign_copy = deepCopy(foreign)
 				assert.equal(foreign_copy[2], "a")
 				assert.isFalse(3 in foreign_copy)
-				const frozen = /** @type {unknown[]} */([])/**/
+				/** @type {unknown[]} */
+				const frozen = []
 				const user = { n: 1 }
 				const updated = deepUpdate(
 					{
@@ -809,7 +846,9 @@ describe(
 				function ladder(value) {
 					/** @type {unknown} */
 					let node = { v: value }
-					for (let i = 0; i < 26; i++) node = { l: node, r: node }
+					for (let i = 0; i < 26; i++) {
+						node = { l: node, r: node }
+					}
 					/** @type {{ ladder: unknown, self?: unknown }} */
 					const root = { ladder: node }
 					root.self = root
@@ -826,7 +865,9 @@ describe(
 				function row(id) {
 					/** @type {Record<string, number>} */
 					const item = { id }
-					for (let i = 0; i < 65; i++) item[`f${i}`] = 0
+					for (let i = 0; i < 65; i++) {
+						item[`f${i}`] = 0
+					}
 					return item
 				}
 				const left = new Set(
@@ -854,7 +895,9 @@ describe(
 				assert.isTrue(deepEqual(left, shuffled))
 				/** @type {unknown} */
 				let deep = { end: 1 }
-				for (let i = 0; i < 250; i++) deep = { next: deep }
+				for (let i = 0; i < 250; i++) {
+					deep = { next: deep }
+				}
 				const items = Array.from(
 					{ length: 20000 },
 					(_, i) => ({ i })
@@ -875,12 +918,14 @@ describe(
 					const root = {}
 					/** @type {unknown} */
 					let value = leaf
-					for (let i = 0; i < depth; i++) value = new Set(
-						[
-							{ back: root, y: value },
-							{ back: root, y: value }
-						]
-					)
+					for (let i = 0; i < depth; i++) {
+						value = new Set(
+							[
+								{ back: root, y: value },
+								{ back: root, y: value }
+							]
+						)
+					}
 					root.back = value
 					return root
 				}

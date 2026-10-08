@@ -14,7 +14,9 @@ function skip_optional_patterns(rule) {
 							value: (
 								/** @type {import("eslint").Rule.ReportDescriptor & { node?: import("estree").Node & { optional?: boolean } }} */ descriptor
 							) => {
-								if (descriptor.node?.type == "ObjectPattern" && descriptor.node.optional) return
+								if (descriptor.node?.type == "ObjectPattern" && descriptor.node.optional) {
+									return
+								}
 								context.report(descriptor)
 							}
 						}

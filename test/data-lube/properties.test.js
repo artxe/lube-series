@@ -43,8 +43,12 @@ describe(
 			 * @returns {boolean}
 			 */
 			function visit(item) {
-				if (!item || typeof item != "object" || seen.has(item)) return false
-				if (test(item)) return true
+				if (!item || typeof item != "object" || seen.has(item)) {
+					return false
+				}
+				if (test(item)) {
+					return true
+				}
 				seen.add(item)
 				const children = item instanceof Map
 					? [ ...item.keys(), ...item.values() ]
@@ -95,8 +99,12 @@ describe(
 			 * @returns {boolean}
 			 */
 			function visit(item) {
-				if (!container(item) || done.has(item)) return false
-				if (active.has(item)) return true
+				if (!container(item) || done.has(item)) {
+					return false
+				}
+				if (active.has(item)) {
+					return true
+				}
 				active.add(item)
 				const found = members_of(item).some(visit)
 				active.delete(item)
@@ -113,7 +121,9 @@ describe(
 			return has_object(
 				value,
 				item => {
-					if (!(item instanceof Member)) return false
+					if (!(item instanceof Member)) {
+						return false
+					}
 					try {
 						return item.secret != 1
 					} catch {
@@ -274,7 +284,9 @@ describe(
 		 * @returns {void}
 		 */
 		function mutate(target, random, depth, root) {
-			if (depth > 12) return
+			if (depth > 12) {
+				return
+			}
 			const choice = random()
 			if (Array.isArray(target)) {
 				const index = Math.floor(random() * (target.length + 1))
@@ -318,7 +330,9 @@ describe(
 				} else if (choice < 0.6) {
 					let steps = 0
 					for (const [ item, value ] of target) {
-						if (++steps > 12) break
+						if (++steps > 12) {
+							break
+						}
 						const action = random()
 						if (action < 0.3) {
 							target.delete(item)
@@ -365,7 +379,9 @@ describe(
 					target.add(Math.floor(random() * 6))
 				} else if (choice < 0.6) {
 					target.clear()
-					for (const item of values.reverse()) target.add(item)
+					for (const item of values.reverse()) {
+						target.add(item)
+					}
 				} else if (value && typeof value == "object") {
 					value.value = make(random, depth + 1)
 				}
@@ -401,7 +417,9 @@ describe(
 				const found = (node instanceof Map
 					? [ ...node.values() ]
 					: members_of(node)).filter(container)
-				if (!found.length) break
+				if (!found.length) {
+					break
+				}
 				node = found[Math.floor(random() * found.length)]
 			}
 			return /** @type {ReturnType<typeof make>} */(node)/**/
@@ -422,29 +440,47 @@ describe(
 				const y = stack.pop()
 				const x = stack.pop()
 				const object = !!x && typeof x == "object"
-				if (object !== (!!y && typeof y == "object")) return false
-				if (!object) continue
+				if (object !== (!!y && typeof y == "object")) {
+					return false
+				}
+				if (!object) {
+					continue
+				}
 				if (forward.has(x) || backward.has(y)) {
-					if (forward.get(x) !== y || backward.get(y) !== x) return false
+					if (forward.get(x) !== y || backward.get(y) !== x) {
+						return false
+					}
 					continue
 				}
 				forward.set(x, y)
 				backward.set(y, x)
-				if (!container(x)) continue
-				if (!container(y) || Object.getPrototypeOf(x) !== Object.getPrototypeOf(y)) return false
+				if (!container(x)) {
+					continue
+				}
+				if (!container(y) || Object.getPrototypeOf(x) !== Object.getPrototypeOf(y)) {
+					return false
+				}
 				if (x instanceof Map || x instanceof Set || Array.isArray(x)) {
 					const left = members_of(x)
 					const right = members_of(y)
-					if (left.length != right.length) return false
-					for (let i = 0; i < left.length; i++) stack.push(left[i], right[i])
+					if (left.length != right.length) {
+						return false
+					}
+					for (let i = 0; i < left.length; i++) {
+						stack.push(left[i], right[i])
+					}
 				} else {
 					const keys = Object.keys(/** @type {object} */(x)/**/).sort()
 					if (keys.join() != Object.keys(/** @type {object} */(y)/**/).sort()
-						.join()) return false
-					for (const key of keys) stack.push(
+						.join()) {
+						return false
+					}
+					for (const key of keys) {
+						stack.push(
 						/** @type {Record<string, unknown>} */(x)/**/[key],
-						/** @type {Record<string, unknown>} */(y)/**/[key]
-					)
+							/** @type {Record<string, unknown>} */(y)/**/[key]
+						)
+					}
 				}
 			}
 			return true
@@ -505,13 +541,15 @@ describe(
 					has_object(
 						target,
 						item => {
-							if (item instanceof Member) has_object(
-								item,
-								inner => {
-									shared.add(inner)
-									return false
-								}
-							)
+							if (item instanceof Member) {
+								has_object(
+									item,
+									inner => {
+										shared.add(inner)
+										return false
+									}
+								)
+							}
 							return false
 						}
 					)
@@ -546,14 +584,18 @@ describe(
 					function plain(/** @type {unknown} */ value) {
 						return value && typeof value == "object" && Object.getPrototypeOf(value) === Object.prototype
 					}
-					if (!plain(a) || !plain(b)) return b
+					if (!plain(a) || !plain(b)) {
+						return b
+					}
 					/** @type {Record<string, unknown>} */
 					const result = { ...a, ...b }
 					for (const key of Object.keys(b)) {
-						if (Object.prototype.hasOwnProperty.call(a, key) && plain(a[key]) && plain(b[key]) && a[key] !== b[key]) result[key] = reference(
+						if (Object.prototype.hasOwnProperty.call(a, key) && plain(a[key]) && plain(b[key]) && a[key] !== b[key]) {
+							result[key] = reference(
 							/** @type {Readonly<Record<string, unknown>>} */(a[key])/**/,
-							/** @type {Readonly<Record<string, unknown>>} */(b[key])/**/
-						)
+								/** @type {Readonly<Record<string, unknown>>} */(b[key])/**/
+							)
+						}
 					}
 					return result
 				}
@@ -584,18 +626,22 @@ describe(
 					const expected = deepCopy(base)
 					const steps = 1 + seed % 5
 					const reference_random = create_random(seed * 7919)
-					for (let i = 0; i < steps; i++) mutate(
-						expected,
-						reference_random,
-						0,
-						expected
-					)
+					for (let i = 0; i < steps; i++) {
+						mutate(
+							expected,
+							reference_random,
+							0,
+							expected
+						)
+					}
 					const loops = cyclic(expected)
 					const draft_random = create_random(seed * 7919)
 					const next = deepUpdate(
 						base,
 						draft => {
-							for (let i = 0; i < steps; i++) mutate(draft, draft_random, 0, draft)
+							for (let i = 0; i < steps; i++) {
+								mutate(draft, draft_random, 0, draft)
+							}
 							assert.isTrue(
 								deepEqual(draft, expected),
 								`seed ${seed}`
@@ -705,19 +751,23 @@ describe(
 					for (let round = 0; round < 3; round++) {
 						const steps = 1 + (seed + round) % 4
 						const reference_random = create_random(seed * 7919 + round)
-						for (let i = 0; i < steps; i++) mutate(
-							expected,
-							reference_random,
-							0,
-							expected
-						)
+						for (let i = 0; i < steps; i++) {
+							mutate(
+								expected,
+								reference_random,
+								0,
+								expected
+							)
+						}
 						const draft_random = create_random(seed * 7919 + round)
 						/**
 						 * @param {typeof base} draft
 						 * @returns {void}
 						 */
 						function recipe(draft) {
-							for (let i = 0; i < steps; i++) mutate(draft, draft_random, 0, draft)
+							for (let i = 0; i < steps; i++) {
+								mutate(draft, draft_random, 0, draft)
+							}
 							assert.isTrue(
 								deepEqual(draft, expected),
 								`seed ${seed} round ${round}`
@@ -738,7 +788,6 @@ describe(
 							)
 						}
 						next = round == 1
-							// eslint-disable-next-line no-await-in-loop
 							? await deepUpdate(
 								/** @type {typeof base} */(next)/**/,
 								async draft => {
@@ -808,12 +857,14 @@ describe(
 					Object.assign(expected.tail.first, { seed })
 					const steps = 1 + seed % 4
 					const reference_random = create_random(seed * 7919)
-					for (let i = 0; i < steps; i++) mutate(
-						expected,
-						reference_random,
-						0,
-						expected
-					)
+					for (let i = 0; i < steps; i++) {
+						mutate(
+							expected,
+							reference_random,
+							0,
+							expected
+						)
+					}
 					const draft_random = create_random(seed * 7919)
 					const next = deepUpdate(
 						base,
@@ -823,7 +874,9 @@ describe(
 							const queue = [ draft ]
 							for (let i = 0; i < queue.length; i++) {
 								const item = queue[i]
-								if (typeof item != "object" || item === null || seen.has(item)) continue
+								if (typeof item != "object" || item === null || seen.has(item)) {
+									continue
+								}
 								seen.add(item)
 								queue.push(
 									...item instanceof Map
@@ -834,7 +887,9 @@ describe(
 								)
 							}
 							Object.assign(draft.tail.first, { seed })
-							for (let i = 0; i < steps; i++) mutate(draft, draft_random, 0, draft)
+							for (let i = 0; i < steps; i++) {
+								mutate(draft, draft_random, 0, draft)
+							}
 						}
 					)
 					assert.isTrue(
