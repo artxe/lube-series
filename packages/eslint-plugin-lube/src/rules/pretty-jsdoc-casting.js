@@ -36,10 +36,7 @@ export default {
 		 * @returns {boolean}
 		 */
 		function is_arguments(position) {
-			const node = /** @type {import("../../private.js").AstNode | null} */(/** @type {unknown} */(source_code.getNodeByRangeIndex(position)))/**/
-			if (!node) {
-				return false
-			}
+			const node = /** @type {import("../../private.js").AstNode} */(/** @type {unknown} */(source_code.getNodeByRangeIndex(position)))/**/
 			const type = node.type
 			if (type != "CallExpression" && type != "ImportExpression" && type != "NewExpression") {
 				return false
@@ -73,7 +70,7 @@ export default {
 		 * @param {number} start
 		 * @param {number} end
 		 * @param {[number, number][]} removed
-		 * @returns {string | null}
+		 * @returns {string}
 		 */
 		function render_without(start, end, removed) {
 			let position = start
@@ -81,9 +78,6 @@ export default {
 			for (const [ removed_start, removed_end ] of removed) {
 				if (removed_end <= start || removed_start >= end) {
 					continue
-				}
-				if (source.crosses_edit(removed_start) || source.crosses_edit(removed_end)) {
-					return null
 				}
 				let chunk_end = removed_start
 				if (text[removed_start] == ")") {
@@ -239,12 +233,10 @@ export default {
 			const prefix = render_without(left, content_start, removed)
 			const suffix = render_without(content_end, right, removed)
 			if (
-				prefix == null
-				|| suffix == null
-				|| line_break_regex.test(prefix)
-					&& restricted_regex.test(
-						text.slice(Math.max(0, left - 7), left)
-					)
+				line_break_regex.test(prefix)
+				&& restricted_regex.test(
+					text.slice(Math.max(0, left - 7), left)
+				)
 			) {
 				return
 			}

@@ -70,7 +70,7 @@ function end_source(c, record, failure) {
 function is_full(c, source, dependents) {
 	for (const dependent of dependents) {
 		const target = get_record(c, dependent)
-		const limit = target.node.options.limit ?? Infinity
+		const limit = /** @type {number} */(target.node.options.limit)/**/
 		const waiting = target.node.arrive?.[source] == "queue"
 			? (target.queued?.get(source)?.length ?? 0) - (active_statuses.has(target.status) ? 1 : 0)
 			: target.backlog.length - target.backlog_head

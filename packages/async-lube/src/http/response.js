@@ -51,12 +51,6 @@ function decode_korean(bytes) {
 	} catch {
 		return
 	}
-	for (let i = 0; i < korean.length; i++) {
-		const code = korean.charCodeAt(i)
-		if (code >= 0x80 && code < 0xa0) {
-			return
-		}
-	}
 	return reads_as_latin1(bytes) ? void 0 : korean
 }
 /**
@@ -111,9 +105,7 @@ export function get_file_name(response, url) {
 			hex => String.fromCharCode(parseInt(hex.slice(1), 16))
 		)
 		try {
-			const decoded = byte_string_regex.test(bytes)
-				? decode_bytes(bytes, extended?.[1] || "utf-8")
-				: ""
+			const decoded = decode_bytes(bytes, extended?.[1] || "utf-8")
 			if (decoded) {
 				return decoded
 			}
@@ -125,10 +117,13 @@ export function get_file_name(response, url) {
 		return decode_plain_name(name)
 	}
 	const segment = new URL(url, "http://localhost").pathname.split("/").pop()
+	if (!segment) {
+		return "download"
+	}
 	try {
-		return segment ? decodeURIComponent(segment) : "download"
+		return decodeURIComponent(segment)
 	} catch {
-		return segment || "download"
+		return segment
 	}
 }
 /**

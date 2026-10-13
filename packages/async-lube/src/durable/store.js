@@ -8,8 +8,7 @@ const encoded = new WeakMap()
  */
 function encode(saved) {
 	const { journal, ...rest } = saved
-	let json = JSON.stringify(rest).slice(0, -1)
-	json += json.length > 1 ? ",\"journal\":[" : "\"journal\":["
+	let json = `${JSON.stringify(rest).slice(0, -1)},"journal":[`
 	for (let index = 0; index < journal.length; index++) {
 		const entry = /** @type {JournalEntry} */(journal[index])/**/
 		let text = entry.done ? encoded.get(entry) : void 0

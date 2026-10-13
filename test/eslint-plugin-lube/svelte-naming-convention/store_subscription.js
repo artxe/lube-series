@@ -26,6 +26,13 @@ export function cases(valid, invalid) {
 			output: "<script>\n\tconst my_store = writable(1)\n\tconst v = $my_store\n</script>\n<div>{$my_store}</div>"
 		},
 		{
+			code: "<script>\n\timport { $myStore } from \"./stores.js\"\n\tlet myStore = 1\n</script>",
+			errors: [ { messageId: "rename" } ],
+			filename: "a.svelte",
+			languageOptions: language_options,
+			output: "<script>\n\timport { $myStore as $my_store } from \"./stores.js\"\n\tlet my_store = 1\n</script>"
+		},
+		{
 			code: "var myStore = 1\nvar v = $myStore",
 			errors: [ { messageId: "rename" } ],
 			output: null

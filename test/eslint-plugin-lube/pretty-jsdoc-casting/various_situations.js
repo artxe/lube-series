@@ -45,6 +45,9 @@ export function cases(valid, invalid) {
 			code: "function a() { throw /** @type {A} */(\n/* note\nnote */ b)/**/ }"
 		},
 		{
+			code: "function a() { return (\n\t/** @type {A} */(b)\n) }"
+		},
+		{
 			code: "var v = /** @type {A} */(/** @type {B} *//** @type {C} */(a))"
 		},
 		{
@@ -130,6 +133,17 @@ export function cases(valid, invalid) {
 				}
 			],
 			output: "var v = /** @type {A} */(/** @type {B} */(/** @type {C} */((a))))/**/ /* block... */ // line..."
+		},
+		{
+			code: "var v = /** @type {B} */( (/** @type {A} */(a)) + b)",
+			errors: [
+				{
+					column: 26,
+					line: 1,
+					messageId: "marker"
+				}
+			],
+			output: "var v = /** @type {B} */( (/** @type {A} */(a)/**/) + b)"
 		},
 		{
 			code: "var v = { b: /** @type {A} */(a) }",

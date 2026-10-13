@@ -233,7 +233,7 @@ const logged = http({
 ```
 
 ## Caches and stores
-`http` does not cache responses or hold UI state. It fits under a query cache, under a few lines of your own, or under a store of 27 lines.
+`http` does not cache responses or hold UI state. It fits under a query cache, under a few lines of your own, or under a small store.
 
 ```ts
 // TanStack Query, SWR or any cache: pass its signal, and let the cache own the key

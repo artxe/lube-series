@@ -243,7 +243,7 @@ export function run_single(c, record, token) {
 		/** @type {AbortController} */(record.controller)/**/.signal,
 		"",
 		(signal, run_state, first) => {
-			const values = args_of(c, record)
+			const values = args_of(record)
 			const gate = record.gate
 			if (gate) {
 				if (gate !== true) {

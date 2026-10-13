@@ -118,6 +118,9 @@ export default function(date, format, zone) {
 			? match
 			: null
 		if (parsed) {
+			if (parsed[1] == "-000000") {
+				return new Date(NaN)
+			}
 			if (zone === undefined && parsed[4] !== undefined) {
 				return native
 			}
@@ -127,7 +130,7 @@ export default function(date, format, zone) {
 			const fraction = parsed[7]
 			return date_of(
 				[
-					+(parsed[1] ?? NaN),
+					+/** @type {string} */(parsed[1])/**/,
 					+(parsed[2] ?? 1) - 1,
 					+(parsed[3] ?? 1),
 					+(parsed[4] ?? 0),

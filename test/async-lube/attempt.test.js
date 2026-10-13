@@ -229,5 +229,31 @@ describe(
 				assert.instanceOf(await stopped, CancelError)
 			}
 		)
+		it(
+			"rejects with the CancelError that aborted its signal, and calls a reason that is no Error or text Cancelled",
+			async () => {
+				const reason = new CancelError("Left the page")
+				assert.equal(
+					await rejection(
+						attempt(
+							() => 1,
+							{
+								signal: AbortSignal.abort(reason)
+							}
+						)
+					),
+					reason
+				)
+				const error = /** @type {CancelError} */(await rejection(
+					attempt(
+						() => 1,
+						{ signal: AbortSignal.abort(42) }
+					)
+				))/**/
+				assert.instanceOf(error, CancelError)
+				assert.equal(error.message, "Cancelled")
+				assert.equal(error.cause, 42)
+			}
+		)
 	}
 )

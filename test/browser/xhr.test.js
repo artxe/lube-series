@@ -198,6 +198,85 @@ describe(
 			}
 		)
 		it(
+			"sends an upload without a body",
+			async () => {
+				/** @type {{ size: number }} */
+				const data = await create().post(
+					"/upload",
+					void 0,
+					{ upload: () => {} }
+				)
+				assert.equal(data.size, 0)
+			}
+		)
+		it(
+			"sends nothing for an upload cancelled as its request hook resolves",
+			async () => {
+				/** @type {(() => void)[]} */
+				const releases = []
+				const request = create(
+					{
+						on: {
+							request: () => new Promise(
+								resolve => void releases.push(() => resolve(void 0))
+							)
+						}
+					}
+				)
+					.post(
+						"/upload",
+						form(16),
+						{
+							params: { key: "xhr-hooked" },
+							upload: () => {}
+						}
+					)
+				while (!releases.length) {
+					await new Promise(
+						resolve => setTimeout(resolve, 5)
+					)
+				}
+				releases[0]?.()
+				request.cancel("left the page")
+				assert.instanceOf(
+					await rejection(request),
+					CancelError
+				)
+				assert.deepEqual(
+					await create().get(
+						"/count",
+						{ key: "xhr-hooked", ms: 0 }
+					),
+					{ count: 1 }
+				)
+			}
+		)
+		it(
+			"sends the headers of an upload",
+			async () => {
+				/** @type {{ body: string, headers: Record<string, string> }} */
+				const echo = await create(
+					{
+						headers: { "X-Trace": "upload" }
+					}
+				)
+					.post(
+						"/echo",
+						{ a: 1 },
+						{ upload: () => {} }
+					)
+				assert.equal(
+					echo.headers["x-trace"],
+					"upload"
+				)
+				assert.equal(
+					echo.headers["content-type"],
+					"application/json"
+				)
+				assert.equal(echo.body, "{\"a\":1}")
+			}
+		)
+		it(
 			"times out an upload",
 			async () => {
 				const error = await rejection(

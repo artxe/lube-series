@@ -16,6 +16,9 @@ export function cases(valid, invalid) {
 			options: [
 				{ ignoreTemplateLiteral: true }
 			]
+		},
+		{
+			code: "var value = `${`${a ? b : c ? d : e}`}`"
 		}
 	)
 	invalid.push(

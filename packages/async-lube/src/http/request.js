@@ -362,9 +362,6 @@ export function request(
 					].join(" ")
 					: void 0
 			job = share_key == null ? void 0 : c.shared.shared.get(share_key)
-			if (job?.controller.signal.aborted) {
-				job = void 0
-			}
 			const joined = !!job
 			if (!job) {
 				job = start_job(
@@ -586,7 +583,7 @@ async function send(c, spec, attempt, job_signal) {
 				spec.idempotency_key
 			)
 		}
-		/** @type {RequestInit & { duplex?: string, headers: Headers }} */
+		/** @type {RequestInit & { duplex?: string, headers: Headers, method: string }} */
 		const init = {
 			...c.base_init,
 			...omit_keys(options, option_keys),

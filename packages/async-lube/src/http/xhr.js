@@ -3,7 +3,7 @@ const header_line_regex = /\r?\n/
 const null_body_statuses = new Set([ 101, 103, 204, 205, 304 ])
 /**
  * @param {string} url
- * @param {RequestInit & { headers: Headers }} init
+ * @param {RequestInit & { headers: Headers, method: string }} init
  * @param {(progress: import("../../public.js").Progress) => void} on_upload
  * @returns {Promise<Response>}
  */
@@ -29,7 +29,7 @@ export function send_with_xhr(url, init, on_upload) {
 					}
 				}
 			}
-			xhr.open(init.method ?? "GET", url)
+			xhr.open(init.method, url)
 			init.headers.forEach(
 				(value, key) => xhr.setRequestHeader(key, value)
 			)

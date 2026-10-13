@@ -54,7 +54,7 @@
 		"lint": "pnpm -w lint",
 		"prepack": "pnpm dts",
 		"prepublishOnly": "pnpm -w lint && pnpm test",
-		"test": "pnpm -w exec vitest run --coverage test/eslint-plugin-lube"
+		"test": "pnpm -w exec vitest run --coverage --coverage.include=packages/eslint-plugin-lube/src/** test/eslint-plugin-lube"
 	},
 	"type": "module",
 	"types": "types/index.d.ts",

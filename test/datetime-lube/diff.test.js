@@ -271,6 +271,41 @@ describe(
 			}
 		)
 		it(
+			"months back to a day that a skipped day moves forward",
+			() => {
+				const from = new Date("1995-01-30T10:00:00.000Z")
+				const to = new Date("1994-12-31T10:00:00.000Z")
+				assert.equal(
+					dateToString(
+						from,
+						"YYYY-MM-DD HH:mm",
+						"Pacific/Kiritimati"
+					),
+					"1995-01-31 00:00"
+				)
+				assert.equal(
+					dateToString(
+						to,
+						"YYYY-MM-DD HH:mm",
+						"Pacific/Kiritimati"
+					),
+					"1995-01-01 00:00"
+				)
+				assert.equal(
+					add(from, "-1M", "Pacific/Kiritimati").getTime(),
+					to.getTime()
+				)
+				assert.equal(
+					diff(from, to, "M", "Pacific/Kiritimati"),
+					-1
+				)
+				assert.equal(
+					diff(to, from, "M", "Pacific/Kiritimati"),
+					0
+				)
+			}
+		)
+		it(
 			"months reached in a repeated hour and no negative zero",
 			() => {
 				const from = new Date("2024-10-03T05:30:00.000Z")

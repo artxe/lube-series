@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `prefer-param-tag`, in the strict config: reports a function declaration whose parameters are typed
+  with inline comments, `function f(/** @type {T} */ a) {}`, and fixes it into `@param {T} a` tags in the
+  JSDoc block of the declaration, creating the block if there is none. Arrow functions and function
+  expressions stay, and a destructured parameter is reported without a fix.
+
 ## 0.7.0
 
 ### Breaking

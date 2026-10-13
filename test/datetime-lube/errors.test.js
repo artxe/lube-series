@@ -116,6 +116,16 @@ describe(
 			}
 		)
 		it(
+			"names null when a string is expected",
+			() => {
+				throws(
+					() => stringToDate(/** @type {never} */(null)/**/),
+					TypeError,
+					"stringToDate: Expected a string, got null"
+				)
+			}
+		)
+		it(
 			"names the function and the value",
 			() => {
 				throws(

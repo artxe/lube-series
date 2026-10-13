@@ -17,6 +17,10 @@ export function cases(valid, invalid) {
 		{
 			code: "const f = ({ a }: P, [ c ]: T) => a",
 			languageOptions: language_options
+		},
+		{
+			code: "function f([a,b]?) {}",
+			languageOptions: language_options
 		}
 	)
 	invalid.push(

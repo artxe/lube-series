@@ -27,6 +27,10 @@ export function cases(valid, invalid) {
 			options: [ { checkNames: false } ]
 		},
 		{
+			code: "var b, a\nexport { b, a }",
+			options: [ { checkNames: false } ]
+		},
+		{
 			code: "import z from \"../z.js\"\nimport y from \"./y.js\"\nimport B from \"B\"\nimport a from \"a\""
 		},
 		{

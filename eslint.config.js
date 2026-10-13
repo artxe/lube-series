@@ -5,7 +5,7 @@ export default [
 	{
 		ignores: [
 			".claude/settings*.json",
-			".scratch/**",
+			".tmp/**",
 			"coverage/**",
 			"packages/*/types/**"
 		]
@@ -30,10 +30,7 @@ export default [
 		languageOptions: {
 			parserOptions: {
 				projectService: {
-					allowDefaultProject: [
-						"vitest.browser.config.js",
-						"vitest.config.js"
-					]
+					allowDefaultProject: [ "vitest.config.js" ]
 				},
 				tsconfigRootDir: import.meta.dirname
 			}

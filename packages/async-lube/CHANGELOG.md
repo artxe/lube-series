@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `share` of a value that is not a stream rejects the first read and ends the loop, so reading again
+  without `return()` no longer waits forever.
+- `merge` releases the streams it already opened when a later source is not a stream.
+- A flow node that restarts with its next queued value while its `fallback` target is still running
+  no longer runs the target one more time.
+
 ## 2.0.0
 
 ### Breaking

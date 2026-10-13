@@ -96,10 +96,8 @@ export function create_builder(definition) {
 				for (const dep of missing) {
 					builder = builder.add(dep)
 					const added_definition = builder[DEFINITION]
-					const auto_entry = added_definition.list[added_definition.count - 1]
-					if (auto_entry) {
-						auto_entry.auto = true
-					}
+					const auto_entry = /** @type {DefinitionNode} */(added_definition.list[added_definition.count - 1])/**/
+					auto_entry.auto = true
 				}
 				return builder.add(ref, ...args)
 			}
@@ -356,7 +354,7 @@ export function create_builder(definition) {
 			}
 			while (stack.length) {
 				const name = /** @type {string} */(stack.pop())/**/
-				for (const target of program.transitions.get(name) ?? []) {
+				for (const target of /** @type {string[]} */(program.transitions.get(name))/**/) {
 					if (reachable.has(target)) {
 						continue
 					}
@@ -611,13 +609,11 @@ function find_stream(program, name) {
 			continue
 		}
 		seen.add(current)
-		const node = program.node_of(current)
-		if (node?.source) {
+		const node = /** @type {ProgramNode} */(program.node_of(current))/**/
+		if (node.source) {
 			return current
 		}
-		if (node) {
-			stack.push(...node.deps)
-		}
+		stack.push(...node.deps)
 	}
 	return void 0
 }

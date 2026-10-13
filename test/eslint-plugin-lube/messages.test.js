@@ -1,4 +1,5 @@
 import ascii_order from "../../packages/eslint-plugin-lube/src/rules/ascii-order.js"
+import prefer_param_tag from "../../packages/eslint-plugin-lube/src/rules/prefer-param-tag.js"
 import pretty_imports from "../../packages/eslint-plugin-lube/src/rules/pretty-imports.js"
 import pretty_jsdoc_casting from "../../packages/eslint-plugin-lube/src/rules/pretty-jsdoc-casting.js"
 import pretty_sequence from "../../packages/eslint-plugin-lube/src/rules/pretty-sequence.js"
@@ -75,6 +76,24 @@ new RuleTester().run(
 					}
 				],
 				output: "import a from \"a\"\nimport b from \"b\""
+			}
+		],
+		valid: []
+	}
+)
+new RuleTester().run(
+	"prefer-param-tag messages",
+	prefer_param_tag,
+	{
+		invalid: [
+			{
+				code: "function f(/** @type {A} */ a) {}",
+				errors: [
+					{
+						message: "Type the parameters of `f` with `@param` tags on the declaration instead of inline `@type` comments"
+					}
+				],
+				output: "/**\n * @param {A} a\n */\nfunction f(a) {}"
 			}
 		],
 		valid: []

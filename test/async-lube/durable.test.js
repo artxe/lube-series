@@ -315,6 +315,48 @@ describe.each(
 			}
 		)
 		it(
+			"cancels a run whose write collides with a send, by writing again",
+			async () => {
+				vi.useFakeTimers()
+				const inner = create_store()
+				let collided = false
+				/** @type {import("async-lube").DurableStore} */
+				const store = {
+					due: (now, limit) => inner.due(now, limit),
+					get: key => inner.get(key),
+					async put(key, saved, expected) {
+						if (saved.status == "cancelled" && !collided) {
+							collided = true
+							await job.send(key, "note", "racing")
+						}
+						return inner.put(key, saved, expected)
+					}
+				}
+				const job = durable(
+					store,
+					async (/** @type {null} */ _, { wait }) => wait("approve"),
+					{ idle: 10 }
+				)
+				const running = rejection(job.run("k", null))
+				await vi.advanceTimersByTimeAsync(50)
+				assert.equal(
+					(await inner.get("k"))?.status,
+					"waiting"
+				)
+				await job.cancel("k", "Not needed")
+				const error = /** @type {Error} */(await running)/**/
+				assert.instanceOf(error, CancelError)
+				assert.equal(error.message, "Not needed")
+				const saved = await inner.get("k")
+				assert.equal(saved?.status, "cancelled")
+				assert.deepEqual(
+					saved?.events?.["note"]?.map(event => event.value),
+					[ "racing" ]
+				)
+				job.stop()
+			}
+		)
+		it(
 			"delivers a value sent while a waiting run stays in memory for a step",
 			async () => {
 				vi.useFakeTimers()
@@ -665,6 +707,69 @@ describe.each(
 			}
 		)
 		it(
+			"gives a rerun of a failed run the values that its waits took after the step that failed it",
+			async () => {
+				vi.useFakeTimers()
+				let declined = true
+				/** @type {string[]} */
+				const charges = []
+				const job = durable(
+					create_store(),
+					async (
+						/** @type {null} */ _,
+						{ step, wait }
+					) => {
+						const [ charged, note ] = await Promise.all(
+							[
+								step(
+									"charge",
+									async () => {
+										await sleep(100)
+										charges.push(
+											declined ? "declined" : "charged"
+										)
+										if (declined) {
+											throw RangeError("declined")
+										}
+										return "charged"
+									}
+								),
+								wait("note")
+							]
+						)
+						return `${charged} ${note}`
+					},
+					{ idle: 60000 }
+				)
+				const failed = rejection(job.run("k", null))
+				await vi.advanceTimersByTimeAsync(10)
+				await job.send("k", "note", "gift")
+				assert.instanceOf(
+					await settled(failed, 200),
+					RangeError
+				)
+				const saved = await job.get("k")
+				assert.equal(saved?.status, "failed")
+				assert.deepEqual(saved?.journal, [])
+				assert.deepEqual(
+					saved?.events,
+					{
+						note: [ { at: 0, value: "gift" } ]
+					}
+				)
+				declined = false
+				assert.equal(
+					await settled(job.run("k", null), 200),
+					"charged gift"
+				)
+				assert.deepEqual(
+					charges,
+					[ "declined", "charged" ]
+				)
+				job.stop()
+			}
+		)
+		it(
 			"gives a wait in memory a value that another worker sent before its deadline",
 			async () => {
 				vi.useFakeTimers()
@@ -985,6 +1090,26 @@ describe.each(
 			}
 		)
 		it(
+			"gives two waits of one name at once the values in the order they were sent",
+			async () => {
+				vi.useFakeTimers()
+				const job = durable(
+					create_store(),
+					async (/** @type {null} */ _, { wait }) => Promise.all([ wait("a"), wait("a") ]),
+					{ idle: 1000 }
+				)
+				const done = job.run("k", null)
+				await vi.advanceTimersByTimeAsync(10)
+				await job.send("k", "a", 1)
+				await job.send("k", "a", 2)
+				assert.deepEqual(
+					/** @type {unknown} */(await done)/**/,
+					[ 1, 2 ]
+				)
+				job.stop()
+			}
+		)
+		it(
 			"joins a run without starting one",
 			async () => {
 				vi.useFakeTimers()
@@ -1079,6 +1204,36 @@ describe.each(
 				}
 				assert.equal(await done, 200)
 				assert.isAtMost(puts, 202)
+				job.stop()
+			}
+		)
+		it(
+			"keeps a value thrown by a step that is no Error as an Error with its text",
+			async () => {
+				vi.useFakeTimers()
+				const job = durable(
+					create_store(),
+					async (/** @type {null} */ _, { step }) => step(
+						"charge",
+						() => {
+							throw "declined"
+						}
+					)
+				)
+				assert.equal(
+					await rejection(job.run("k", null)),
+					"declined"
+				)
+				assert.deepEqual(
+					(await job.get("k"))?.error,
+					{
+						message: "declined",
+						name: "Error"
+					}
+				)
+				const joined = /** @type {Error} */(await rejection(job.join("k")))/**/
+				assert.instanceOf(joined, Error)
+				assert.equal(joined.message, "declined")
 				job.stop()
 			}
 		)
@@ -1410,6 +1565,38 @@ describe.each(
 			}
 		)
 		it(
+			"leaves a wait alone whose deadline the worker was reading from the store when it stopped",
+			async () => {
+				vi.useFakeTimers()
+				const inner = create_store()
+				const start = Date.now()
+				/** @type {import("async-lube").DurableStore} */
+				const store = {
+					due: (now, limit) => inner.due(now, limit),
+					async get(key) {
+						if (Date.now() - start >= 100) {
+							await sleep(50)
+						}
+						return inner.get(key)
+					},
+					put: (key, saved, expected) => inner.put(key, saved, expected)
+				}
+				const job = durable(
+					store,
+					async (/** @type {null} */ _, { wait }) => wait("a", { timeout: 100 }),
+					{ idle: 60000, poll: 60000 }
+				)
+				const running = rejection(job.run("k", null))
+				await vi.advanceTimersByTimeAsync(120)
+				job.stop()
+				await vi.advanceTimersByTimeAsync(100)
+				assert.instanceOf(await running, CancelError)
+				const entry = (await inner.get("k"))?.journal[0]
+				assert.isFalse(entry?.done)
+				assert.isUndefined(entry?.timed_out)
+			}
+		)
+		it(
 			"leaves no timer behind when the function waits after its worker stopped",
 			async () => {
 				vi.useFakeTimers()
@@ -1436,6 +1623,111 @@ describe.each(
 				await vi.advanceTimersByTimeAsync(1000)
 				assert.equal(vi.getTimerCount(), 0)
 				assert.instanceOf(await running, CancelError)
+			}
+		)
+		it(
+			"leaves the run or saves its failure when its worker stops at any moment while the function fails",
+			async () => {
+				vi.useFakeTimers()
+				for (let hops = 0; hops < 12; hops++) {
+					const store = create_store()
+					const worker = { stop: () => {} }
+					const job = durable(
+						store,
+						() => {
+							let tick = Promise.resolve()
+							for (let index = 0; index < hops; index++) {
+								tick = tick.then()
+							}
+							void tick.then(() => worker.stop())
+							return Promise.reject(RangeError("declined"))
+						}
+					)
+					worker.stop = () => job.stop()
+					const error = await rejection(job.run("k", null))
+					const saved = await store.get("k")
+					if (error instanceof CancelError) {
+						assert.oneOf(
+							saved?.status,
+							[ "failed", "running" ]
+						)
+					} else {
+						assert.instanceOf(error, RangeError)
+						assert.equal(saved?.status, "failed")
+					}
+					job.stop()
+				}
+			}
+		)
+		it(
+			"names a worker without an owner also where crypto has no randomUUID",
+			async () => {
+				vi.useFakeTimers()
+				vi.stubGlobal("crypto", {})
+				try {
+					const store = create_store()
+					const job = durable(
+						store,
+						async (/** @type {null} */ _, { wait }) => wait("a"),
+						{ idle: 60000 }
+					)
+					const running = rejection(job.run("k", null))
+					await vi.advanceTimersByTimeAsync(10)
+					assert.match(
+						(await store.get("k"))?.owner ?? "",
+						/^[\da-z]+$/
+					)
+					job.stop()
+					assert.instanceOf(await running, CancelError)
+				} finally {
+					vi.unstubAllGlobals()
+				}
+			}
+		)
+		it(
+			"names an instance of a class without a name in the error of a step result",
+			async () => {
+				vi.useFakeTimers()
+				const job = durable(
+					create_store(),
+					async (/** @type {null} */ _, { step }) => step(
+						"value",
+						() => /** @type {never} */(new (class {})())/**/
+					)
+				)
+				const error = /** @type {Error} */(await rejection(job.run("k", null)))/**/
+				assert.instanceOf(error, TypeError)
+				assert.equal(
+					error.message,
+					"The result of step \"value\" of run \"k\" is not a JSON value: an instance of a class"
+				)
+				job.stop()
+			}
+		)
+		it(
+			"names at most as many due runs as asked",
+			async () => {
+				const store = create_store()
+				for (const key of [ "a", "b", "c" ]) {
+					await store.put(
+						key,
+						{
+							input: null,
+							journal: [],
+							status: "running",
+							version: 1
+						},
+						void 0
+					)
+				}
+				assert.lengthOf(
+					await store.due(Date.now(), 2),
+					2
+				)
+				assert.lengthOf(
+					await store.due(Date.now(), 5),
+					3
+				)
 			}
 		)
 		it(
@@ -1528,6 +1820,114 @@ describe.each(
 			}
 		)
 		it(
+			"refuses a sleep that the function calls after its worker stopped",
+			async () => {
+				vi.useFakeTimers()
+				const store = create_store()
+				/** @type {unknown[]} */
+				const refused = []
+				const worker = { stop: () => {} }
+				const job = durable(
+					store,
+					async (
+						/** @type {null} */ _,
+						{ sleep: pause }
+					) => {
+						worker.stop()
+						return pause("nap", 10)
+							.catch(
+								error => {
+									refused.push(error)
+									throw error
+								}
+							)
+					}
+				)
+				worker.stop = () => job.stop()
+				const running = rejection(job.run("k", null))
+				await vi.advanceTimersByTimeAsync(20)
+				assert.instanceOf(await running, CancelError)
+				assert.lengthOf(refused, 1)
+				assert.instanceOf(refused[0], CancelError)
+				assert.deepEqual(
+					(await store.get("k"))?.journal,
+					[]
+				)
+			}
+		)
+		it(
+			"refuses a step that the function calls after its run finished",
+			async () => {
+				vi.useFakeTimers()
+				/** @type {import("async-lube").DurableContext | undefined} */
+				let kept
+				let calls = 0
+				const job = durable(
+					create_store(),
+					async (/** @type {null} */ _, context) => {
+						kept = context
+						return "done"
+					}
+				)
+				assert.equal(await job.run("k", null), "done")
+				const late = /** @type {Error} */(await rejection(
+					/** @type {import("async-lube").DurableContext} */(kept)/**/.step("late", () => ++calls)
+				))/**/
+				assert.instanceOf(late, CancelError)
+				assert.equal(
+					late.message,
+					"The run left this worker"
+				)
+				assert.equal(calls, 0)
+				job.stop()
+			}
+		)
+		it(
+			"rejects a join of a finished run as the store keeps it, also without its error or the headers of one",
+			async () => {
+				const store = create_store()
+				/** @type {import("async-lube").SavedRun} */
+				const failed = {
+					input: null,
+					journal: [],
+					status: "failed",
+					version: 1
+				}
+				await store.put("failed", failed, void 0)
+				await store.put(
+					"cancelled",
+					{ ...failed, status: "cancelled" },
+					void 0
+				)
+				await store.put(
+					"teapot",
+					{
+						...failed,
+						error: {
+							message: "I am a teapot",
+							name: "HttpError",
+							status: 418
+						}
+					},
+					void 0
+				)
+				const job = durable(store, async () => null)
+				const plain = /** @type {Error} */(await rejection(job.join("failed")))/**/
+				assert.equal(plain.name, "Error")
+				assert.equal(plain.message, "The run failed")
+				const cancelled = /** @type {Error} */(await rejection(job.join("cancelled")))/**/
+				assert.instanceOf(cancelled, CancelError)
+				assert.equal(cancelled.message, "Cancelled")
+				const teapot = /** @type {HttpError} */(await rejection(job.join("teapot")))/**/
+				assert.instanceOf(teapot, HttpError)
+				assert.equal(teapot.message, "I am a teapot")
+				assert.equal(teapot.status, 418)
+				assert.equal(teapot.response.status, 418)
+				assert.deepEqual([ ...teapot.headers ], [])
+				job.stop()
+			}
+		)
+		it(
 			"rejects a run whose steps changed",
 			async () => {
 				vi.useFakeTimers()
@@ -1582,6 +1982,114 @@ describe.each(
 			}
 		)
 		it(
+			"rejects a send with a CancelError when the worker stops while it reads the run after a write conflict",
+			async () => {
+				vi.useFakeTimers()
+				const inner = create_store()
+				let slow = false
+				/** @type {import("async-lube").DurableStore} */
+				const store = {
+					due: (now, limit) => inner.due(now, limit),
+					async get(key) {
+						if (slow) {
+							await sleep(50)
+						}
+						return inner.get(key)
+					},
+					put: (key, saved, expected) => inner.put(key, saved, expected)
+				}
+				/**
+				 * @param {null} _input
+				 * @param {import("async-lube").DurableContext} context
+				 * @returns {Promise<unknown>}
+				 */
+				function bid(_input, { wait }) {
+					return wait("a")
+				}
+				const holder = durable(
+					store,
+					bid,
+					{
+						idle: 60000,
+						owner: "A",
+						poll: 60000
+					}
+				)
+				const other = durable(inner, bid, { owner: "B" })
+				const running = rejection(holder.run("k", null))
+				await vi.advanceTimersByTimeAsync(10)
+				await other.send("k", "a", "first")
+				slow = true
+				const sending = rejection(holder.send("k", "a", "late"))
+				await vi.advanceTimersByTimeAsync(10)
+				holder.stop()
+				await vi.advanceTimersByTimeAsync(50)
+				const error = /** @type {Error} */(await sending)/**/
+				assert.instanceOf(error, CancelError)
+				assert.equal(
+					error.message,
+					"The worker stopped"
+				)
+				assert.instanceOf(await running, CancelError)
+				assert.deepEqual(
+					(await inner.get("k"))?.inbox?.map(item => item.value),
+					[ "first" ]
+				)
+				other.stop()
+			}
+		)
+		it(
+			"rejects a send with the error of the store when it cannot read the run after a write conflict",
+			async () => {
+				vi.useFakeTimers()
+				const inner = create_store()
+				let broken = false
+				/** @type {import("async-lube").DurableStore} */
+				const store = {
+					due: (now, limit) => inner.due(now, limit),
+					get(key) {
+						if (broken) {
+							throw Error("read failed")
+						}
+						return inner.get(key)
+					},
+					put: (key, saved, expected) => inner.put(key, saved, expected)
+				}
+				/**
+				 * @param {null} _input
+				 * @param {import("async-lube").DurableContext} context
+				 * @returns {Promise<string>}
+				 */
+				async function pair(_input, { wait }) {
+					return `${await wait("a")} ${await wait("a")}`
+				}
+				const holder = durable(
+					store,
+					pair,
+					{
+						idle: 60000,
+						owner: "A",
+						poll: 60000
+					}
+				)
+				const other = durable(inner, pair, { owner: "B" })
+				const done = holder.run("k", null)
+				await vi.advanceTimersByTimeAsync(10)
+				await other.send("k", "a", "first")
+				broken = true
+				const error = /** @type {Error} */(await rejection(holder.send("k", "a", "lost")))/**/
+				broken = false
+				assert.equal(error.message, "read failed")
+				await holder.send("k", "a", "second")
+				assert.equal(
+					await settled(done, 100),
+					"first second"
+				)
+				holder.stop()
+				other.stop()
+			}
+		)
+		it(
 			"rejects a send with the error of the store when it cannot save the value, and delivers none of it",
 			async () => {
 				vi.useFakeTimers()
@@ -1604,6 +2112,34 @@ describe.each(
 				assert.equal(
 					await settled(running, 100),
 					"second"
+				)
+				job.stop()
+			}
+		)
+		it(
+			"rejects a wait until a time that a Date cannot hold, and an idle that is no number of milliseconds",
+			async () => {
+				vi.useFakeTimers()
+				const store = create_store()
+				const job = durable(
+					store,
+					(/** @type {null} */ _, { wait }) => wait(
+						"bid",
+						{
+							until: Number.POSITIVE_INFINITY
+						}
+					)
+				)
+				const error = /** @type {Error} */(await rejection(job.run("k", null)))/**/
+				assert.instanceOf(error, TypeError)
+				assert.equal(
+					error.message,
+					"The until of wait() must be a time in milliseconds since the epoch"
+				)
+				assert.throws(
+					() => durable(store, async () => 1, { idle: -1 }),
+					TypeError,
+					"The idle of durable() must be a non-negative number of milliseconds"
 				)
 				job.stop()
 			}
@@ -2090,6 +2626,48 @@ describe.each(
 			}
 		)
 		it(
+			"resumes no run that the store names when it is not due or gone",
+			async () => {
+				vi.useFakeTimers()
+				const inner = create_store()
+				await inner.put(
+					"done",
+					{
+						input: null,
+						journal: [],
+						result: 1,
+						status: "done",
+						version: 1
+					},
+					void 0
+				)
+				/** @type {import("async-lube").DurableStore} */
+				const store = {
+					due: () => [ "done", "missing" ],
+					get: key => inner.get(key),
+					put: (key, saved, expected) => inner.put(key, saved, expected)
+				}
+				/** @type {unknown[]} */
+				const errors = []
+				const job = durable(store, async () => 2)
+				const serving = job.serve(
+					{
+						interval: 100,
+						onError: error => void errors.push(error)
+					}
+				)
+				await vi.advanceTimersByTimeAsync(250)
+				job.stop()
+				await serving
+				assert.deepEqual(errors, [])
+				assert.equal(
+					(await inner.get("done"))?.version,
+					1
+				)
+				assert.isUndefined(await inner.get("missing"))
+			}
+		)
+		it(
 			"returns the values that the store keeps after the run left memory",
 			async () => {
 				vi.useFakeTimers()
@@ -2547,6 +3125,121 @@ describe.each(
 			}
 		)
 		it(
+			"stops a worker while it reads or claims a due run, and leaves the run to another worker",
+			async () => {
+				vi.useFakeTimers()
+				const inner = create_store()
+				for (const key of [ "read", "claimed" ]) {
+					await inner.put(
+						key,
+						{
+							input: 3,
+							journal: [],
+							status: "running",
+							version: 1
+						},
+						void 0
+					)
+				}
+				/** @type {import("async-lube").DurableStore} */
+				const store = {
+					due: (now, limit) => inner.due(now, limit),
+					async get(key) {
+						if (key == "read") {
+							await sleep(50)
+						}
+						return inner.get(key)
+					},
+					async put(key, saved, expected) {
+						if (saved.owner == "A") {
+							await sleep(50)
+						}
+						return inner.put(key, saved, expected)
+					}
+				}
+				let calls = 0
+				/**
+				 * @param {number} value
+				 * @returns {Promise<number>}
+				 */
+				async function double(value) {
+					calls++
+					return value * 2
+				}
+				const first = durable(
+					store,
+					double,
+					{ lease: 100, owner: "A" }
+				)
+				const serving = first.serve({ interval: 1000 })
+				await vi.advanceTimersByTimeAsync(10)
+				first.stop()
+				await serving
+				await vi.advanceTimersByTimeAsync(50)
+				assert.equal(calls, 0)
+				assert.isUndefined(
+					(await inner.get("read"))?.owner
+				)
+				assert.equal(
+					(await inner.get("claimed"))?.owner,
+					"A"
+				)
+				await vi.advanceTimersByTimeAsync(100)
+				const second = durable(inner, double, { owner: "B" })
+				assert.equal(await second.run("read", 3), 6)
+				assert.equal(
+					await second.run("claimed", 3),
+					6
+				)
+				assert.equal(calls, 2)
+				second.stop()
+			}
+		)
+		it(
+			"stops a worker while it saves a run to leave memory, and another worker finishes the run",
+			async () => {
+				vi.useFakeTimers()
+				const inner = create_store()
+				/** @type {import("async-lube").DurableStore} */
+				const store = {
+					due: (now, limit) => inner.due(now, limit),
+					get: key => inner.get(key),
+					async put(key, saved, expected) {
+						if (saved.status == "waiting") {
+							await sleep(50)
+						}
+						return inner.put(key, saved, expected)
+					}
+				}
+				/**
+				 * @param {null} _input
+				 * @param {import("async-lube").DurableContext} context
+				 * @returns {Promise<unknown>}
+				 */
+				function approve(_input, { wait }) {
+					return wait("approve")
+				}
+				const first = durable(store, approve, { idle: 10 })
+				const running = rejection(first.run("k", null))
+				await vi.advanceTimersByTimeAsync(30)
+				first.stop()
+				await vi.advanceTimersByTimeAsync(50)
+				assert.instanceOf(await running, CancelError)
+				assert.equal(
+					(await inner.get("k"))?.status,
+					"waiting"
+				)
+				const second = durable(inner, approve)
+				const joined = second.join("k")
+				await second.send("k", "approve", "yes")
+				assert.equal(
+					await settled(joined, 100),
+					"yes"
+				)
+				second.stop()
+			}
+		)
+		it(
 			"takes a value that another worker sent while the run leaves memory",
 			async () => {
 				vi.useFakeTimers()
@@ -2575,6 +3268,47 @@ describe.each(
 				assert.equal(await done, "got b")
 				holder.stop()
 				sender.stop()
+			}
+		)
+		it(
+			"takes at once a running run whose owner holds no lease",
+			async () => {
+				vi.useFakeTimers()
+				const store = create_store()
+				await store.put(
+					"k",
+					{
+						input: 2,
+						journal: [],
+						owner: "gone",
+						status: "running",
+						version: 1
+					},
+					void 0
+				)
+				assert.deepEqual(
+					await store.due(Date.now(), 10),
+					[ "k" ]
+				)
+				assert.equal(
+					dueAt(
+						{
+							input: 2,
+							journal: [],
+							owner: "gone",
+							status: "running",
+							version: 1
+						}
+					),
+					0
+				)
+				const job = durable(
+					store,
+					async (/** @type {number} */ value) => value * 2,
+					{ owner: "B" }
+				)
+				assert.equal(await job.run("k", 2), 4)
+				job.stop()
 			}
 		)
 		it(
@@ -2614,6 +3348,37 @@ describe.each(
 				assert.equal(await done, "b1 b0 a1")
 				holder.stop()
 				sender.stop()
+			}
+		)
+		it(
+			"takes over a run whose worker crashed when another worker sends to it after its lease ended",
+			async () => {
+				vi.useFakeTimers()
+				const store = create_store()
+				/**
+				 * @param {string} owner
+				 * @returns {import("async-lube").Durable<null, string>}
+				 */
+				function worker(owner) {
+					return durable(
+						store,
+						async (/** @type {null} */ _, { wait }) => `${owner} ${await wait("bid")}`,
+						{ idle: 60000, lease: 200, owner }
+					)
+				}
+				const crashing = worker("A")
+				const lost = rejection(crashing.run("k", null))
+				await vi.advanceTimersByTimeAsync(10)
+				crashing.stop()
+				assert.instanceOf(await lost, CancelError)
+				await vi.advanceTimersByTimeAsync(300)
+				const taker = worker("B")
+				await taker.send("k", "bid", 8)
+				assert.equal(
+					await settled(taker.join("k"), 10),
+					"B 8"
+				)
+				taker.stop()
 			}
 		)
 		it(
@@ -2707,6 +3472,46 @@ describe.each(
 			}
 		)
 		it(
+			"times out a wait a poll after its deadline when the store fails to read the run at the deadline",
+			async () => {
+				vi.useFakeTimers()
+				const inner = create_store()
+				const start = Date.now()
+				let failed = false
+				/** @type {import("async-lube").DurableStore} */
+				const store = {
+					due: (now, limit) => inner.due(now, limit),
+					get(key) {
+						if (!failed && Date.now() - start >= 100) {
+							failed = true
+							throw Error("busy")
+						}
+						return inner.get(key)
+					},
+					put: (key, saved, expected) => inner.put(key, saved, expected)
+				}
+				const job = durable(
+					store,
+					async (/** @type {null} */ _, { wait }) => {
+						try {
+							return await wait("a", { timeout: 100 })
+						} catch (error) {
+							if (error instanceof TimeoutError) {
+								return Date.now() - start
+							}
+							throw error
+						}
+					},
+					{ idle: 60000, poll: 1000 }
+				)
+				assert.equal(
+					await settled(job.run("k", null), 2000),
+					1100
+				)
+				job.stop()
+			}
+		)
+		it(
 			"times out a wait at its deadline when a value arrives after it",
 			async () => {
 				vi.useFakeTimers()
@@ -2768,6 +3573,88 @@ describe.each(
 				const done = job.run("k", null)
 				await vi.advanceTimersByTimeAsync(1000)
 				assert.equal(await done, "expired at 300")
+				job.stop()
+			}
+		)
+		it(
+			"times out a wait whose deadline lies beyond the longest timer while a step keeps the run in memory",
+			async () => {
+				vi.useFakeTimers()
+				const day = 86400000
+				const start = Date.now()
+				const job = durable(
+					create_store(),
+					async (
+						/** @type {null} */ _,
+						{ step, wait }
+					) => {
+						const [ answer ] = await Promise.all(
+							[
+								wait("approve", { timeout: 26 * day })
+									.catch(
+										error => error instanceof TimeoutError
+											? `expired after ${(Date.now() - start) / day} days`
+											: Promise.reject(error)
+									),
+								step(
+									"export",
+									async () => {
+										await sleep(15 * day)
+										await sleep(15 * day)
+										return 1
+									}
+								)
+							]
+						)
+						return answer
+					},
+					{
+						idle: 10,
+						lease: 6000000000,
+						poll: 2000000000
+					}
+				)
+				assert.equal(
+					await settled(job.run("k", null), 31 * day),
+					"expired after 26 days"
+				)
+				job.stop()
+			}
+		)
+		it(
+			"times out a wait whose deadline passes while the run is saved to leave memory, once the run is back",
+			async () => {
+				vi.useFakeTimers()
+				const inner = create_store()
+				/** @type {import("async-lube").DurableStore} */
+				const store = {
+					due: (now, limit) => inner.due(now, limit),
+					get: key => inner.get(key),
+					async put(key, saved, expected) {
+						if (saved.status == "waiting") {
+							await sleep(100)
+						}
+						return inner.put(key, saved, expected)
+					}
+				}
+				const start = Date.now()
+				const job = durable(
+					store,
+					async (/** @type {null} */ _, { wait }) => {
+						try {
+							return await wait("a", { timeout: 150 })
+						} catch (error) {
+							if (error instanceof TimeoutError) {
+								return Date.now() - start
+							}
+							throw error
+						}
+					},
+					{ idle: 100, poll: 10 }
+				)
+				const timed_out = /** @type {number} */(await settled(job.run("k", null), 1000))/**/
+				assert.isAtLeast(timed_out, 200)
+				assert.isBelow(timed_out, 250)
 				job.stop()
 			}
 		)

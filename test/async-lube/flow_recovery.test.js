@@ -56,9 +56,10 @@ describe(
 				function check() {
 					return false
 				}
-				function insert(
-					/** @type {{ id: number }} */ tx
-				) {
+				/**
+				 * @param {{ id: number }} tx
+				 */
+				function insert(tx) {
 					log.push("insert")
 					return tx.id
 				}
@@ -103,10 +104,11 @@ describe(
 				const calls = []
 				/** @type {Set<unknown>} */
 				const failing = new Set()
-				async function write(
-					/** @type {unknown} */ n,
-					/** @type {Context} */ { key, sleep }
-				) {
+				/**
+				 * @param {unknown} n
+				 * @param {Context} context
+				 */
+				async function write(n, { key, sleep }) {
 					calls.push(n + " " + key)
 					await sleep(5)
 					if (failing.delete(n)) {
@@ -232,7 +234,10 @@ describe(
 				)
 				calls.length = 0
 				let rejected = true
-				function check(/** @type {unknown} */ n) {
+				/**
+				 * @param {unknown} n
+				 */
+				function check(n) {
 					if (n == 2 && rejected) {
 						throw Error("rejected")
 					}
@@ -274,7 +279,10 @@ describe(
 				try {
 					for (const watch of [ "catch", "idle", "subscribe" ]) {
 						const alarms = channel()
-						function handle(/** @type {unknown} */ n) {
+						/**
+						 * @param {unknown} n
+						 */
+						function handle(n) {
 							if (n == 2) {
 								throw Error("alarm " + n)
 							}
@@ -360,18 +368,20 @@ describe(
 				/** @type {string[]} */
 				const log = []
 				const coupon = flow.input("coupon")
-				async function charge(
-					/** @type {unknown} */ q,
-					/** @type {Context} */ { key, sleep }
-				) {
+				/**
+				 * @param {unknown} q
+				 * @param {Context} context
+				 */
+				async function charge(q, { key, sleep }) {
 					log.push(q + " " + key)
 					await sleep(50)
 					return "receipt " + q
 				}
-				async function quote(
-					/** @type {unknown} */ code,
-					/** @type {Context} */ { sleep }
-				) {
+				/**
+				 * @param {unknown} code
+				 * @param {Context} context
+				 */
+				async function quote(code, { sleep }) {
 					await sleep(20)
 					return "quote " + code
 				}
@@ -407,17 +417,24 @@ describe(
 			async () => {
 				/** @type {string[]} */
 				const keys = []
-				async function notify(/** @type {unknown} */ shipped) {
+				/**
+				 * @param {unknown} shipped
+				 */
+				async function notify(shipped) {
 					await pause(50)
 					return shipped
 				}
-				function reserve(/** @type {Context} */ { key }) {
+				/**
+				 * @param {Context} context
+				 */
+				function reserve({ key }) {
 					keys.push(key)
 					return { id: key }
 				}
-				function ship(
-					/** @type {{ id: string }} */ reservation
-				) {
+				/**
+				 * @param {{ id: string }} reservation
+				 */
+				function ship(reservation) {
 					return reservation.id + " shipped"
 				}
 				const definition = flow().add(reserve, { release: () => {} })
@@ -449,9 +466,10 @@ describe(
 				async function open() {
 					return { id: 1 }
 				}
-				function use(
-					/** @type {{ id: number }} */ tx
-				) {
+				/**
+				 * @param {{ id: number }} tx
+				 */
+				function use(tx) {
 					return tx.id
 				}
 				const run = flow()
@@ -479,10 +497,11 @@ describe(
 				const handled = []
 				const message = flow.input("message")
 				let version = 0
-				async function handle(
-					/** @type {unknown} */ value,
-					/** @type {Context} */ { sleep }
-				) {
+				/**
+				 * @param {unknown} value
+				 * @param {Context} context
+				 */
+				async function handle(value, { sleep }) {
 					await sleep(20)
 					handled.push(value)
 					return value
@@ -491,10 +510,11 @@ describe(
 					await pause(5)
 					return ++version
 				}
-				function tag(
-					/** @type {unknown} */ n,
-					/** @type {unknown} */ m
-				) {
+				/**
+				 * @param {unknown} n
+				 * @param {unknown} m
+				 */
+				function tag(n, m) {
 					return m + " " + n
 				}
 				const definition = flow().add(source)
@@ -519,19 +539,26 @@ describe(
 				/** @type {string[]} */
 				const calls = []
 				const extra = flow.input("extra")
-				function first(/** @type {unknown} */ tx) {
+				/**
+				 * @param {unknown} tx
+				 */
+				function first(tx) {
 					calls.push("first " + tx)
 					return "first " + tx
 				}
-				async function open(/** @type {Context} */ { key }) {
+				/**
+				 * @param {Context} context
+				 */
+				async function open({ key }) {
 					calls.push("open " + key)
 					await pause(10)
 					return key
 				}
-				function second(
-					/** @type {unknown} */ tx,
-					/** @type {unknown} */ value
-				) {
+				/**
+				 * @param {unknown} tx
+				 * @param {unknown} value
+				 */
+				function second(tx, value) {
 					return "second " + tx + " " + value
 				}
 				const definition = flow().add(
@@ -578,10 +605,11 @@ describe(
 				const calls = []
 				const message = flow.input("message")
 				let version = 0
-				async function handle(
-					/** @type {unknown} */ value,
-					/** @type {Context} */ { key, sleep }
-				) {
+				/**
+				 * @param {unknown} value
+				 * @param {Context} context
+				 */
+				async function handle(value, { key, sleep }) {
 					calls.push(value + " " + key)
 					await sleep(20)
 					return value
@@ -590,10 +618,11 @@ describe(
 					await pause(5)
 					return ++version
 				}
-				function tag(
-					/** @type {unknown} */ n,
-					/** @type {unknown} */ m
-				) {
+				/**
+				 * @param {unknown} n
+				 * @param {unknown} m
+				 */
+				function tag(n, m) {
 					return m + " " + n
 				}
 				const definition = flow().add(source)
@@ -630,9 +659,10 @@ describe(
 			"a resumed run that is done opens no resource that only a resource needs",
 			async () => {
 				let opened = 0
-				function begin(
-					/** @type {unknown} */ connection
-				) {
+				/**
+				 * @param {unknown} connection
+				 */
+				function begin(connection) {
 					opened++
 					return connection + " tx"
 				}
@@ -640,7 +670,10 @@ describe(
 					opened++
 					return "connection"
 				}
-				function insert(/** @type {unknown} */ tx) {
+				/**
+				 * @param {unknown} tx
+				 */
+				function insert(tx) {
 					return "insert in " + tx
 				}
 				const definition = flow().add(connect, { release: () => {} })
@@ -670,18 +703,23 @@ describe(
 				function begin() {
 					return { id: ++opened }
 				}
-				function end(
-					/** @type {unknown} */ sent,
-					/** @type {unknown} */ waited
-				) {
+				/**
+				 * @param {unknown} sent
+				 * @param {unknown} waited
+				 */
+				function end(sent, waited) {
 					return sent + " " + waited
 				}
-				function insert(
-					/** @type {{ id: number }} */ tx
-				) {
+				/**
+				 * @param {{ id: number }} tx
+				 */
+				function insert(tx) {
 					return "row " + tx.id
 				}
-				function notify(/** @type {unknown} */ row) {
+				/**
+				 * @param {unknown} row
+				 */
+				function notify(row) {
 					return "sent " + row
 				}
 				async function slow() {
@@ -712,16 +750,18 @@ describe(
 				const bidding = until(bids, end)
 				/** @type {unknown[]} */
 				const handled = []
-				function close(
-					/** @type {unknown} */ last,
-					/** @type {unknown} */ ended
-				) {
+				/**
+				 * @param {unknown} last
+				 * @param {unknown} ended
+				 */
+				function close(last, ended) {
 					return ended + " after " + last
 				}
-				async function handle(
-					/** @type {unknown} */ bid,
-					/** @type {Context} */ { sleep }
-				) {
+				/**
+				 * @param {unknown} bid
+				 * @param {Context} context
+				 */
+				async function handle(bid, { sleep }) {
 					await sleep(5)
 					handled.push(bid)
 					return bid
@@ -749,9 +789,10 @@ describe(
 			async () => {
 				/** @type {(number | undefined)[]} */
 				const indexes = []
-				function read(
-					/** @type {Context} */ { index }
-				) {
+				/**
+				 * @param {Context} context
+				 */
+				function read({ index }) {
 					indexes.push(index)
 				}
 				const inner = flow().add(read)
@@ -777,10 +818,11 @@ describe(
 				const calls = []
 				/** @type {Set<unknown>} */
 				const failing = new Set()
-				async function handle(
-					/** @type {unknown} */ m,
-					/** @type {Context} */ { key, sleep }
-				) {
+				/**
+				 * @param {unknown} m
+				 * @param {Context} context
+				 */
+				async function handle(m, { key, sleep }) {
 					calls.push(
 						m + " " + key.slice(key.lastIndexOf(":") + 1)
 					)
@@ -925,24 +967,32 @@ describe(
 				let rounds = 0
 				/** @type {AbortSignal | undefined} */
 				let plan_signal
-				function finish(/** @type {number} */ round) {
+				/**
+				 * @param {number} round
+				 */
+				function finish(round) {
 					return "answer " + round
 				}
-				async function plan(
-					/** @type {Context} */ { signal, sleep }
-				) {
+				/**
+				 * @param {Context} context
+				 */
+				async function plan({ signal, sleep }) {
 					plan_signal = signal
 					rounds++
 					await sleep(40)
 					return rounds
 				}
-				function respond(
-					/** @type {string | undefined} */ answer,
-					/** @type {unknown} */ stopped
-				) {
+				/**
+				 * @param {string | undefined} answer
+				 * @param {unknown} stopped
+				 */
+				function respond(answer, stopped) {
 					return stopped ? "stopped" : answer
 				}
-				function tool(/** @type {number} */ round) {
+				/**
+				 * @param {number} round
+				 */
+				function tool(round) {
 					return round
 				}
 				const agent = flow()
@@ -991,29 +1041,38 @@ describe(
 				function fast() {
 					return "fast"
 				}
-				async function fetch_data(
-					/** @type {Context} */ { signal }
-				) {
+				/**
+				 * @param {Context} context
+				 */
+				async function fetch_data({ signal }) {
 					shared_signal = signal
 					await pause(30)
 					return "data"
 				}
-				function first(
-					/** @type {string | undefined} */ a,
-					/** @type {string | undefined} */ b
-				) {
+				/**
+				 * @param {string | undefined} a
+				 * @param {string | undefined} b
+				 */
+				function first(a, b) {
 					return a ?? b
 				}
-				function keep(/** @type {string} */ data) {
+				/**
+				 * @param {string} data
+				 */
+				function keep(data) {
 					return "kept " + data
 				}
-				function report(
-					/** @type {string | undefined} */ a,
-					/** @type {string} */ b
-				) {
+				/**
+				 * @param {string | undefined} a
+				 * @param {string} b
+				 */
+				function report(a, b) {
 					return [ a, b ]
 				}
-				function slow(/** @type {string} */ data) {
+				/**
+				 * @param {string} data
+				 */
+				function slow(data) {
 					return "slow " + data
 				}
 				assert.deepEqual(
@@ -1036,10 +1095,11 @@ describe(
 				/** @type {string[]} */
 				const log = []
 				const coupon = flow.input("coupon")
-				async function charge(
-					/** @type {unknown} */ q,
-					/** @type {Context} */ { key, sleep }
-				) {
+				/**
+				 * @param {unknown} q
+				 * @param {Context} context
+				 */
+				async function charge(q, { key, sleep }) {
 					log.push(q + " " + key)
 					await sleep(10)
 					if (q == "quote A") {
@@ -1047,10 +1107,11 @@ describe(
 					}
 					return "receipt " + q
 				}
-				async function quote(
-					/** @type {unknown} */ code,
-					/** @type {Context} */ { sleep }
-				) {
+				/**
+				 * @param {unknown} code
+				 * @param {Context} context
+				 */
+				async function quote(code, { sleep }) {
 					await sleep(20)
 					return "quote " + code
 				}
@@ -1078,9 +1139,10 @@ describe(
 			async () => {
 				/** @type {number[]} */
 				const attempts = []
-				function inner(
-					/** @type {Context} */ { attempt }
-				) {
+				/**
+				 * @param {Context} context
+				 */
+				function inner({ attempt }) {
 					attempts.push(attempt)
 					throw Error("down")
 				}
@@ -1117,11 +1179,12 @@ describe(
 				/** @type {string[]} */
 				const log = []
 				let broken = true
-				function decide(
-					/** @type {unknown} */ a,
-					/** @type {unknown} */ b,
-					/** @type {Context} */ { key }
-				) {
+				/**
+				 * @param {unknown} a
+				 * @param {unknown} b
+				 * @param {Context} context
+				 */
+				function decide(a, b, { key }) {
 					log.push(`decide ${a} ${b} ${key}`)
 					return a ?? b
 				}
@@ -1129,7 +1192,10 @@ describe(
 					await pause(1)
 					return "fast"
 				}
-				function other(/** @type {unknown} */ b) {
+				/**
+				 * @param {unknown} b
+				 */
+				function other(b) {
 					return "other " + b
 				}
 				async function slow() {
@@ -1172,7 +1238,10 @@ describe(
 				/** @type {string[]} */
 				const calls = []
 				let opened = 0
-				function first(/** @type {unknown} */ tx) {
+				/**
+				 * @param {unknown} tx
+				 */
+				function first(tx) {
 					calls.push("first " + tx)
 					return tx
 				}
@@ -1182,7 +1251,10 @@ describe(
 					}
 					return opened
 				}
-				function second(/** @type {unknown} */ tx) {
+				/**
+				 * @param {unknown} tx
+				 */
+				function second(tx) {
 					calls.push("second " + tx)
 					return tx
 				}
@@ -1205,15 +1277,17 @@ describe(
 			"send ignores a sub-flow that finished and keeps the value for one that failed",
 			async () => {
 				const sold_out = flow.input("sold_out")
-				function end(
-					/** @type {unknown} */ ended,
-					/** @type {unknown} */ out
-				) {
+				/**
+				 * @param {unknown} ended
+				 * @param {unknown} out
+				 */
+				function end(ended, out) {
 					return out ? "sold out" : ended
 				}
-				async function timer(
-					/** @type {Context} */ { sleep }
-				) {
+				/**
+				 * @param {Context} context
+				 */
+				async function timer({ sleep }) {
 					await sleep(5)
 					return "timer"
 				}
@@ -1225,9 +1299,10 @@ describe(
 						sold_out,
 						{ join: "race" }
 					)
-				async function slow(
-					/** @type {Context} */ { sleep }
-				) {
+				/**
+				 * @param {Context} context
+				 */
+				async function slow({ sleep }) {
 					await sleep(30)
 					return "slow"
 				}
@@ -1247,9 +1322,10 @@ describe(
 				)
 				const approve = flow.input("approve")
 				let broken = true
-				function decide(
-					/** @type {unknown} */ approved
-				) {
+				/**
+				 * @param {unknown} approved
+				 */
+				function decide(approved) {
 					if (broken) {
 						throw Error("down")
 					}
@@ -1271,15 +1347,17 @@ describe(
 			"send keeps values for sub-flow items that have not started",
 			async () => {
 				const approve = flow.input("approve")
-				function decide(
-					/** @type {number} */ _,
-					/** @type {unknown} */ approved
-				) {
+				/**
+				 * @param {number} _
+				 * @param {unknown} approved
+				 */
+				function decide(_, approved) {
 					return approved
 				}
-				async function prepare(
-					/** @type {Context} */ { sleep }
-				) {
+				/**
+				 * @param {Context} context
+				 */
+				async function prepare({ sleep }) {
 					await sleep(10)
 					return 1
 				}
@@ -1360,9 +1438,10 @@ describe(
 				/** @type {number[]} */
 				const attempts = []
 				let broken = true
-				function charge(
-					/** @type {Context} */ { attempt }
-				) {
+				/**
+				 * @param {Context} context
+				 */
+				function charge({ attempt }) {
 					attempts.push(attempt)
 					if (broken) {
 						throw TypeError("declined")
@@ -1477,18 +1556,20 @@ describe(
 					log.push("begin " + state)
 					return { lease, name: String(state) }
 				}
-				function end(
-					/** @type {{ lease: { release(): void }, name: string }} */ tx,
-					/** @type {unknown} */ error
-				) {
+				/**
+				 * @param {{ lease: { release(): void }, name: string }} tx
+				 * @param {unknown} error
+				 */
+				function end(tx, error) {
 					log.push(
 						(error ? "rollback " : "commit ") + tx.name
 					)
 					tx.lease.release()
 				}
-				function insert(
-					/** @type {{ name: string }} */ tx
-				) {
+				/**
+				 * @param {{ name: string }} tx
+				 */
+				function insert(tx) {
 					return "inserted " + tx.name
 				}
 				function order() {

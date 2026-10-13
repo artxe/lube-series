@@ -38,7 +38,7 @@
 	"scripts": {
 		"dts": "pnpm -r dts",
 		"lint": "eslint --cache --fix . && tsc && tsc --noEmit --strict --skipLibCheck false --ignoreConfig packages/async-lube/public.d.ts packages/data-lube/public.d.ts packages/datetime-lube/public.d.ts",
-		"test": "vitest run --coverage && vitest run --config vitest.browser.config.js"
+		"test": "vitest run --coverage"
 	},
 	"type": "module",
 	"version": "0.0.0"

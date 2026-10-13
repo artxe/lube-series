@@ -251,13 +251,8 @@ function create_reorder(context) {
 	 * @returns {string}
 	 */
 	function get_snippet(node) {
-		const value = node.type == "Property"
-			? node.computed && node.key.type != "Literal"
-				? node.key
-				: node.value
-			: node
 		const snippet = source_code.getText(
-			/** @type {import("estree").Node} */(value)/**/
+			/** @type {import("estree").Property} */(node)/**/.value
 		).replace(/\s+/g, " ")
 		return snippet.length > 30 ? snippet.slice(0, 29) + "…" : snippet
 	}
@@ -341,7 +336,7 @@ function get_name(node) {
 	case "TemplateLiteral":
 		return node.expressions.length
 			? undefined
-			: /** @type {import("estree").TemplateElement} */(node.quasis[0])/**/.value.cooked ?? undefined
+			: /** @type {string} */(/** @type {import("estree").TemplateElement} */(node.quasis[0])/**/.value.cooked)/**/
 	}
 	return undefined
 }

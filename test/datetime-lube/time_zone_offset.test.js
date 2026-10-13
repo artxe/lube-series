@@ -78,5 +78,54 @@ describe(
 				)
 			}
 		)
+		it(
+			"keeps a bounded number of canonical time zones",
+			() => {
+				const date = new Date(0)
+				for (let minutes = 1; minutes <= 1100; minutes++) {
+					const zone = `+${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
+					assert.equal(
+						timeZoneOffset(date, zone),
+						minutes * timeUnit.mm,
+						zone
+					)
+				}
+				assert.equal(
+					timeZoneOffset(date, "+00:01"),
+					timeUnit.mm
+				)
+				assert.equal(
+					timeZoneOffset(date, "+0001"),
+					timeUnit.mm
+				)
+			}
+		)
+		it(
+			"reads a zero offset printed as GMT alone",
+			() => {
+				const native = Intl.DateTimeFormat
+				Intl.DateTimeFormat = /** @type {typeof Intl.DateTimeFormat} */(/** @type {unknown} */(class extends native {
+					/**
+					 * @override
+					 * @param {Date | number=} date
+					 * @returns {string}
+					 */
+					format(date) {
+						return super.format(date).replace("GMT+00:00", "GMT")
+					}
+				}))/**/
+				try {
+					assert.equal(
+						timeZoneOffset(
+							new Date("2024-07-15T12:00:00.000Z"),
+							"Africa/Abidjan"
+						),
+						0
+					)
+				} finally {
+					Intl.DateTimeFormat = native
+				}
+			}
+		)
 	}
 )

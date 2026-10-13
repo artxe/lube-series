@@ -23,26 +23,18 @@ export default {
 		 */
 		function collect(node, depth, gaps) {
 			const parts = get_parts(node)
-			const question = source_code.getTokenAfter(
+			const question = /** @type {import("eslint").AST.Token} */(source_code.getTokenAfter(
 				/** @type {import("estree").Node} */(/** @type {unknown} */(parts.test))/**/,
 				{
 					filter: token => token.value == "?"
 				}
-			)
-			const colon = question && source_code.getTokenAfter(
+			))/**/
+			const colon = /** @type {import("eslint").AST.Token} */(source_code.getTokenAfter(
 				/** @type {import("estree").Node} */(/** @type {unknown} */(parts.consequent))/**/,
 				{
 					filter: token => token.value == ":"
 				}
-			)
-			if (
-				!question
-				|| !colon
-				|| question.range[1] > parts.consequent.range[0]
-				|| colon.range[1] > parts.alternate.range[0]
-			) {
-				return false
-			}
+			))/**/
 			for (const operator of [ question, colon ]) {
 				const before = /** @type {import("eslint").AST.Token | import("estree").Comment} */(source_code.getTokenBefore(
 					operator,

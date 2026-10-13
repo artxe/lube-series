@@ -2,7 +2,7 @@ import dimensions from "./dimensions.js"
 import { deepCopy } from "data-lube"
 import { Buffer } from "node:buffer"
 import { runInNewContext } from "node:vm"
-import { assert, describe, it } from "vitest"
+import { assert, describe, it, vi } from "vitest"
 describe(
 	"deep_copy",
 	() => {
@@ -207,6 +207,26 @@ describe(
 			}
 		)
 		it(
+			"copies primitives of arrays nested past the depth limit",
+			() => {
+				/** @type {unknown[]} */
+				let origin = [ "bottom" ]
+				for (let i = 0; i < 300; i++) {
+					origin = [ origin, i ]
+				}
+				const clone = deepCopy(origin)
+				let copied = clone
+				let original = origin
+				for (let i = 299; i >= 0; i--) {
+					assert.notEqual(copied, original)
+					assert.equal(copied[1], i)
+					copied = /** @type {unknown[]} */(copied[0])/**/
+					original = /** @type {unknown[]} */(original[0])/**/
+				}
+				assert.deepEqual(copied, [ "bottom" ])
+			}
+		)
+		it(
 			"detached and length-tracking views",
 			() => {
 				const resizable = new ArrayBuffer(4, { maxByteLength: 8 })
@@ -283,6 +303,32 @@ describe(
 			}
 		)
 		it(
+			"finalization registries keep their reference",
+			() => {
+				const registry = new FinalizationRegistry(() => {})
+				const clone = deepCopy({ registry })
+				assert.equal(clone.registry, registry)
+			}
+		)
+		it(
+			"half-empty array keeps its holes",
+			() => {
+				/** @type {({ index: number } | undefined)[]} */
+				const origin = new Array(4096)
+				for (let i = 1; i < origin.length; i += 2) {
+					origin[i] = { index: i }
+				}
+				const clone = deepCopy(origin)
+				assert.equal(clone.length, 4096)
+				assert.equal(Object.keys(clone).length, 2048)
+				for (let i = 0; i < clone.length; i++) {
+					assert.equal(i in clone, i % 2 == 1)
+				}
+				assert.deepEqual(clone[4095], { index: 4095 })
+				assert.notEqual(clone[4095], origin[4095])
+			}
+		)
+		it(
 			"methods and constructors that data overrides",
 			() => {
 				let constructed = 0
@@ -314,6 +360,38 @@ describe(
 				const copied = deepCopy(constructor)
 				assert.deepEqual(copied, [ 1, , 3 ])
 				assert.isFalse(1 in copied)
+			}
+		)
+		it(
+			"objects whose tag no built-in has",
+			() => {
+				/** @type {Record<string, unknown>} */
+				const args = runInNewContext(
+					"(function () { return arguments })(1, { a: 2 })"
+				)
+				const args_clone = deepCopy(args)
+				assert.equal(
+					Object.getPrototypeOf(args_clone),
+					Object.getPrototypeOf(args)
+				)
+				assert.equal(args_clone["0"], 1)
+				assert.deepEqual(args_clone["1"], { a: 2 })
+				assert.notEqual(args_clone["1"], args["1"])
+				/** @type {Record<PropertyKey, unknown>} */
+				const tagged = Object.assign(
+					Object.create(null),
+					{ value: { b: 3 } }
+				)
+				tagged[Symbol.toStringTag] = "Custom"
+				const tagged_clone = deepCopy(tagged)
+				assert.isNull(
+					Object.getPrototypeOf(tagged_clone)
+				)
+				assert.deepEqual(tagged_clone["value"], { b: 3 })
+				assert.notEqual(
+					tagged_clone["value"],
+					tagged["value"]
+				)
 			}
 		)
 		it(
@@ -395,6 +473,48 @@ describe(
 					Map.prototype
 				)
 				assert.equal(clone.map_like.value, 1)
+			}
+		)
+		it(
+			"slotless typed array prototype",
+			() => {
+				/** @type {Uint8Array & { value: { a: number } }} */
+				const origin = Object.assign(
+					Object.create(Uint8Array.prototype),
+					{ value: { a: 1 } }
+				)
+				const clone = deepCopy(origin)
+				assert.equal(
+					Object.getPrototypeOf(clone),
+					Uint8Array.prototype
+				)
+				assert.deepEqual(clone.value, { a: 1 })
+				assert.notEqual(clone.value, origin.value)
+			}
+		)
+		it(
+			"sparse array proxy that lists its keys in any order",
+			() => {
+				/** @type {unknown[]} */
+				const array = new Array(5000)
+				array[10] = { a: 1 }
+				array[4000] = 2
+				const origin = new Proxy(
+					array,
+					{
+						ownKeys: target => Reflect.ownKeys(target).reverse()
+					}
+				)
+				const clone = deepCopy(origin)
+				assert.isTrue(Array.isArray(clone))
+				assert.equal(clone.length, 5000)
+				assert.deepEqual(
+					Object.keys(clone),
+					[ "10", "4000" ]
+				)
+				assert.deepEqual(clone[10], { a: 1 })
+				assert.notEqual(clone[10], array[10])
+				assert.equal(clone[4000], 2)
 			}
 		)
 		it(
@@ -559,6 +679,27 @@ describe(
 				assert.equal(clone.weak_map, origin.weak_map)
 				assert.equal(clone.weak_ref, origin.weak_ref)
 				assert.equal(clone.weak_set, origin.weak_set)
+			}
+		)
+		it(
+			"works where SharedArrayBuffer and Float16Array are missing",
+			async () => {
+				vi.stubGlobal("SharedArrayBuffer", undefined)
+				vi.stubGlobal("Float16Array", undefined)
+				vi.resetModules()
+				try {
+					const fresh = await import("data-lube")
+					const origin = {
+						bytes: new Uint8Array([ 1, 2 ]),
+						list: [ { a: 1 } ]
+					}
+					const clone = fresh.deepCopy(origin)
+					assert.notEqual(clone.bytes, origin.bytes)
+					assert.notEqual(clone.list[0], origin.list[0])
+					assert.isTrue(fresh.deepEqual(clone, origin))
+				} finally {
+					vi.unstubAllGlobals()
+				}
 			}
 		)
 	}

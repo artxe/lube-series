@@ -17,7 +17,28 @@ export function cases(valid, invalid) {
 		valid_case("for (fooBar of list) {}"),
 		valid_case(
 			"import { fooBar } from 'module'; var value = () => fooBar; class A extends fooBar {}"
-		)
+		),
+		valid_case(
+			"import { camelCase as snake_case } from 'module'"
+		),
+		valid_case(
+			"camelCase: for (;;) { break camelCase } fooBar: for (;;) { continue fooBar }"
+		),
+		valid_case(
+			"import a from 'module' with { fooBar: 'json' }"
+		),
+		{
+			...valid_case(
+				"declare function f(camelCase: number): void"
+			),
+			languageOptions: ts_options
+		},
+		{
+			...valid_case(
+				"enum E { camelCase = 1 } var a: A.camelCase"
+			),
+			languageOptions: ts_options
+		}
 	)
 	invalid.push(
 		invalid_case(
@@ -213,6 +234,21 @@ export function cases(valid, invalid) {
 			"/** @param {number} itemCount */ function f(itemCount) { return item_count }"
 		),
 		invalid_case(
+			"/** @param camelCase @param {number} [other] */ function f(camelCase, other) {}",
+			[ 60 ],
+			"/** @param camel_case @param {number} [other] */ function f(camel_case, other) {}"
+		),
+		invalid_case(
+			"/** @param {number} camelCase*/ function f(camelCase) {}",
+			[ 44 ],
+			"/** @param {number} camel_case*/ function f(camel_case) {}"
+		),
+		invalid_case(
+			"export function camelCase() {} function g(camelCase) { return camelCase } var camel_case",
+			[ 43, 63 ],
+			"export function camelCase() {} function g(camel_case) { return camel_case } var camel_case"
+		),
+		invalid_case(
 			"import { 'camel-case' as camelCase } from 'module'",
 			[ "camelCase" ],
 			"import { 'camel-case' as camel_case } from 'module'"
@@ -273,6 +309,44 @@ export function cases(valid, invalid) {
 					"nextValue"
 				],
 				"class B { run(itemCount: number, max_size?: string, @A() lastValue: A = item_count) { let other!: string; let next_value: A = last_value } }"
+			),
+			languageOptions: ts_options
+		},
+		{
+			...invalid_case(
+				"class B { run(@A() camelCase: number) {} }",
+				[ "camelCase" ],
+				"class B { run(@A() camel_case: number) {} }"
+			),
+			languageOptions: ts_options
+		},
+		{
+			...invalid_case(
+				"class A { accessor camelCase = pendingA; accessor [pendingB] = 1 } var pendingA, pendingB",
+				[ "pendingA", "pendingB" ],
+				"class A { accessor camelCase = pending_a; accessor [pending_b] = 1 } var pendingA, pendingB"
+			),
+			languageOptions: ts_options
+		},
+		{
+			...invalid_case(
+				"abstract class A { abstract accessor [pendingA]: number; abstract [pendingB](): void; abstract [pendingC]: number } interface I { [pendingD](): void; [pendingE]: number } var pendingA, pendingB, pendingC, pendingD, pendingE",
+				[
+					"pendingA",
+					"pendingB",
+					"pendingC",
+					"pendingD",
+					"pendingE"
+				],
+				"abstract class A { abstract accessor [pending_a]: number; abstract [pending_b](): void; abstract [pending_c]: number } interface I { [pending_d](): void; [pending_e]: number } var pendingA, pendingB, pendingC, pendingD, pendingE"
+			),
+			languageOptions: ts_options
+		},
+		{
+			...invalid_case(
+				"import camelCase = require('module'); import other = camelCase",
+				[ "camelCase" ],
+				"import camelCase = require('module'); import other = camel_case"
 			),
 			languageOptions: ts_options
 		},
@@ -362,6 +436,60 @@ export function cases(valid, invalid) {
 				}
 			],
 			output: "/* eslint-disable no-console */\nvar camelCase = 1\ncamel_case()"
+		},
+		{
+			code: "/* eslint-disable */ var camelCase = 1 /* eslint-enable */\ncamelCase()",
+			errors: [
+				{
+					column: 1,
+					line: 2,
+					messageId: "rename"
+				}
+			],
+			output: null
+		},
+		{
+			code: "var camelCase = 1 // eslint-disable-line\ncamelCase()",
+			errors: [
+				{
+					column: 1,
+					line: 2,
+					messageId: "rename"
+				}
+			],
+			output: null
+		},
+		{
+			code: "fooBar() // eslint-disable-line\nvar camelCase = 1\nvar fooBar",
+			errors: [
+				{
+					column: 5,
+					line: 2,
+					messageId: "rename"
+				},
+				{
+					column: 5,
+					line: 3,
+					messageId: "rename"
+				}
+			],
+			output: "fooBar() // eslint-disable-line\nvar camel_case = 1\nvar fooBar"
+		},
+		{
+			code: "// eslint-disable-next-line\nfooBar()\nvar camelCase = 1\nvar fooBar",
+			errors: [
+				{
+					column: 5,
+					line: 3,
+					messageId: "rename"
+				},
+				{
+					column: 5,
+					line: 4,
+					messageId: "rename"
+				}
+			],
+			output: "// eslint-disable-next-line\nfooBar()\nvar camel_case = 1\nvar fooBar"
 		},
 		{
 			...invalid_case(

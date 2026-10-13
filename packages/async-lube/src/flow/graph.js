@@ -55,7 +55,7 @@ export function abandon(c, deps, race) {
 			)
 			: [
 				...dependents,
-				...c.program.transitions.get(name) ?? []
+				.../** @type {string[]} */(c.program.transitions.get(name))/**/
 			]
 		if (targets.some(
 			target => !dead.has(target) && may_run(c, target, dead)
@@ -249,7 +249,7 @@ function kill(c, name, source) {
 				return
 			}
 			const visited = new Set([ name, source ])
-			for (const other of c.program.sources.get(name) ?? []) {
+			for (const other of /** @type {string[]} */(c.program.sources.get(name))/**/) {
 				if (other != source && is_live(c, other, name, visited)) {
 					return
 				}
@@ -264,7 +264,7 @@ function kill(c, name, source) {
  * @returns {void}
  */
 export function kill_transitions(c, name) {
-	for (const target of c.program.transitions.get(name) ?? []) {
+	for (const target of /** @type {string[]} */(c.program.transitions.get(name))/**/) {
 		kill(c, target, name)
 	}
 }
@@ -301,10 +301,12 @@ function may_run(c, name, dead) {
 export function reset(c, name, is_root, force) {
 	/** @type {Set<string>} */
 	const names = new Set()
-	/** @type {{ from: string | undefined, name: string }[]} */
-	const stack = [ { from: void 0, name } ]
+	/** @type {{ forward: boolean, from: string | undefined, name: string }[]} */
+	const stack = [
+		{ forward: false, from: void 0, name }
+	]
 	while (stack.length) {
-		const entry = /** @type {{ from: string | undefined, name: string }} */(stack.pop())/**/
+		const entry = /** @type {{ forward: boolean, from: string | undefined, name: string }} */(stack.pop())/**/
 		const node_name = entry.name
 		if (names.has(node_name)) {
 			continue
@@ -327,7 +329,7 @@ export function reset(c, name, is_root, force) {
 			? node_record.status == "running"
 			: active_statuses.has(node_record.status) || holds_backlog(node_record)
 		if (keeps && !(force && node_name == name)) {
-			if (overlap != "ignore") {
+			if (overlap != "ignore" && !entry.forward) {
 				node_record.retrigger = true
 			}
 			continue
@@ -337,7 +339,8 @@ export function reset(c, name, is_root, force) {
 		const next = [
 			...get_record(c, node_name).node.dependents
 		]
-		for (const target of c.program.forward.get(node_name) ?? []) {
+		const dependent_count = next.length
+		for (const target of /** @type {string[]} */(c.program.forward.get(node_name))/**/) {
 			const target_record = get_record(c, target)
 			const is_owned = target_record.activators.has(node_name) || target_record.activators.has("*")
 			if (is_owned || !target_record.activated && settled_statuses.has(target_record.status)) {
@@ -347,6 +350,7 @@ export function reset(c, name, is_root, force) {
 		for (let i = next.length; i--;) {
 			stack.push(
 				{
+					forward: i >= dependent_count,
 					from: node_name,
 					name: /** @type {string} */(next[i])/**/
 				}

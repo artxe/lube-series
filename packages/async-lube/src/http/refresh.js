@@ -140,9 +140,6 @@ export function reject_refreshed(c, state, generation, error) {
  * @returns {void}
  */
 function time_out_refresh(c, state, error, timeout_error) {
-	if (!state.refreshing) {
-		return
-	}
 	const controller = state.controller
 	state.time_out?.(timeout_error)
 	fail_refresh(c, state, error, timeout_error)

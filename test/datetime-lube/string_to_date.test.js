@@ -205,6 +205,39 @@ describe(
 			}
 		)
 		it(
+			"invalid years of an ECMAScript date string with a time zone",
+			() => {
+				for (const text of [
+					"+275761-01-01",
+					"-271822-01-01T00:00"
+				]) {
+					assert.isNaN(
+						stringToDate(text, undefined, "UTC").getTime(),
+						text
+					)
+					assert.isNaN(
+						stringToDate(text, undefined, "Asia/Seoul").getTime(),
+						text
+					)
+				}
+			}
+		)
+		it(
+			"minus zero year of an ECMAScript date string is invalid with and without a time zone",
+			() => {
+				for (const zone of [ void 0, "UTC", "Asia/Seoul" ]) {
+					assert.isNaN(
+						stringToDate("-000000-01-01", void 0, zone).getTime(),
+						String(zone)
+					)
+				}
+				assert.equal(
+					stringToDate("+000000-01-01", void 0, "UTC").getTime(),
+					-62167219200000
+				)
+			}
+		)
+		it(
 			"offsets after AM and PM, fractions and astral characters",
 			() => {
 				assert.equal(

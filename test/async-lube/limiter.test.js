@@ -1,4 +1,4 @@
-import { CancelError, limiter } from "async-lube"
+import { CancelError, attempt, limiter } from "async-lube"
 import {
 	afterEach,
 	assert,
@@ -26,6 +26,35 @@ describe(
 			() => {
 				vi.useFakeTimers()
 				vi.setTimerTickMode("nextTimerAsync")
+			}
+		)
+		it(
+			"counts no call of a key that it does not hold, and rejects with the CancelError that aborted a signal",
+			async () => {
+				const pool = limiter({ concurrency: 1 })
+				const tenant = pool.key("tenant")
+				assert.equal(tenant.pending, 0)
+				assert.equal(tenant.running, 0)
+				const reason = new CancelError("Left the page")
+				assert.equal(
+					await rejection(
+						tenant(
+							() => 1,
+							AbortSignal.abort(reason)
+						)
+					),
+					reason
+				)
+				const holder = await tenant.acquire()
+				const controller = new AbortController()
+				const queued = rejection(
+					tenant(() => 1, controller.signal)
+				)
+				assert.equal(tenant.pending, 1)
+				controller.abort(reason)
+				assert.equal(await queued, reason)
+				holder.release()
+				assert.equal(tenant.running, 0)
 			}
 		)
 		it(
@@ -256,6 +285,51 @@ describe(
 				)
 				await vi.advanceTimersByTimeAsync(1000)
 				assert.equal(vi.getTimerCount(), 0)
+			}
+		)
+		it(
+			"runs a queued call that the abort of its signal gave a slot, and keeps the calls after it",
+			async () => {
+				const pool = limiter({ concurrency: 1 })
+				const slot = await pool.acquire()
+				const controller = new AbortController()
+				const holding = rejection(
+					attempt(
+						({ signal }) => new Promise(
+							resolve => signal.addEventListener(
+								"abort",
+								() => {
+									slot.release()
+									resolve(null)
+								}
+							)
+						),
+						{ signal: controller.signal }
+					)
+				)
+				/** @type {string[]} */
+				const order = []
+				const queued = pool(
+					() => {
+						order.push("queued")
+						return "ran"
+					},
+					controller.signal
+				)
+				const after = pool(
+					() => {
+						order.push("after")
+						return "after"
+					}
+				)
+				await vi.advanceTimersByTimeAsync(0)
+				controller.abort()
+				assert.instanceOf(await holding, CancelError)
+				assert.equal(await queued, "ran")
+				assert.equal(await after, "after")
+				assert.deepEqual(order, [ "queued", "after" ])
+				await vi.advanceTimersByTimeAsync(0)
+				assert.equal(pool.running, 0)
 			}
 		)
 	}

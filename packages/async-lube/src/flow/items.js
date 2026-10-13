@@ -74,7 +74,7 @@ export function each(target) {
 export async function run_each(c, record, token) {
 	const { node } = record
 	const { name, options } = node
-	const [ source, ...rest ] = node.deps.length ? args_of(c, record) : [ c.state ]
+	const [ source, ...rest ] = node.deps.length ? args_of(record) : [ c.state ]
 	const parent = /** @type {AbortController} */(record.controller)/**/.signal
 	/** @type {unknown[]} */
 	let items

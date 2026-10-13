@@ -82,10 +82,10 @@ exec(
 	{ cwd: package_path },
 	(error, stdout, stderr) => {
 		if (stdout) {
-			console.log(stdout)
+			process.stdout.write(`${stdout}\n`)
 		}
 		if (stderr) {
-			console.error(stderr)
+			process.stderr.write(`${stderr}\n`)
 		}
 		if (error) {
 			process.exit(error.code ?? 1)

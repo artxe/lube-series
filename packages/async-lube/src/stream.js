@@ -287,7 +287,12 @@ function create_source(
 								loop.buffer.push(current.value)
 							}
 							if (loops.size == 1) {
-								on_first?.()
+								try {
+									on_first?.()
+								} catch (error) {
+									stop()
+									throw error
+								}
 							}
 						}
 					}
@@ -716,11 +721,16 @@ function merge_streams(...sources) {
 			}
 			try {
 				if (!readers) {
-					readers = sources.map(
-						source => /** @type {AsyncIterator<T>} */(to_reader(source))/**/
-					)
-					active = readers.length
-					for (const reader of readers) {
+					/** @type {AsyncIterator<T>[]} */
+					const opened = []
+					readers = opened
+					for (const source of sources) {
+						opened.push(
+							/** @type {AsyncIterator<T>} */(to_reader(source))/**/
+						)
+					}
+					active = opened.length
+					for (const reader of opened) {
 						read(reader)
 					}
 				}

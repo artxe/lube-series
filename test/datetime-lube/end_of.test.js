@@ -143,6 +143,36 @@ describe(
 			}
 		)
 		it(
+			"forward jump inside an hour keeps the end after the jump",
+			() => {
+				const date = new Date("1916-07-27T22:25:30.000Z")
+				const end = Date.parse("1916-07-27T22:59:59.999Z")
+				assert.equal(
+					endOf(date, "H", "Europe/Athens").getTime(),
+					end
+				)
+				assert.equal(
+					dateToString(
+						new Date(end),
+						"YYYY-MM-DDTHH:mm:ss.sss",
+						"Europe/Athens"
+					),
+					"1916-07-28T00:59:59.999"
+				)
+				const tz = process.env["TZ"]
+				try {
+					process.env["TZ"] = "Europe/Athens"
+					assert.equal(endOf(date, "H").getTime(), end)
+				} finally {
+					if (tz === undefined) {
+						delete process.env["TZ"]
+					} else {
+						process.env["TZ"] = tz
+					}
+				}
+			}
+		)
+		it(
 			"gap that crosses midnight in the local time zone",
 			() => {
 				const tz = process.env["TZ"]
@@ -251,6 +281,47 @@ describe(
 			}
 		)
 		it(
+			"local time zone with transitions days apart",
+			() => {
+				const tz = process.env["TZ"]
+				try {
+					for (const [ zone, text, unit, end ] of /** @type {const} */([
+						[
+							"Europe/Vienna",
+							"1945-04-02T00:00:00.000Z",
+							"D",
+							"1945-04-02T21:59:59.999Z"
+						],
+						[
+							"Africa/Tunis",
+							"1943-03-29T00:00:00.000Z",
+							"M",
+							"1943-03-31T21:59:59.999Z"
+						]
+					])/**/) {
+						process.env["TZ"] = zone
+						const date = new Date(text)
+						assert.equal(
+							endOf(date, unit).getTime(),
+							Date.parse(end),
+							zone
+						)
+						assert.equal(
+							endOf(date, unit, zone).getTime(),
+							Date.parse(end),
+							zone
+						)
+					}
+				} finally {
+					if (tz === undefined) {
+						delete process.env["TZ"]
+					} else {
+						process.env["TZ"] = tz
+					}
+				}
+			}
+		)
+		it(
 			"time zone",
 			() => {
 				assert.equal(
@@ -269,6 +340,32 @@ describe(
 					).getTime(),
 					Date.parse("2024-03-11T03:59:59.999Z")
 				)
+			}
+		)
+		it(
+			"unit that ends after the Date range in the local time zone",
+			() => {
+				const last = new Date(8.64e15)
+				const tz = process.env["TZ"]
+				try {
+					process.env["TZ"] = "Asia/Seoul"
+					for (const unit of /** @type {const} */([ "H", "m" ])/**/) {
+						assert.isNaN(
+							endOf(last, unit).getTime(),
+							unit
+						)
+						assert.isNaN(
+							endOf(last, unit, "Asia/Seoul").getTime(),
+							unit
+						)
+					}
+				} finally {
+					if (tz === undefined) {
+						delete process.env["TZ"]
+					} else {
+						process.env["TZ"] = tz
+					}
+				}
 			}
 		)
 		it(

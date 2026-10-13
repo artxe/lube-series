@@ -1,4 +1,5 @@
 import ascii_order from "./rules/ascii-order.js"
+import prefer_param_tag from "./rules/prefer-param-tag.js"
 import prefer_type_tag from "./rules/prefer-type-tag.js"
 import pretty_imports from "./rules/pretty-imports.js"
 import pretty_jsdoc_casting from "./rules/pretty-jsdoc-casting.js"
@@ -152,6 +153,7 @@ const strict_rules = {
 		}
 	],
 	"lube/curly": [ "error", "all" ],
+	"lube/prefer-param-tag": "error",
 	"lube/prefer-type-tag": "error",
 	"lube/pretty-imports": "error",
 	"lube/pretty-jsdoc-casting": "error",
@@ -246,6 +248,7 @@ const plugin = {
 		"curly": keep_body_comments(
 			/** @type {import("eslint").Rule.RuleModule} */(builtinRules.get("curly"))/**/
 		),
+		"prefer-param-tag": prefer_param_tag,
 		"prefer-type-tag": prefer_type_tag,
 		"pretty-imports": pretty_imports,
 		"pretty-jsdoc-casting": pretty_jsdoc_casting,

@@ -52,9 +52,6 @@ export default {
 			const open_index = tokens.findIndex(
 				token => token.range[0] == first.range[0]
 			) - 1
-			if (tokens[open_index]?.value != "{") {
-				return
-			}
 			const head = tokens.slice(0, open_index)
 				.map(token => token.value)
 				.join(" ")

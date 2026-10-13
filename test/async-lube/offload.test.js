@@ -68,6 +68,21 @@ describe(
 			}
 		)
 		it(
+			"ignores a message of its worker that answers no call",
+			async () => {
+				const chatty = offload(
+					(/** @type {number} */ value) => {
+						const { parentPort } = process.getBuiltinModule("node:worker_threads")
+						parentPort?.postMessage([ 0, true, "stray" ])
+						return value * 2
+					}
+				)
+				assert.equal(await chatty(21), 42)
+				assert.equal(await chatty(4), 8)
+				chatty.close()
+			}
+		)
+		it(
 			"lets the process exit",
 			async () => {
 				const entry = new URL(
@@ -89,6 +104,67 @@ describe(
 				assert.equal(output, "42")
 			},
 			30000
+		)
+		it(
+			"rejects the call of a worker that crashed, and runs the next call in a new worker",
+			async () => {
+				const crashing = offload(
+					(/** @type {boolean} */ crash) => {
+						if (!crash) {
+							return "fine"
+						}
+						setTimeout(
+							() => {
+								throw RangeError("crashed")
+							}
+						)
+						return new Promise(() => {})
+					}
+				)
+				const error = /** @type {Error} */(await rejection(crashing(true)))/**/
+				assert.instanceOf(error, Error)
+				assert.equal(error.message, "crashed")
+				assert.equal(await crashing(false), "fine")
+				crashing.close()
+			},
+			30000
+		)
+		it(
+			"rejects with an Error a thrown object that has a message but no name",
+			async () => {
+				const plain = offload(
+					() => {
+						throw { message: "plain" }
+					}
+				)
+				const error = /** @type {Error} */(await rejection(plain()))/**/
+				assert.instanceOf(error, Error)
+				assert.equal(error.name, "Error")
+				assert.equal(error.message, "plain")
+				plain.close()
+			}
+		)
+		it(
+			"rejects with the CancelError that cancelled a call or aborted its signal",
+			async () => {
+				const pause = offload(
+					(/** @type {number} */ ms) => new Promise(
+						resolve => setTimeout(resolve, ms)
+					)
+				)
+				const reason = new CancelError("Left the page")
+				const cancelled = pause(10000)
+				cancelled.cancel(reason)
+				assert.equal(
+					await rejection(cancelled),
+					reason
+				)
+				const controller = new AbortController()
+				const aborted = pause(10000, controller.signal)
+				controller.abort(reason)
+				assert.equal(await rejection(aborted), reason)
+				pause.close()
+			}
 		)
 		it(
 			"runs a function in a worker",
