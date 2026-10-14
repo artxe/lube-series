@@ -1,4 +1,22 @@
 import ts_parser from "@typescript-eslint/parser"
+const parser_without_literal_keys = {
+	...ts_parser,
+	/**
+	 * @param {string} code
+	 * @param {import("@typescript-eslint/parser").ParserOptions} options
+	 */
+	parseForESLint(code, options) {
+		const result = ts_parser.parseForESLint(code, options)
+		return {
+			...result,
+			visitorKeys: Object.fromEntries(
+				Object.entries(result.visitorKeys).filter(
+					([ type ]) => type != "Literal"
+				)
+			)
+		}
+	}
+}
 /**
  * @param {import("eslint").RuleTester.ValidTestCase[]} valid
  * @param {import("eslint").RuleTester.InvalidTestCase[]} invalid
@@ -471,6 +489,29 @@ export function cases(valid, invalid) {
 			code: "var o = { b: new RegExp(\"a\", \"gg\"), a: y }",
 			errors: [ { messageId: "keys" } ],
 			output: null
+		},
+		{
+			code: "var o = { b: new RegExp(1), a: y }",
+			errors: [ { messageId: "keys" } ],
+			output: null
+		},
+		{
+			code: "var o = { b: new RegExp(), a: y }",
+			errors: [ { messageId: "keys" } ],
+			output: "var o = { a: y, b: new RegExp() }"
+		},
+		{
+			code: "var o = { b: new Error(\"e\", { cause: x }), a: y }",
+			errors: [ { messageId: "keys" } ],
+			output: null
+		},
+		{
+			code: "var o = { b: 1, a: 2 }",
+			errors: [ { messageId: "keys" } ],
+			languageOptions: {
+				parser: parser_without_literal_keys
+			},
+			output: "var o = { a: 2, b: 1 }"
 		},
 		{
 			code: "var o = { b: new Array(-1), a: y }",

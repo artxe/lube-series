@@ -73,12 +73,8 @@ export default {
 				if (left <= start || text[left - 1] != "(") {
 					break
 				}
-				const right = source.skip_right(code_end, end)
-				if (right >= end || text[right] != ")") {
-					break
-				}
 				code_start = left - 1
-				code_end = right + 1
+				code_end = source.skip_right(code_end, end) + 1
 			}
 			const right = source.skip_right(code_end, end)
 			let last = right
@@ -197,10 +193,10 @@ export default {
 					node.properties,
 					object_curly_spacing
 				)
-			case "SequenceExpression":
+			default:
 				return {
 					end: node.range[1],
-					items: node.expressions,
+					items: /** @type {import("../../private.js").AstNode & import("estree").SequenceExpression} */(node)/**/.expressions,
 					line_indent: source.get_line_indent(
 						node,
 						source.get_anchor(node.range[0]),
@@ -210,7 +206,6 @@ export default {
 					start: node.range[0]
 				}
 			}
-			return undefined
 		}
 		/**
 		 * @param {import("../../private.js").AstNode} node

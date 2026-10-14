@@ -18,6 +18,17 @@ export function cases(valid, invalid) {
 		},
 		{
 			code: "import { d, c } from \"b\"\nimport a from \"a\""
+		},
+		{
+			code: "import {\n    aaaaaaaaaaaaaaaa,\n    bbbbbbbbbbbbbbbbb\n} from \"module\""
+		},
+		{
+			code: "var a, b\nexport {a,b}",
+			options: [ { checkExports: false } ]
+		},
+		{
+			code: "import {a,b} from \"module\"",
+			options: [ { checkImports: false } ]
 		}
 	)
 	invalid.push(

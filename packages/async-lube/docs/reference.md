@@ -71,7 +71,7 @@ A request is a promise of the data with `cancel(reason?)`, `safe()` and `raw()`,
 | `overlap` | `"restart"` (default), `"ignore"`, `"rerun"` or `"queue"`: what the node does when it is started again while it runs |
 | `concurrency` | The items that run at the same time, for a `flow.each()` node |
 | `limit` | The updates that `overlap: "queue"` or a `flow.queue()` dependency keeps waiting, dropping the oldest above it. The value in use is never dropped |
-| `overflow` | `"drop"` (default), or `"wait"` to stop reading the stream dependencies while the queue is full, which needs one |
+| `overflow` | `"drop"` (default), or `"wait"` to stop reading the stream dependencies while the queue is full, which needs one. Either needs a `limit` |
 | `release` | `(result, error)` when the result is no longer used: commits, rolls back or closes it. The node starts only when a dependent can run |
 | `name` | The name in `nodes`, `results`, `errors` and snapshots |
 

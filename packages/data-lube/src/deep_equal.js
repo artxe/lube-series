@@ -776,9 +776,6 @@ function has_matching(group) {
 	const broken = []
 	for (let left = 0; left < count; left++) {
 		const index = /** @type {number} */(chosen[left])/**/
-		if (index < 0) {
-			continue
-		}
 		const edge = /** @type {BisimGroup["edges"][number][number]} */(/** @type {BisimGroup["edges"][number]} */(edges[left])/**/[index])/**/
 		if (edge.needs.every(need => need.alive)) {
 			continue

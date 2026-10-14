@@ -22,6 +22,26 @@ export function cases(valid, invalid) {
 		},
 		{
 			code: `
+			var [a,b] = c
+			f(a,b)
+			function g(a,b) {}
+			var h = function(a,b) {}
+			new C(a,b)
+			var {a,b} = c
+			`,
+			options: [
+				{
+					checkArray: false,
+					checkCall: false,
+					checkObject: false
+				}
+			]
+		},
+		{
+			code: "var value = `${`${[a,b,c]}`}`"
+		},
+		{
+			code: `
 			var value = {
 			    aaaaaaaaaa_aaaaaaaaaa_aaaaaaaaaa
 			}

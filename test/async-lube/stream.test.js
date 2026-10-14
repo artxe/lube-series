@@ -248,6 +248,163 @@ describe(
 			}
 		)
 		it(
+			"ends a merge that is returned before it is read",
+			async () => {
+				const source = tracked(channel())
+				const merged = merge(source.stream)[Symbol.asyncIterator]()
+				await merged.return?.()
+				assert.deepEqual(
+					await merged.next(),
+					{ done: true, value: void 0 }
+				)
+				assert.equal(source.released, false)
+			}
+		)
+		it(
+			"ends a merge without an error when a source returns the merge and throws while the merge reads it",
+			async () => {
+				/** @type {AsyncIterable<number>} */
+				const closing = {
+					[Symbol.asyncIterator]: () => ({
+						next: () => {
+							void merged.return?.()
+							throw Error("closed")
+						}
+					})
+				}
+				const merged = merge(closing)
+				assert.deepEqual(
+					await merged.next(),
+					{ done: true, value: void 0 }
+				)
+			}
+		)
+		it(
+			"ends a pending read without an error when the loop leaves and the source fails afterwards",
+			async () => {
+				/** @type {AsyncIterable<number>} */
+				const failing = {
+					[Symbol.asyncIterator]: () => ({
+						next: () => new Promise(
+							(_, reject) => setTimeout(() => reject(Error("late")), 20)
+						),
+						return: async () => ({ done: true, value: void 0 })
+					})
+				}
+				/** @type {AsyncIterable<string>} */
+				const silent = {
+					[Symbol.asyncIterator]: () => ({
+						next: () => new Promise(() => {})
+					})
+				}
+				/** @type {[string, AsyncIterableIterator<unknown>][]} */
+				const cases = [
+					[ "buffer", buffer(failing, 5) ],
+					[ "debounce", debounce(failing, 5) ],
+					[
+						"latest",
+						latest(failing, value => value)
+					],
+					[ "merge", merge(failing) ],
+					[ "throttle", throttle(failing, 5) ],
+					[ "until", until(failing, silent) ]
+				]
+				for (const [ name, stream ] of cases) {
+					const pending = stream.next()
+					await settle()
+					await stream.return?.()
+					await sleep(30)
+					assert.deepEqual(
+						await pending,
+						{ done: true, value: void 0 },
+						name
+					)
+				}
+				const unread = latest(failing, value => value)
+				assert.deepEqual(
+					await unread.return?.(),
+					{ done: true, value: void 0 }
+				)
+				assert.deepEqual(
+					await unread.next(),
+					{ done: true, value: void 0 }
+				)
+			}
+		)
+		it(
+			"ends every at once when it is left while a tick is due, and stays ended",
+			async () => {
+				const ticks = /** @type {AsyncIterableIterator<number>} */(every(100)[Symbol.asyncIterator]())/**/
+				assert.equal(
+					ticks[Symbol.asyncIterator](),
+					ticks
+				)
+				const tick = ticks.next()
+				vi.advanceTimersByTime(100)
+				await ticks.return?.()
+				assert.deepEqual(
+					await tick,
+					{ done: true, value: void 0 }
+				)
+				assert.deepEqual(
+					await ticks.next(),
+					{ done: true, value: void 0 }
+				)
+				const aborted = every(
+					100,
+					{ signal: AbortSignal.abort() }
+				)[Symbol.asyncIterator]()
+				assert.deepEqual(
+					await aborted.next(),
+					{ done: true, value: void 0 }
+				)
+			}
+		)
+		it(
+			"ends the read of a share of no stream after it rejects, with no return()",
+			async () => {
+				const reader = share(/** @type {never} */(42)/**/)[Symbol.asyncIterator]()
+				await reader.next()
+					.catch(() => void 0)
+				assert.deepEqual(
+					await Promise.race(
+						[
+							reader.next(),
+							sleep(1000).then(() => "hung")
+						]
+					),
+					{ done: true, value: void 0 }
+				)
+			}
+		)
+		it(
+			"hands a slow reader of a channel thousands of values in order",
+			async () => {
+				/** @type {import("async-lube").Channel<number>} */
+				const values = channel()
+				const reader = /** @type {AsyncIterableIterator<number>} */(values[Symbol.asyncIterator]())/**/
+				const first = reader.next()
+				for (let value = 0; value < 3000; value++) {
+					values.send(value)
+				}
+				values.close()
+				/** @type {number[]} */
+				const seen = [
+					/** @type {number} */((await first).value)/**/
+				]
+				for await (const value of reader) {
+					seen.push(value)
+				}
+				assert.deepEqual(
+					seen,
+					Array.from(
+						{ length: 3000 },
+						(_, value) => value
+					)
+				)
+			}
+		)
+		it(
 			"held values before a failure",
 			async () => {
 				for (const [ wrap, expected ] of /** @type {[(source: AsyncIterable<number>) => AsyncIterable<unknown>, unknown[]][]} */([
@@ -315,6 +472,79 @@ describe(
 					await held.next(),
 					{ done: true, value: void 0 }
 				)
+			}
+		)
+		it(
+			"ignores a shared source that fails after every reader left, and starts it again for a new reader",
+			async () => {
+				let starts = 0
+				/** @type {AsyncIterable<number>} */
+				const failing = {
+					[Symbol.asyncIterator]: () => {
+						starts++
+						return {
+							next: () => new Promise(
+								(_, reject) => setTimeout(() => reject(Error("late")), 20)
+							),
+							return: async () => ({ done: true, value: void 0 })
+						}
+					}
+				}
+				const shared = share(failing)
+				const reader = shared[Symbol.asyncIterator]()
+				const pending = reader.next()
+				await settle()
+				await reader.return?.()
+				assert.deepEqual(
+					await pending,
+					{ done: true, value: void 0 }
+				)
+				await sleep(30)
+				assert.equal(starts, 1)
+				const again = collect(shared)
+					.then(
+						() => "",
+						(/** @type {Error} */ error) => error.message
+					)
+				assert.equal(await again, "late")
+				assert.equal(starts, 2)
+			}
+		)
+		it(
+			"keeps a closed channel closed, and drops what is sent or failed after it closed",
+			async () => {
+				/** @type {import("async-lube").Channel<number>} */
+				const values = channel()
+				const reader = /** @type {AsyncIterableIterator<number>} */(values[Symbol.asyncIterator]())/**/
+				assert.equal(
+					reader[Symbol.asyncIterator](),
+					reader
+				)
+				const pending = reader.next()
+				values.close()
+				values.close()
+				values.fail(Error("late"))
+				values.send(1)
+				assert.deepEqual(
+					await pending,
+					{ done: true, value: void 0 }
+				)
+				assert.isTrue(values.closed)
+				assert.deepEqual(await collect(values), [])
+			}
+		)
+		it(
+			"keeps the newest values of its limit for a reader of a channel that falls far behind",
+			async () => {
+				/** @type {import("async-lube").Channel<number>} */
+				const values = channel({ limit: 2 })
+				const seen = collect(values)
+				await settle()
+				for (let value = 1; value <= 9; value++) {
+					values.send(value)
+				}
+				values.close()
+				assert.deepEqual(await seen, [ 8, 9 ])
 			}
 		)
 		it(
@@ -872,6 +1102,46 @@ describe(
 						throttle(channel(), Infinity)
 					]
 				)
+			}
+		)
+		it(
+			"rejects a read of a share of no stream, and lets the read be returned and the share be read again",
+			async () => {
+				const shared = share(/** @type {never} */(42)/**/)
+				const reader = shared[Symbol.asyncIterator]()
+				assert.match(
+					await reader.next()
+						.then(
+							() => "",
+							(/** @type {Error} */ error) => error.message
+						),
+					/must be an async iterable/
+				)
+				assert.deepEqual(
+					await reader.return?.(),
+					{ done: true, value: void 0 }
+				)
+				assert.match(
+					await collect(shared)
+						.then(
+							() => "",
+							(/** @type {Error} */ error) => error.message
+						),
+					/must be an async iterable/
+				)
+			}
+		)
+		it(
+			"releases the readers merge opened before a source that is no stream",
+			async () => {
+				const first = tracked(channel())
+				await merge(
+					first.stream,
+					/** @type {never} */(7)/**/
+				)
+					.next()
+					.catch(() => void 0)
+				assert.equal(first.released, true)
 			}
 		)
 		it(

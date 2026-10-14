@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `startOf` returned a day, week, month or year that began exactly where a forward jump of the clock
+  lands 1 ms late.
+- `stringToDate("-000000-01-01")` returned year 0 instead of an invalid `Date`, which ISO 8601 and
+  ECMAScript give `-000000`; it is invalid with and without a time zone.
+
 ## 1.0.0
 
 ### Breaking

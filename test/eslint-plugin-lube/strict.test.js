@@ -259,6 +259,15 @@ describe(
 			}
 		)
 		it(
+			"indents a nested ternary inside brackets on a line that starts inside a block comment",
+			() => {
+				assert_converges(
+					"/* a\nb */ f(g(a ? b : c ? d : e))",
+					"/* a\nb */ f(\n\tg(\n\t\ta\n\t\t\t? b\n\t\t\t: c\n\t\t\t\t? d\n\t\t\t\t: e\n\t)\n)"
+				)
+			}
+		)
+		it(
 			"indents a sequence on a line that starts inside a block comment from its bracket",
 			() => {
 				assert_converges(
@@ -294,6 +303,15 @@ describe(
 				assert_converges(
 					"{ const e = 1; const n = new i([ [ \"ac\", \"align-content\" ], [ \"column-reverse\", \"flex-direction:column-reverse\" ] ]); const a = new i([ [ \"block\", \"display:block\" ], [ \"column-reverse\", \"flex-direction:column-reverse\" ] ]) }",
 					"{ const e = 1; const n = new i(\n\t[\n\t\t[ \"ac\", \"align-content\" ],\n\t\t[\n\t\t\t\"column-reverse\",\n\t\t\t\"flex-direction:column-reverse\"\n\t\t]\n\t]\n); const a = new i(\n\t[\n\t\t[ \"block\", \"display:block\" ],\n\t\t[\n\t\t\t\"column-reverse\",\n\t\t\t\"flex-direction:column-reverse\"\n\t\t]\n\t]\n) }"
+				)
+			}
+		)
+		it(
+			"indents arguments after a spaced callee on a line that starts inside a block comment",
+			() => {
+				assert_converges(
+					"/* a\nb */ f (aaaaaaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb)",
+					"/* a\nb */ f(\n\taaaaaaaaaaaaaaaaaaaaaaaaaaaa,\n\tbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n)"
 				)
 			}
 		)

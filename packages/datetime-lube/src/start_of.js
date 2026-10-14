@@ -119,7 +119,7 @@ export default function(date, unit, zone) {
 	}
 	return new Date(
 		transition_of(
-			earliest,
+			earliest - 1,
 			after == before || guess > time
 				? time
 				: guess,

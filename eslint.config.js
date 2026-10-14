@@ -5,18 +5,13 @@ export default [
 	{
 		ignores: [
 			".claude/settings*.json",
-			".scratch/**",
+			".tmp/**",
 			"coverage/**",
 			"packages/*/types/**"
 		]
 	},
 	{
-		files: [
-			"**/*.js",
-			"**/*.json",
-			"**/*.mjs",
-			"**/*.ts"
-		],
+		files: [ "**/*.js", "**/*.json", "**/*.ts" ],
 		languageOptions: {
 			ecmaVersion: "latest",
 			parser,
@@ -30,10 +25,7 @@ export default [
 		languageOptions: {
 			parserOptions: {
 				projectService: {
-					allowDefaultProject: [
-						"vitest.browser.config.js",
-						"vitest.config.js"
-					]
+					allowDefaultProject: [ "vitest.config.js" ]
 				},
 				tsconfigRootDir: import.meta.dirname
 			}

@@ -5,6 +5,7 @@ import {
 	deepPatch,
 	deepUpdate
 } from "data-lube"
+import { runInNewContext } from "node:vm"
 import { assert, describe, it } from "vitest"
 describe(
 	"deep_diff",
@@ -96,6 +97,93 @@ describe(
 				}
 				assert.lengthOf(deepDiff(deep(1), deep(2)), 1)
 				round_trip(deep(1), deep(2))
+			}
+		)
+		it(
+			"circular data replaces a sparse array of another length",
+			() => {
+				/** @type {{ list: unknown[], self?: unknown }} */
+				const before = { list: new Array(5000) }
+				before.list[1] = 1
+				before.self = before
+				/** @type {{ list: unknown[], self?: unknown }} */
+				const after = { list: new Array(6000) }
+				after.list[1] = 1
+				after.self = after
+				assert.deepEqual(
+					deepDiff(before, after),
+					[
+						{
+							op: "replace",
+							path: [ "list" ],
+							value: after.list
+						}
+					]
+				)
+			}
+		)
+		it(
+			"circular data replaces a value that is not a container",
+			() => {
+				/** @type {{ self?: unknown, when: Date }} */
+				const before = { when: new Date(0) }
+				before.self = before
+				/** @type {{ self?: unknown, when: Date }} */
+				const after = { when: new Date(1) }
+				after.self = after
+				assert.deepEqual(
+					deepDiff(before, after),
+					[
+						{
+							op: "replace",
+							path: [ "when" ],
+							value: after.when
+						}
+					]
+				)
+			}
+		)
+		it(
+			"deep shared object lists its change under every path",
+			() => {
+				/**
+				 * @param {Record<string, unknown>} leaf
+				 * @returns {Record<string, unknown>}
+				 */
+				function chain(leaf) {
+					let node = leaf
+					for (let i = 0; i < 70; i++) {
+						node = { next: node }
+					}
+					return node
+				}
+				const shared = { value: 1 }
+				const changed = { value: 2 }
+				const path = new Array(70).fill("next")
+				assert.deepEqual(
+					deepDiff(
+						{
+							left: chain(shared),
+							right: chain(shared)
+						},
+						{
+							left: chain(changed),
+							right: chain(changed)
+						}
+					),
+					[
+						{
+							op: "replace",
+							path: [ "left", ...path, "value" ],
+							value: 2
+						},
+						{
+							op: "replace",
+							path: [ "right", ...path, "value" ],
+							value: 2
+						}
+					]
+				)
 			}
 		)
 		it(
@@ -334,6 +422,66 @@ describe(
 			}
 		)
 		it(
+			"objects of another realm",
+			() => {
+				/** @type {[ Record<string, unknown>, Record<string, unknown> ]} */
+				const [ before, after ] = runInNewContext(
+					"[ { a: 1, b: { c: 1 } }, { a: 2, b: { c: 1 } } ]"
+				)
+				assert.deepEqual(
+					deepDiff(before, after),
+					[
+						{
+							op: "replace",
+							path: [ "a" ],
+							value: 2
+						}
+					]
+				)
+			}
+		)
+		it(
+			"one object compared with two others past the visit limit",
+			() => {
+				const shared = { value: 1 }
+				const before = {
+					filler: Array.from({ length: 100001 }, () => ({})),
+					x: shared,
+					y: shared
+				}
+				const after = {
+					filler: Array.from({ length: 100001 }, () => ({})),
+					x: { value: 1 },
+					y: { value: 2 }
+				}
+				assert.deepEqual(
+					deepDiff(before, after),
+					[
+						{
+							op: "replace",
+							path: [ "y", "value" ],
+							value: 2
+						}
+					]
+				)
+			}
+		)
+		it(
+			"passes on an error that a getter throws",
+			() => {
+				const before = {
+					get value() {
+						throw new RangeError("unreadable")
+					}
+				}
+				assert.throws(
+					() => deepDiff(before, { value: 1 }),
+					RangeError,
+					"unreadable"
+				)
+			}
+		)
+		it(
 			"replaced values",
 			() => {
 				assert.deepEqual(
@@ -387,6 +535,53 @@ describe(
 			}
 		)
 		it(
+			"sets of detached views and DOM exceptions match their equals",
+			() => {
+				/**
+				 * @returns {DataView}
+				 */
+				function detached_view() {
+					const buffer = new ArrayBuffer(8)
+					const view = new DataView(buffer)
+					structuredClone(buffer, { transfer: [ buffer ] })
+					return view
+				}
+				assert.deepEqual(
+					deepDiff(
+						new Set(
+							[
+								detached_view(),
+								new DOMException("stop", "AbortError")
+							]
+						),
+						new Set(
+							[
+								detached_view(),
+								new DOMException("stop", "AbortError")
+							]
+						)
+					),
+					[]
+				)
+				const stopped = new DOMException("stop", "AbortError")
+				const replaced = new DOMException("late", "TimeoutError")
+				assert.deepEqual(
+					deepDiff(
+						new Set([ stopped ]),
+						new Set([ replaced ])
+					),
+					[
+						{ op: "remove", path: [ stopped ] },
+						{
+							op: "add",
+							path: [ replaced ],
+							value: replaced
+						}
+					]
+				)
+			}
+		)
+		it(
 			"shared references",
 			() => {
 				/**
@@ -413,6 +608,49 @@ describe(
 						{ x: b, y: { value: 2 } }
 					),
 					1
+				)
+			}
+		)
+		it(
+			"sparse arrays whose last items differ",
+			() => {
+				/** @type {unknown[]} */
+				const before = new Array(10000)
+				before[5] = 1
+				before[9000] = 2
+				/** @type {unknown[]} */
+				const after = new Array(10000)
+				after[5] = 1
+				after[9999] = 3
+				assert.deepEqual(
+					deepDiff(before, after),
+					[
+						{
+							op: "replace",
+							path: [ 9000 ],
+							value: undefined
+						},
+						{
+							op: "replace",
+							path: [ 9999 ],
+							value: 3
+						}
+					]
+				)
+				assert.deepEqual(
+					deepDiff(after, before),
+					[
+						{
+							op: "replace",
+							path: [ 9000 ],
+							value: 2
+						},
+						{
+							op: "replace",
+							path: [ 9999 ],
+							value: undefined
+						}
+					]
 				)
 			}
 		)

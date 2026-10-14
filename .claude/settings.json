@@ -18,6 +18,7 @@
       "Bash(echo *)",
       "Bash(file *)",
       "Bash(find *)",
+      "Bash(gh auth status)",
       "Bash(gh issue list *)",
       "Bash(gh issue view *)",
       "Bash(gh pr list *)",
@@ -53,6 +54,8 @@
       "Bash(sort *)",
       "Bash(stat *)",
       "Bash(tail *)",
+      "Bash(tar -t*)",
+      "Bash(tar -x* -C .tmp*)",
       "Bash(timeout *)",
       "Bash(touch *)",
       "Bash(tr *)",
@@ -74,6 +77,7 @@
       "PowerShell(Get-CimInstance *)",
       "PowerShell(Get-Command *)",
       "PowerShell(Get-Content *)",
+      "PowerShell(Get-Date *)",
       "PowerShell(Get-FileHash *)",
       "PowerShell(Get-Item *)",
       "PowerShell(Get-ItemProperty *)",
@@ -104,6 +108,7 @@
       "PowerShell(curl.exe *://127.0.0.1*)",
       "PowerShell(curl.exe *://localhost*)",
       "PowerShell(echo *)",
+      "PowerShell(gh auth status)",
       "PowerShell(gh issue list *)",
       "PowerShell(gh issue view *)",
       "PowerShell(gh pr list *)",
@@ -123,6 +128,8 @@
       "PowerShell(py *)",
       "PowerShell(python *)",
       "PowerShell(python3 *)",
+      "PowerShell(tar -t*)",
+      "PowerShell(tar -x* -C .tmp*)",
       "Read(~/.claude/projects/**)",
       "WebFetch",
       "WebSearch"
@@ -232,6 +239,7 @@
       "Bash(rmdir *:/*)",
       "Bash(rmdir *:\\\\*)",
       "Bash(rmdir *~*)",
+      "Bash(tar -x*..*)",
       "Bash(touch *..*)",
       "Bash(touch */c/*)",
       "Bash(touch */d/*)",
@@ -347,7 +355,8 @@
       "PowerShell(git stash drop *)",
       "PowerShell(git switch --discard-changes *)",
       "PowerShell(git switch -f *)",
-      "PowerShell(git tag -d *)"
+      "PowerShell(git tag -d *)",
+      "PowerShell(tar -x*..*)"
     ]
   }
 }

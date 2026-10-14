@@ -34,3 +34,36 @@ new RuleTester().run(
 	svelte_naming_convention,
 	{ invalid, valid }
 )
+new RuleTester().run(
+	"svelte-naming-convention on a source code without getDisableDirectives, as in ESLint 9.0",
+	{
+		...svelte_naming_convention,
+		create(context) {
+			return svelte_naming_convention.create(
+				Object.create(
+					context,
+					{
+						sourceCode: {
+							value: Object.create(
+								context.sourceCode,
+								{
+									getDisableDirectives: { value: undefined }
+								}
+							)
+						}
+					}
+				)
+			)
+		}
+	},
+	{
+		invalid: [
+			{
+				code: "var camelCase = 1",
+				errors: [ { messageId: "rename" } ],
+				output: "var camel_case = 1"
+			}
+		],
+		valid: []
+	}
+)

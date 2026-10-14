@@ -160,16 +160,14 @@ export default {
 		function declaration_edits(node, resolution) {
 			/** @type {import("../../private.js").RenameEdit[]} */
 			const edits = [ rename_edit(node) ]
-			const block = /** @type {import("../../private.js").AstNode | undefined} */(resolution.get(node)?.scope.block)/**/
+			const block = /** @type {import("../../private.js").AstNode} */(/** @type {import("eslint").Scope.Variable} */(resolution.get(node))/**/.scope.block)/**/
 			const func = function_of_param(node)
 			const leading = func && leading_comment(func)
 			/** @type {Set<import("../../private.js").Comment>} */
 			const comments = new Set(
-				block
-					? /** @type {import("../../private.js").Comment[]} */(source.getAllComments())/**/.filter(
-						comment => block.type == "Program" || comment.range[0] >= block.range[0] && comment.range[1] <= block.range[1]
-					)
-					: []
+				/** @type {import("../../private.js").Comment[]} */(source.getAllComments())/**/.filter(
+					comment => block.type == "Program" || comment.range[0] >= block.range[0] && comment.range[1] <= block.range[1]
+				)
 			)
 			if (leading) {
 				comments.add(leading)
@@ -241,7 +239,7 @@ export default {
 		 * @returns {boolean}
 		 */
 		function is_declaration(node) {
-			for (let parent = node.parent; parent; parent = parent.parent) {
+			for (let parent = node.parent; ; parent = parent.parent) {
 				switch (parent.type) {
 				case "ArrayPattern":
 				case "AssignmentPattern":
@@ -257,7 +255,6 @@ export default {
 					return true
 				}
 			}
-			return true
 		}
 		/**
 		 * @param {import("../../private.js").AstNode} node
@@ -308,9 +305,7 @@ export default {
 				anchor = parent
 				break
 			case "VariableDeclarator":
-				if (parent.init == func) {
-					anchor = parent.parent
-				}
+				anchor = parent.parent
 			}
 			if (anchor.parent.type == "ExportDefaultDeclaration" || anchor.parent.type == "ExportNamedDeclaration") {
 				anchor = anchor.parent
@@ -771,7 +766,7 @@ export default {
 				const resolution = new Map()
 				/** @type {Map<string, import("eslint").Scope.Variable[]>} */
 				const variables_by_name = new Map()
-				const scopes = source.scopeManager?.scopes ?? []
+				const scopes = /** @type {import("eslint").Scope.ScopeManager} */(source.scopeManager)/**/.scopes
 				for (const scope of scopes) {
 					for (const variable of scope.variables) {
 						const same_names = variables_by_name.get(variable.name)
@@ -808,10 +803,9 @@ export default {
 				for (const nodes of declarations.values()) {
 					for (const node of nodes) {
 						declared.add(node)
-						const variable = resolution.get(node)
-						if (variable) {
-							renamable.add(variable)
-						}
+						renamable.add(
+							/** @type {import("eslint").Scope.Variable} */(resolution.get(node))/**/
+						)
 					}
 				}
 				/** @type {Map<string, Set<import("eslint").Scope.Scope>>} */
@@ -859,7 +853,7 @@ export default {
 					if (!others.length) {
 						return false
 					}
-					for (const variable of variables_by_name.get(name) ?? []) {
+					for (const variable of /** @type {import("eslint").Scope.Variable[]} */(variables_by_name.get(name))/**/) {
 						if (!renamable.has(variable)) {
 							continue
 						}
@@ -895,7 +889,7 @@ export default {
 				 * @returns {boolean}
 				 */
 				function has_foreign_declaration(name) {
-					return (variables_by_name.get(name) ?? []).some(
+					return /** @type {import("eslint").Scope.Variable[]} */(variables_by_name.get(name))/**/.some(
 						variable => renamable.has(variable) && variable.identifiers.some(
 							identifier => !declared.has(
 								/** @type {import("../../private.js").AstNode} */(/** @type {unknown} */(identifier))/**/

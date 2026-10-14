@@ -53,8 +53,8 @@ export function offload(fn, options = {}) {
 		const job = {
 			args,
 			id: ++count,
-			reject: () => {},
-			resolve: () => {}
+			reject: noop,
+			resolve: noop
 		}
 		const promise = new Promise(
 			(resolve, reject) => {
@@ -157,8 +157,8 @@ export function offload(fn, options = {}) {
 		/** @type {OffloadWorker} */
 		const worker = {
 			job: void 0,
-			send: () => {},
-			stop: () => {}
+			send: noop,
+			stop: noop
 		}
 		/**
 		 * @param {unknown} error

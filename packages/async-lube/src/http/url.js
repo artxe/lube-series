@@ -112,7 +112,7 @@ export function build_url(
 		)
 		const base_query = split_index < 0 || base[split_index] != "?"
 			? ""
-			: base.slice(split_index + 1).split("#")[0] ?? ""
+			: /** @type {string} */(base.slice(split_index + 1).split("#")[0])/**/
 		const trimmed = url.replace(leading_slash_regex, "")
 		url = base_path.replace(trailing_slash_regex, "") + (trimmed && !trimmed.startsWith("?") ? "/" : "") + trimmed
 		url = add_query(url, base_query, true)

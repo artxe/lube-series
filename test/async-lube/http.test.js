@@ -71,6 +71,28 @@ describe(
 			}
 		}
 		/**
+		 * @param {string} disposition
+		 * @returns {Promise<string>}
+		 */
+		async function file_name(disposition) {
+			/** @type {import("async-lube").DownloadedFile} */
+			const file = await http(
+				{
+					base: "http://localhost",
+					fetch: async () => new Response(
+						"x",
+						{
+							headers: {
+								"Content-Disposition": disposition
+							}
+						}
+					)
+				}
+			)
+				.get("/download", {}, { as: "file" })
+			return file.name
+		}
+		/**
 		 * @param {PromiseLike<unknown>} promise
 		 * @returns {Promise<unknown>}
 		 */
@@ -286,6 +308,101 @@ describe(
 			}
 		)
 		it(
+			"cancels a request while it waits to retry",
+			async () => {
+				let waiting = false
+				const request = create().get(
+					"/flaky",
+					{ fail: 1, key: "retry-wait" },
+					{
+						retry: {
+							count: 1,
+							delay: () => {
+								waiting = true
+								return 60000
+							}
+						}
+					}
+				)
+				await eventually(() => waiting)
+				request.cancel()
+				assert.instanceOf(
+					await rejection(request),
+					CancelError
+				)
+				assert.equal(server.hits.get("retry-wait"), 1)
+			}
+		)
+		it(
+			"cancels a stream request waiting for a refresh with the reason of its signal",
+			async () => {
+				/** @type {(() => void) | undefined} */
+				let finish_refresh
+				const api = http(
+					{
+						base: "http://localhost",
+						fetch: async () => Response.json(
+							{ message: "Expired" },
+							{ status: 401 }
+						),
+						refresh: () => new Promise(
+							resolve => {
+								finish_refresh = () => resolve(void 0)
+							}
+						)
+					}
+				)
+				const controller = new AbortController()
+				const request = api.get(
+					"/feed",
+					{},
+					{
+						as: "ndjson",
+						signal: controller.signal
+					}
+				)
+				await eventually(() => !!finish_refresh)
+				controller.abort("unmounted")
+				const error = await rejection(request)
+				assert.instanceOf(error, CancelError)
+				assert.equal(error.cause, "unmounted")
+				finish_refresh?.()
+			}
+		)
+		it(
+			"cancels the unread body of a stream response whose response hook throws",
+			async () => {
+				let cancelled = false
+				const failure = Error("The hook failed")
+				const api = http(
+					{
+						base: "http://localhost",
+						fetch: async () => new Response(
+							new ReadableStream(
+								{
+									cancel: () => {
+										cancelled = true
+									}
+								}
+							)
+						),
+						on: {
+							response: () => {
+								throw failure
+							}
+						}
+					}
+				)
+				assert.strictEqual(
+					await rejection(
+						api.get("/live", {}, { as: "stream" })
+					),
+					failure
+				)
+				assert.isTrue(cancelled)
+			}
+		)
+		it(
 			"debounce",
 			async () => {
 				const api = create()
@@ -323,6 +440,23 @@ describe(
 				assert.deepEqual(
 					rooms.map(([ error ]) => error),
 					[ void 0, void 0 ]
+				)
+			}
+		)
+		it(
+			"decodes a filename* without a charset as UTF-8",
+			async () => {
+				assert.equal(
+					await file_name(
+						"attachment; filename*=%E2%82%AC.txt"
+					),
+					"€.txt"
+				)
+				assert.equal(
+					await file_name(
+						"attachment; filename*=''%E2%82%AC.txt"
+					),
+					"€.txt"
 				)
 			}
 		)
@@ -484,6 +618,74 @@ describe(
 				assert.equal(
 					await api.get("/json", {}, { as: "text" }),
 					""
+				)
+			}
+		)
+		it(
+			"ends an event stream whose response has no body without events",
+			async () => {
+				const api = http(
+					{
+						base: "http://localhost",
+						fetch: async () => new Response(
+							null,
+							{
+								headers: {
+									"Content-Type": "text/event-stream"
+								}
+							}
+						)
+					}
+				)
+				/** @type {unknown[]} */
+				const events = []
+				for await (const event of api.sse(
+					"/events",
+					{},
+					{ reconnect: false }
+				)) {
+					events.push(event)
+				}
+				assert.deepEqual(events, [])
+			}
+		)
+		it(
+			"ends an ndjson loop left while a line is pending, and keeps it ended",
+			async () => {
+				const api = http(
+					{
+						base: "http://localhost",
+						fetch: async (_, init) => new Response(
+							new ReadableStream(
+								{
+									start: controller => init.signal?.addEventListener(
+										"abort",
+										() => controller.error(init.signal?.reason)
+									)
+								}
+							)
+						)
+					}
+				)
+				/** @type {AsyncIterable<unknown>} */
+				const lines = await api.get("/live", {}, { as: "ndjson" })
+				const reader = lines[Symbol.asyncIterator]()
+				const pending = reader.next()
+				assert.deepEqual(
+					await reader.return?.(),
+					{ done: true, value: void 0 }
+				)
+				assert.deepEqual(
+					await pending,
+					{ done: true, value: void 0 }
+				)
+				assert.deepEqual(
+					await reader.next(),
+					{ done: true, value: void 0 }
+				)
+				assert.deepEqual(
+					await reader.return?.(),
+					{ done: true, value: void 0 }
 				)
 			}
 		)
@@ -852,6 +1054,49 @@ describe(
 			}
 		)
 		it(
+			"fills a date path parameter with its ISO string",
+			async () => {
+				const api = http(
+					{
+						base: "https://api.example.com",
+						fetch: async url => new Response(url)
+					}
+				)
+				assert.equal(
+					await api.get(
+						"/days/:day",
+						{ day: new Date(0) }
+					),
+					"https://api.example.com/days/1970-01-01T00%3A00%3A00.000Z"
+				)
+			}
+		)
+		it(
+			"gives a caller that joins a request the same data when a response hook made it uncloneable",
+			async () => {
+				const api = create(
+					{
+						on: {
+							response: ({ data }) => {
+								/** @type {{ format?: () => string }} */(data)/**/.format = () => "formatted"
+							}
+						}
+					}
+				)
+				const [ first, second ] = await Promise.all(
+					[
+						api.get("/echo", { key: "uncloneable" }),
+						api.get("/echo", { key: "uncloneable" })
+					]
+				)
+				assert.strictEqual(first, second)
+				assert.equal(
+					server.hits.get("uncloneable"),
+					1
+				)
+			}
+		)
+		it(
 			"header precedence",
 			async () => {
 				const api = create(
@@ -1065,6 +1310,32 @@ describe(
 					await rejection(offline.get("/")),
 					NetworkError
 				)
+			}
+		)
+		it(
+			"keeps a raw file name that is neither UTF-8 nor CP949 as Latin-1",
+			async () => {
+				assert.equal(
+					await file_name(
+						"attachment; filename=\"\xa5\xab.txt\""
+					),
+					"\xa5\xab.txt"
+				)
+			}
+		)
+		it(
+			"keeps no data for an HTTP error with a null body status",
+			async () => {
+				const api = http(
+					{
+						base: "http://localhost",
+						fetch: async () => new Response(null, { status: 304 })
+					}
+				)
+				const error = await rejection(api.get("/cached"))
+				assert.instanceOf(error, HttpError)
+				assert.equal(error.status, 304)
+				assert.isUndefined(error.data)
 			}
 		)
 		it(
@@ -1362,6 +1633,37 @@ describe(
 			}
 		)
 		it(
+			"names a download without Content-Disposition after the last segment of its URL",
+			async () => {
+				const api = http(
+					{
+						base: "http://localhost",
+						fetch: async () => new Response("x")
+					}
+				)
+				assert.equal(
+					(await api.get(
+						"/files/report%20v2.pdf",
+						{},
+						{ as: "file" }
+					)).name,
+					"report v2.pdf"
+				)
+				assert.equal(
+					(await api.get("/", {}, { as: "file" })).name,
+					"download"
+				)
+				assert.equal(
+					(await api.get(
+						"/files/100%25%E0",
+						{},
+						{ as: "file" }
+					)).name,
+					"100%25%E0"
+				)
+			}
+		)
+		it(
 			"ndjson",
 			async () => {
 				const api = create()
@@ -1577,6 +1879,60 @@ describe(
 			}
 		)
 		it(
+			"never calls the request hook of a stream request cancelled while its headers resolve",
+			async () => {
+				/**
+				 * @param {number} hops
+				 * @param {() => void} callback
+				 * @returns {void}
+				 */
+				function after_microtasks(hops, callback) {
+					if (hops) {
+						queueMicrotask(
+							() => after_microtasks(hops - 1, callback)
+						)
+					} else {
+						callback()
+					}
+				}
+				/** @type {boolean[]} */
+				const hooked = []
+				for (let hops = 0; hops < 12; hops++) {
+					const controller = new AbortController()
+					/** @type {(() => void) | undefined} */
+					let release
+					const api = http(
+						{
+							base: "http://localhost",
+							fetch: async () => Response.json({}),
+							headers: () => new Promise(
+								resolve => {
+									release = () => resolve({})
+								}
+							),
+							on: {
+								request: () => void hooked.push(controller.signal.aborted)
+							}
+						}
+					)
+					const request = api.get(
+						"/a",
+						{},
+						{
+							as: "ndjson",
+							signal: controller.signal
+						}
+					)
+					release?.()
+					after_microtasks(hops, () => controller.abort())
+					await request.safe()
+				}
+				assert.notInclude(hooked, true)
+				assert.isAbove(hooked.length, 0)
+				assert.isBelow(hooked.length, 12)
+			}
+		)
+		it(
 			"parse timeout",
 			async () => {
 				const slow_parse = create({ timeout: 30 }).get(
@@ -1592,6 +1948,54 @@ describe(
 					await rejection(slow_parse),
 					TimeoutError
 				)
+			}
+		)
+		it(
+			"parses event stream lines split between chunks",
+			async () => {
+				const chunks = [
+					"data: a\r",
+					"\n",
+					"\n",
+					"data\n\n",
+					"foo: bar\n",
+					"data: b\r",
+					"\n\n"
+				]
+				const api = http(
+					{
+						base: "http://localhost",
+						fetch: async () => new Response(
+							new ReadableStream(
+								{
+									start: controller => {
+										for (const chunk of chunks) {
+											controller.enqueue(
+												new TextEncoder().encode(chunk)
+											)
+										}
+										controller.close()
+									}
+								}
+							),
+							{
+								headers: {
+									"Content-Type": "text/event-stream"
+								}
+							}
+						)
+					}
+				)
+				/** @type {string[]} */
+				const data = []
+				for await (const event of api.sse(
+					"/events",
+					{},
+					{ reconnect: false }
+				)) {
+					data.push(event.data)
+				}
+				assert.deepEqual(data, [ "a", "", "b" ])
 			}
 		)
 		it(
@@ -1703,6 +2107,25 @@ describe(
 			}
 		)
 		it(
+			"puts the query of the base before the query of the path",
+			async () => {
+				const api = http(
+					{
+						base: "https://api.example.com/v1?app=web",
+						fetch: async url => new Response(url)
+					}
+				)
+				assert.equal(
+					await api.get("/items?page=2"),
+					"https://api.example.com/v1/items?app=web&page=2"
+				)
+				assert.equal(
+					await api.get("/items?"),
+					"https://api.example.com/v1/items?app=web"
+				)
+			}
+		)
+		it(
 			"query encoding",
 			async () => {
 				const api = create()
@@ -1738,6 +2161,103 @@ describe(
 					/** @type {Echo} */(await custom.get("/echo", { q: "a b" }))/**/.url,
 					"/echo?q=a+b"
 				)
+			}
+		)
+		it(
+			"reads a binary HTTP error body as a Blob",
+			async () => {
+				const api = http(
+					{
+						base: "http://localhost",
+						fetch: async () => new Response(
+							new Uint8Array([ 1, 2 ]),
+							{
+								headers: {
+									"Content-Type": "application/octet-stream"
+								},
+								status: 500
+							}
+						)
+					}
+				)
+				const error = await rejection(api.get("/binary"))
+				assert.instanceOf(error, HttpError)
+				assert.instanceOf(error.data, Blob)
+			}
+		)
+		it(
+			"reads a form response as FormData",
+			async () => {
+				const api = http(
+					{
+						base: "http://localhost",
+						fetch: async () => new Response(
+							new URLSearchParams({ a: "1" })
+						)
+					}
+				)
+				/** @type {FormData} */
+				const form = await api.get("/form", {}, { as: "formData" })
+				assert.equal(form.get("a"), "1")
+			}
+		)
+		it(
+			"reads a raw CP949 Hanja next to no ASCII letter as CP949, though its bytes are Latin-1 letters",
+			async () => {
+				assert.equal(
+					await file_name(
+						`attachment; filename="${encode_cp949("韓.txt")}"`
+					),
+					"韓.txt"
+				)
+				assert.equal(
+					await file_name(
+						`attachment; filename="${encode_cp949("狎.txt")}"`
+					),
+					"狎.txt"
+				)
+			}
+		)
+		it(
+			"reads a response without a body as a null stream",
+			async () => {
+				const api = http(
+					{
+						base: "http://localhost",
+						fetch: async () => new Response(null, { status: 204 })
+					}
+				)
+				assert.isNull(
+					await api.get("/empty", {}, { as: "stream" })
+				)
+			}
+		)
+		it(
+			"reads an unquoted file name",
+			async () => {
+				assert.equal(
+					await file_name(
+						"attachment; filename=report.pdf"
+					),
+					"report.pdf"
+				)
+			}
+		)
+		it(
+			"reads ndjson that ends with a newline",
+			async () => {
+				const api = http(
+					{
+						base: "http://localhost",
+						fetch: async () => new Response("{\"a\":1}\n{\"b\":2}\n")
+					}
+				)
+				/** @type {unknown[]} */
+				const lines = []
+				for await (const line of await api.get("/lines", {}, { as: "ndjson" })) {
+					lines.push(line)
+				}
+				assert.deepEqual(lines, [ { a: 1 }, { b: 2 } ])
 			}
 		)
 		it(
@@ -2248,6 +2768,243 @@ describe(
 				await sleep(150)
 				assert.equal(token, "fresh")
 				assert.lengthOf(reasons, 1)
+			}
+		)
+		it(
+			"rejects a request with its own 401 when the refresh that its 401 predates already failed",
+			async () => {
+				let refreshes = 0
+				/** @type {(() => void) | undefined} */
+				let release
+				/** @type {unknown[]} */
+				const reasons = []
+				const api = http(
+					{
+						base: "http://localhost",
+						fetch: async url => {
+							if (url.endsWith("/slow")) {
+								await new Promise(
+									resolve => {
+										release = () => resolve(void 0)
+									}
+								)
+							}
+							return Response.json(
+								{ message: "Expired" },
+								{ status: 401 }
+							)
+						},
+						on: {
+							unauthorized: (_, reason) => void reasons.push(reason)
+						},
+						refresh: async () => {
+							refreshes++
+							throw Error("Refresh token expired")
+						}
+					}
+				)
+				const slow = rejection(api.get("/slow"))
+				await eventually(() => !!release)
+				const fast = await rejection(api.get("/fast"))
+				assert.equal(refreshes, 1)
+				release?.()
+				const late = await slow
+				assert.instanceOf(fast, HttpError)
+				assert.instanceOf(late, HttpError)
+				assert.equal(
+					/** @type {HttpError} */(late)/**/.status,
+					401
+				)
+				assert.equal(refreshes, 1)
+				assert.equal(reasons.length, 1)
+			}
+		)
+		it(
+			"rejects an event stream response without a Content-Type",
+			async () => {
+				const api = http(
+					{
+						base: "http://localhost",
+						fetch: async () => new Response(new Uint8Array(0))
+					}
+				)
+				const error = await rejection(
+					api.sse("/events")[Symbol.asyncIterator]()
+						.next()
+				)
+				assert.instanceOf(error, TypeError)
+				assert.equal(
+					error.message,
+					"Expected text/event-stream from /events, but received null"
+				)
+			}
+		)
+		it(
+			"rejects an event stream with a ReadableStream body that would reconnect",
+			async () => {
+				/** @type {unknown[]} */
+				const errors = []
+				const api = create(
+					{
+						on: {
+							error: error => void errors.push(error)
+						}
+					}
+				)
+				const error = await rejection(
+					api.sse(
+						"/sse",
+						{},
+						{
+							body: new ReadableStream(),
+							method: "POST",
+							reconnect: true
+						}
+					)[Symbol.asyncIterator]()
+						.next()
+				)
+				assert.instanceOf(error, TypeError)
+				assert.deepEqual(errors, [ error ])
+			}
+		)
+		it(
+			"rejects with the CancelError passed to cancel",
+			async () => {
+				const reason = new CancelError("Closed the form")
+				const request = create().get("/slow", { ms: 500 })
+				request.cancel(reason)
+				assert.strictEqual(await rejection(request), reason)
+			}
+		)
+		it(
+			"rejects with the error of a retry when that rejects",
+			async () => {
+				const failure = Error("The check failed")
+				const error = await rejection(
+					create().get(
+						"/flaky",
+						{ fail: 1, key: "when-rejects" },
+						{
+							retry: {
+								count: 1,
+								when: async () => {
+									throw failure
+								}
+							}
+						}
+					)
+				)
+				assert.strictEqual(error, failure)
+				assert.equal(
+					server.hits.get("when-rejects"),
+					1
+				)
+			}
+		)
+		it(
+			"reports an upload whose total the browser does not know without a ratio",
+			async () => {
+				class UnknownTotalXMLHttpRequest {
+					response = new Blob([ "{}" ])
+					status = 200
+					statusText = "OK"
+					upload = {
+						/** @type {((event: ProgressEventInit) => void) | null} */
+						onprogress: null
+					}
+					/** @type {(() => void) | null} */
+					onload = null
+					abort() {}
+					getAllResponseHeaders() {
+						return "content-type: application/json\r\n"
+					}
+					open() {}
+					send() {
+						const upload = /** @type {{ onprogress: (event: ProgressEventInit) => void }} */(this.upload)/**/
+						upload.onprogress(
+							{
+								lengthComputable: false,
+								loaded: 0,
+								total: 0
+							}
+						)
+						setTimeout(
+							() => /** @type {() => void} */(this.onload)/**/()
+						)
+					}
+					setRequestHeader() {}
+				}
+				vi.stubGlobal(
+					"XMLHttpRequest",
+					UnknownTotalXMLHttpRequest
+				)
+				/** @type {import("async-lube").Progress[]} */
+				const progress = []
+				assert.deepEqual(
+					await create().post(
+						"/upload",
+						"",
+						{
+							upload: value => progress.push(value)
+						}
+					),
+					{}
+				)
+				assert.deepEqual(
+					progress,
+					[
+						{
+							loaded: 0,
+							ratio: void 0,
+							total: void 0
+						}
+					]
+				)
+			}
+		)
+		it(
+			"reports the status of the loop of an event stream that started last",
+			async () => {
+				/** @type {import("async-lube").ConnectionStatus[]} */
+				const statuses = []
+				const api = http(
+					{
+						base: "http://localhost",
+						fetch: async () => new Response(
+							"data: x\n\n",
+							{
+								headers: {
+									"Content-Type": "text/event-stream"
+								}
+							}
+						)
+					}
+				)
+				const stream = api.sse(
+					"/events",
+					{},
+					{
+						onStatus: status => void statuses.push(status),
+						reconnect: false
+					}
+				)
+				const first = stream[Symbol.asyncIterator]()
+				const second = stream[Symbol.asyncIterator]()
+				assert.equal(
+					(await first.next()).value?.data,
+					"x"
+				)
+				assert.deepEqual(statuses, [])
+				assert.equal(
+					(await second.next()).value?.data,
+					"x"
+				)
+				assert.deepEqual(
+					statuses,
+					[ "connecting", "open" ]
+				)
+				await first.return?.()
+				await second.return?.()
 			}
 		)
 		it(
@@ -2775,6 +3532,109 @@ describe(
 						}
 					))/**/.count,
 					2
+				)
+			}
+		)
+		it(
+			"sends a request again without a refresh when its 401 predates a finished refresh",
+			async () => {
+				let token = "old"
+				let refreshes = 0
+				/** @type {(() => void) | undefined} */
+				let release
+				const api = http(
+					{
+						base: "http://localhost",
+						fetch: async (url, init) => {
+							const authorization = new Headers(init.headers).get("Authorization")
+							if (url.endsWith("/slow") && authorization == "Bearer old") {
+								await new Promise(
+									resolve => {
+										release = () => resolve(void 0)
+									}
+								)
+							}
+							return authorization == "Bearer new"
+								? Response.json({ ok: true })
+								: Response.json(
+									{ message: "Expired" },
+									{ status: 401 }
+								)
+						},
+						headers: () => ({
+							Authorization: "Bearer " + token
+						}),
+						refresh: async () => {
+							refreshes++
+							token = "new"
+						}
+					}
+				)
+				const slow = api.get("/slow")
+				assert.deepEqual(
+					await api.get("/fast"),
+					{ ok: true }
+				)
+				await eventually(() => !!release)
+				release?.()
+				assert.deepEqual(await slow, { ok: true })
+				assert.equal(refreshes, 1)
+			}
+		)
+		it(
+			"sends an OPTIONS request",
+			async () => {
+				/** @type {Echo} */
+				const echo = await create().options("/echo")
+				assert.equal(echo.method, "OPTIONS")
+			}
+		)
+		it(
+			"sends nothing for a throttled request cancelled before it starts",
+			async () => {
+				const request = create().get(
+					"/count",
+					{ key: "throttle-cancel" },
+					{ throttle: 50 }
+				)
+				request.cancel()
+				assert.instanceOf(
+					await rejection(request),
+					CancelError
+				)
+				assert.isFalse(
+					server.hits.has("throttle-cancel")
+				)
+			}
+		)
+		it(
+			"sends the body option of patch and put when their body argument is undefined",
+			async () => {
+				const api = create()
+				/** @type {Echo} */
+				const patched = await api.patch(
+					"/echo",
+					void 0,
+					{ body: { a: 1 } }
+				)
+				assert.equal(patched.body, "{\"a\":1}")
+				/** @type {Echo} */
+				const put = await api.put("/echo", void 0, { body: "text" })
+				assert.equal(put.body, "text")
+			}
+		)
+		it(
+			"sends the given idempotency key",
+			async () => {
+				/** @type {Echo} */
+				const echo = await create().post(
+					"/echo",
+					{ a: 1 },
+					{ idempotent: "order-7" }
+				)
+				assert.equal(
+					echo.headers["idempotency-key"],
+					"order-7"
 				)
 			}
 		)

@@ -7,23 +7,23 @@
 	"devDependencies": {
 		"@js-temporal/polyfill": "^0.5.1",
 		"@types/estree": "^1.0.9",
-		"@types/node": "^26.6.1",
-		"@typescript-eslint/parser": "^8.70.0",
+		"@types/node": "^26.6.5",
+		"@typescript-eslint/parser": "^8.71.2",
 		"@typescript/native": "npm:typescript@^7.0.2",
-		"@vitest/browser": "^5.0.1",
-		"@vitest/browser-playwright": "^5.0.1",
-		"@vitest/coverage-v8": "^5.0.1",
+		"@vitest/browser": "^5.0.4",
+		"@vitest/browser-playwright": "^5.0.4",
+		"@vitest/coverage-v8": "^5.0.4",
 		"async-lube": "workspace:^",
 		"data-lube": "workspace:^",
 		"datetime-lube": "workspace:^",
-		"eslint": "^10.10.0",
+		"eslint": "^10.12.0",
 		"eslint-plugin-lube": "workspace:^",
 		"hangul-lube": "workspace:^",
-		"playwright": "^1.63.0",
-		"svelte": "^5.57.0",
-		"svelte-eslint-parser": "^1.8.1",
+		"playwright": "^1.64.0",
+		"svelte": "^5.57.2",
+		"svelte-eslint-parser": "^1.9.0",
 		"typescript": "npm:@typescript/typescript6@^6.0.2",
-		"vitest": "^5.0.1"
+		"vitest": "^5.0.4"
 	},
 	"engines": {
 		"node": "^22.13.0 || ^24.0.0 || >=26.0.0"
@@ -38,7 +38,7 @@
 	"scripts": {
 		"dts": "pnpm -r dts",
 		"lint": "eslint --cache --fix . && tsc && tsc --noEmit --strict --skipLibCheck false --ignoreConfig packages/async-lube/public.d.ts packages/data-lube/public.d.ts packages/datetime-lube/public.d.ts",
-		"test": "vitest run --coverage && vitest run --config vitest.browser.config.js"
+		"test": "vitest run --coverage"
 	},
 	"type": "module",
 	"version": "0.0.0"

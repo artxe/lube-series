@@ -177,7 +177,7 @@ function offset_of(time, zone) {
 		return 0
 	}
 	return (match[1] == "-" ? -1 : 1) * (
-		(+(match[2] ?? 0) * 60 + +(match[3] ?? 0)) * 60000
+		(+/** @type {string} */(match[2])/**/ * 60 + +/** @type {string} */(match[3])/**/) * 60000
 		+ +(match[4] ?? 0) * 1000
 	)
 }

@@ -64,11 +64,9 @@ export function rewind(execution, error) {
 				return
 			}
 			const { saved } = execution
-			const index = saved.journal.indexOf(failure.entry)
-			if (index < 0) {
-				return
-			}
-			for (const later of saved.journal.splice(index).reverse()) {
+			for (const later of saved.journal.splice(
+				saved.journal.indexOf(failure.entry)
+			).reverse()) {
 				if (later.type != "wait" || !later.done || later.timed_out) {
 					continue
 				}
@@ -108,9 +106,9 @@ export function unblock(execution, waiter) {
 	if (!waiter.block) {
 		return
 	}
-	const index = execution.blocked.indexOf(waiter.block)
-	if (index >= 0) {
-		execution.blocked.splice(index, 1)
-	}
+	execution.blocked.splice(
+		execution.blocked.indexOf(waiter.block),
+		1
+	)
 	waiter.block = void 0
 }

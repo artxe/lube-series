@@ -1,5 +1,12 @@
 allowBuilds:
   esbuild: false
+minimumReleaseAgeExclude:
+  - async-lube
+  - data-lube
+  - datetime-lube
+  - dom-eater
+  - eslint-plugin-lube
+  - hangul-lube
 ignoredBuiltDependencies:
   - esbuild
 packages:

@@ -89,6 +89,7 @@ Both configs are flat config objects with `plugins` and `rules`, and differ in h
 
 **`configs.strict`** is the house style of this repository, and several of its rules cannot be fixed. It is everything in `recommended` plus:
 - `svelte-naming-convention`, which renames declarations to snake_case.
+- `prefer-param-tag`, which moves the inline `/** @type {T} */` comments of a function declaration's parameters into `@param` tags on the declaration ([prefer-param-tag](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/prefer-param-tag.md)).
 - `prefer-type-tag`, which moves the cast of a declaration's value into a `@type` tag on the declaration, in a project linted with type information ([prefer-type-tag](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/prefer-type-tag.md) shows the parser options).
 - `ascii-order` for import statements, object keys, function declarations and test cases too (see below).
 - `pretty-sequence` and `pretty-imports` at 30 characters.
@@ -111,6 +112,7 @@ Override a rule after the spread: `rules: { ...lube.configs.recommended.rules, "
 | --- | --- | --- |
 | [ascii-order](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/ascii-order.md) | ASCII order of import statements, import and export names, object keys, function declarations and test cases | names only |
 | [curly](https://eslint.org/docs/latest/rules/curly) | Braces around the bodies of `if`, `else`, `for`, `while` and `do`, as ESLint's own rule does, with a fix that keeps a comment in front of the body, such as a JSDoc cast, inside the braces | no |
+| [prefer-param-tag](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/prefer-param-tag.md) | JSDoc `@param` tags on a function declaration instead of inline `/** @type {T} */` comments in its parameter list | no |
 | [prefer-type-tag](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/prefer-type-tag.md) | A JSDoc `@type` tag on a declaration instead of a cast of its value, wherever the tag would type check (needs type information) | no |
 | [pretty-imports](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/pretty-imports.md) | Import and export names on one line when they fit, or one per line | yes |
 | [pretty-jsdoc-casting](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/pretty-jsdoc-casting.md) | JSDoc type casts written as `/** @type {T} */(value)/**/` | yes |

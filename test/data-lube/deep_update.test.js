@@ -159,6 +159,29 @@ describe(
 			}
 		)
 		it(
+			"array subclass keeps its holes",
+			() => {
+				/** @extends {Array<{ n: number }>} */
+				class List extends Array {}
+				const list = new List(3)
+				list[0] = { n: 0 }
+				list[2] = { n: 2 }
+				const base = { list }
+				const next = deepUpdate(
+					base,
+					draft => {
+						draft.list.push({ n: 3 })
+					}
+				)
+				assert.instanceOf(next.list, List)
+				assert.equal(next.list.length, 4)
+				assert.isFalse(1 in next.list)
+				assert.equal(next.list[0], list[0])
+				assert.equal(next.list[3]?.n, 3)
+				assert.equal(list.length, 3)
+			}
+		)
+		it(
 			"arrays",
 			() => {
 				const base = create()
@@ -1140,6 +1163,135 @@ describe(
 			}
 		)
 		it(
+			"graph recipe finds changes under set fields, sparse arrays and array subclasses",
+			() => {
+				/** @extends {Array<{ shared: { n: number } }>} */
+				class List extends Array {}
+				const shared = { n: 1 }
+				const tags = Object.assign(new Set(), { meta: { shared } })
+				/** @type {({ shared: { n: number } } | undefined)[]} */
+				const sparse = new Array(5000)
+				sparse[10] = { shared }
+				const list = Object.assign(
+					new List(),
+					{
+						extra: { shared },
+						label: "x",
+						nothing: null
+					}
+				)
+				list.push({ shared })
+				const base = { list, shared, sparse, tags }
+				const next = deepUpdate(
+					base,
+					draft => {
+						draft.shared.n = 2
+					},
+					{ graph: true }
+				)
+				assert.equal(next.shared.n, 2)
+				assert.equal(
+					next.tags.meta.shared,
+					next.shared
+				)
+				assert.equal(
+					next.sparse[10]?.shared,
+					next.shared
+				)
+				assert.isFalse(0 in next.sparse)
+				assert.equal(
+					next.list[0]?.shared,
+					next.shared
+				)
+				assert.equal(
+					next.list.extra.shared,
+					next.shared
+				)
+				assert.equal(next.list.label, "x")
+				assert.instanceOf(next.list, List)
+				assert.equal(base.shared.n, 1)
+				assert.equal(
+					base.tags.meta.shared,
+					base.shared
+				)
+			}
+		)
+		it(
+			"graph recipe keeps frozen added values that hold originals or getters",
+			() => {
+				/** @type {{ a: { n: number }, b: { n: number }, holder?: { a: { n: number } }, view?: { readonly b: { n: number } } }} */
+				const base = { a: { n: 1 }, b: { n: 1 } }
+				const holder = Object.freeze({ a: base.a })
+				const view = Object.freeze(
+					{
+						get b() {
+							return base.b
+						}
+					}
+				)
+				const next = deepUpdate(
+					base,
+					draft => {
+						assert.equal(draft.a.n, 1)
+						draft.b.n = 2
+						draft.holder = holder
+						draft.view = view
+					},
+					{ graph: true }
+				)
+				assert.equal(next.holder, holder)
+				assert.equal(next.holder?.a, next.a)
+				assert.equal(next.a, base.a)
+				assert.equal(next.b.n, 2)
+				assert.isTrue(Object.isFrozen(next.view))
+				assert.isFunction(
+					Object.getOwnPropertyDescriptor(next.view, "b")?.get
+				)
+				assert.equal(next.view?.b, base.b)
+			}
+		)
+		it(
+			"graph recipe that puts originals back keeps them",
+			() => {
+				const member = { n: 1 }
+				const base = {
+					a: { n: 1 },
+					m: new Map([ [ "k", { n: 1 } ] ]),
+					s: new Set([ member ])
+				}
+				assert.equal(
+					deepUpdate(
+						base,
+						draft => {
+							assert.equal(draft.a.n, 1)
+							draft.a = base.a
+							assert.equal(draft.m.get("k")?.n, 1)
+							draft.m.set(
+								"k",
+								/** @type {{ n: number }} */(base.m.get("k"))/**/
+							)
+						},
+						{ graph: true }
+					),
+					base
+				)
+				const next = deepUpdate(
+					base,
+					draft => {
+						for (const item of draft.s) {
+							assert.equal(item.n, 1)
+						}
+						draft.s.delete(member)
+						draft.s.add(member)
+					},
+					{ graph: true }
+				)
+				assert.notEqual(next.s, base.s)
+				assert.deepEqual([ ...next.s ], [ member ])
+				assert.equal([ ...next.s ][0], member)
+			}
+		)
+		it(
 			"hidden symbol keys and restored map values",
 			() => {
 				const symbol = Symbol("s")
@@ -1625,6 +1777,30 @@ describe(
 			}
 		)
 		it(
+			"nested updates of an outer draft keep outer drafts put in new values",
+			() => {
+				/** @type {{ a: { n: number }, b?: { n: number }, c?: { ref: { n: number } }, inner?: unknown }} */
+				const base = { a: { n: 1 } }
+				const next = deepUpdate(
+					base,
+					draft => {
+						draft.inner = deepUpdate(
+							draft,
+							inner => {
+								inner.b = draft.a
+								inner.c = { ref: draft.a }
+							}
+						)
+					}
+				)
+				const inner = /** @type {typeof base} */(next.inner)/**/
+				assert.equal(inner.b, base.a)
+				assert.equal(inner.c?.ref, base.a)
+				assert.equal(next.a, base.a)
+				assert.isFalse(has_proxy(next))
+			}
+		)
+		it(
 			"nested updates of frozen values holding outer drafts",
 			() => {
 				const base = {
@@ -1727,6 +1903,41 @@ describe(
 				assert.equal(updated.a.b.x, 2)
 				assert.isTrue(Object.isFrozen(updated.a))
 				assert.isTrue(Object.isFrozen(updated.a.b))
+			}
+		)
+		it(
+			"nested updates that iterate an outer map draft and look up an outer set draft",
+			() => {
+				const base = {
+					m: new Map([ [ "k", 1 ] ]),
+					s: new Set([ 1, 2 ])
+				}
+				/** @type {string[]} */
+				let keys = []
+				let found = false
+				const next = deepUpdate(
+					base,
+					draft => {
+						deepUpdate(
+							draft.m,
+							inner => {
+								keys = [ ...inner.keys() ]
+							}
+						)
+						draft.s = deepUpdate(
+							draft.s,
+							inner => {
+								inner.add(3)
+								found = inner.has(2)
+							}
+						)
+					}
+				)
+				assert.deepEqual(keys, [ "k" ])
+				assert.isTrue(found)
+				assert.deepEqual([ ...next.s ], [ 1, 2, 3 ])
+				assert.equal(next.m, base.m)
+				assert.equal(base.s.size, 2)
 			}
 		)
 		it(
@@ -2022,6 +2233,52 @@ describe(
 			}
 		)
 		it(
+			"original put back over its draft that a mutated base map holds writes nothing",
+			() => {
+				const child = { n: 1 }
+				const base = {
+					b: { child },
+					m: new Map([ [ "k", { n: 0 } ] ])
+				}
+				/** @type {unknown} */
+				let held
+				const next = deepUpdate(
+					base,
+					draft => {
+						const map = draft.m
+						held = draft.b.child
+						base.m.set("k", draft.b.child)
+						map.set("k", child)
+					}
+				)
+				assert.equal(next, base)
+				assert.equal(base.m.get("k"), held)
+				assert.isTrue(types.isProxy(base.m.get("k")))
+			}
+		)
+		it(
+			"original put back over its draft that a mutated base object holds writes nothing",
+			() => {
+				const child = { n: 1 }
+				/** @type {{ a: { slot?: { n: number } }, b: { child: { n: number } } }} */
+				const base = { a: {}, b: { child } }
+				/** @type {unknown} */
+				let held
+				const next = deepUpdate(
+					base,
+					draft => {
+						const object = draft.a
+						held = draft.b.child
+						base.a.slot = draft.b.child
+						object.slot = child
+					}
+				)
+				assert.equal(next, base)
+				assert.equal(base.a.slot, held)
+				assert.isTrue(types.isProxy(base.a.slot))
+			}
+		)
+		it(
 			"overridden collection methods and polluted prototypes",
 			() => {
 				class Counting extends Map {
@@ -2141,6 +2398,31 @@ describe(
 					),
 					RangeError
 				)
+			}
+		)
+		it(
+			"set draft fields read and then deleted",
+			() => {
+				/** @type {Set<number> & { meta?: { a: number } }} */
+				const tags = Object.assign(
+					new Set([ 1 ]),
+					{ meta: { a: 1 } }
+				)
+				const base = { tags }
+				const next = deepUpdate(
+					base,
+					draft => {
+						/** @type {typeof tags} */
+						const fields = draft.tags
+						assert.equal(fields.meta?.a, 1)
+						delete fields.meta
+					}
+				)
+				assert.isFalse(
+					Object.hasOwn(next.tags, "meta")
+				)
+				assert.isTrue(next.tags.has(1))
+				assert.equal(base.tags.meta?.a, 1)
 			}
 		)
 		it(
@@ -2302,6 +2584,31 @@ describe(
 					Map.prototype.get.call(next, "a"),
 					{ n: 1 }
 				)
+			}
+		)
+		it(
+			"set readers on a set of several drafted members",
+			() => {
+				const first = { n: 1 }
+				const second = { n: 2 }
+				const base = { s: new Set([ first, second ]) }
+				const next = deepUpdate(
+					base,
+					draft => {
+						const union = draft.s.union(new Set([ 3 ]))
+						assert.equal(union.size, 3)
+						assert.deepEqual(
+							[ ...union ].map(
+								item => typeof item == "number" ? item : item.n
+							),
+							[ 1, 2, 3 ]
+						)
+						assert.isTrue(
+							draft.s.isSubsetOf(new Set([ first, second ]))
+						)
+					}
+				)
+				assert.equal(next, base)
 			}
 		)
 		it(
@@ -3298,6 +3605,30 @@ describe(
 						{ graph }
 					)
 				}
+			}
+		)
+		it(
+			"snapshots of drafts nested in a graph recipe",
+			() => {
+				const base = { a: { n: 1 } }
+				/** @type {unknown} */
+				let copied
+				const next = deepUpdate(
+					base,
+					draft => {
+						draft.a.n = 2
+						deepUpdate(
+							{ ref: draft.a },
+							inner => {
+								copied = deepCopy(inner.ref)
+							}
+						)
+					},
+					{ graph: true }
+				)
+				assert.deepEqual(copied, { n: 2 })
+				assert.notEqual(copied, next.a)
+				assert.equal(base.a.n, 1)
 			}
 		)
 		it(

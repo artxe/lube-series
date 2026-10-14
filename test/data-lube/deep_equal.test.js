@@ -283,6 +283,23 @@ describe(
 			}
 		)
 		it(
+			"finalization registries compare by identity",
+			() => {
+				const registry = new FinalizationRegistry(() => {})
+				assert.isTrue(
+					deepEqual({ registry }, { registry })
+				)
+				assert.isFalse(
+					deepEqual(
+						{ registry },
+						{
+							registry: new FinalizationRegistry(() => {})
+						}
+					)
+				)
+			}
+		)
+		it(
 			"literals",
 			() => {
 				assert.isTrue(deepEqual(undefined, void 0))
@@ -688,6 +705,39 @@ describe(
 			}
 		)
 		it(
+			"maps sharing an object key with values past the depth limit",
+			() => {
+				/**
+				 * @param {number} end
+				 * @returns {Record<string, unknown>}
+				 */
+				function chain(end) {
+					/** @type {Record<string, unknown>} */
+					let node = { end }
+					for (let i = 0; i < 250; i++) {
+						node = { next: node }
+					}
+					return node
+				}
+				const key = { id: 1 }
+				/**
+				 * @param {number} end
+				 * @returns {Map<unknown, unknown>}
+				 */
+				function map_of(end) {
+					/** @type {[ unknown, unknown ][]} */
+					const entries = [
+						[ key, chain(end) ],
+						[ "other", 1 ]
+					]
+					return new Map(entries)
+				}
+				const map = map_of(1)
+				assert.isTrue(deepEqual(map, map_of(1)))
+				assert.isFalse(deepEqual(map, map_of(2)))
+			}
+		)
+		it(
 			"matches that rely on assumed pairs",
 			() => {
 				const second = new Set()
@@ -704,6 +754,35 @@ describe(
 							new Set([ a, { s: second, tag: "Y" } ])
 						],
 						[ new Set([ y, x ]) ]
+					)
+				)
+			}
+		)
+		it(
+			"members whose hashes collide in a large bucket",
+			() => {
+				/**
+				 * @param {number[]} tags
+				 * @returns {Set<number[]>}
+				 */
+				function members(tags) {
+					return new Set(
+						tags.map(
+							tag => [ ...new Array(16).fill(0), tag ]
+						)
+					)
+				}
+				const tags = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 9 ]
+				const rotated = [ ...tags.slice(1), 1 ]
+				assert.isTrue(
+					deepEqual(members(tags), members(rotated))
+				)
+				assert.isFalse(
+					deepEqual(
+						members(tags),
+						members(
+							[ ...rotated.slice(0, -1), 10 ]
+						)
 					)
 				)
 			}
@@ -1129,6 +1208,80 @@ describe(
 						)
 					)
 				}
+			}
+		)
+		it(
+			"passes on an error that a getter throws",
+			() => {
+				const value = {
+					get item() {
+						throw new RangeError("unreadable")
+					}
+				}
+				assert.throws(
+					() => deepEqual(value, { item: 1 }),
+					RangeError,
+					"unreadable"
+				)
+			}
+		)
+		it(
+			"set members that share an object deep in a tree",
+			() => {
+				/**
+				 * @param {unknown} shared
+				 * @param {number} tag
+				 * @returns {unknown[]}
+				 */
+				function member(shared, tag) {
+					return [
+						...new Array(16).fill(0),
+						shared,
+						tag
+					]
+				}
+				/**
+				 * @param {Set<unknown[]>} set
+				 * @returns {Record<string, unknown>}
+				 */
+				function nest(set) {
+					/** @type {Record<string, unknown>} */
+					let node = { set }
+					for (let i = 0; i < 70; i++) {
+						node = { next: node }
+					}
+					return node
+				}
+				const shared = { inner: {} }
+				const left = nest(
+					new Set(
+						[ 1, 2, 3, 4 ].map(tag => member(shared, tag))
+					)
+				)
+				assert.isTrue(
+					deepEqual(
+						left,
+						nest(
+							new Set(
+								[ 1, 4, 2, 3 ].map(
+									tag => member({ inner: {} }, tag)
+								)
+							)
+						)
+					)
+				)
+				assert.isFalse(
+					deepEqual(
+						left,
+						nest(
+							new Set(
+								[ 1, 4, 2, 5 ].map(
+									tag => member({ inner: {} }, tag)
+								)
+							)
+						)
+					)
+				)
 			}
 		)
 		it(

@@ -228,11 +228,9 @@ function draft_for(value, kind, parent) {
 				break
 			}
 		}
-	}
-	if (known && !scope.graph) {
-		scope.graph = scope.found = true
-		if (seen) {
-			index_drafts(scope)
+		if (known) {
+			scope.graph = scope.found = true
+			index_drafts(scope, seen)
 		}
 	}
 	return known
@@ -934,12 +932,13 @@ function forget(scope, value) {
 }
 /**
  * @param {DraftScope} scope
+ * @param {DraftState[]} listed
  * @returns {void}
  */
-function index_drafts(scope) {
+function index_drafts(scope, listed) {
 	/** @type {Map<unknown, DraftState>} */
 	const map = new Map()
-	for (const state of scope.listed ?? []) {
+	for (const state of listed) {
 		map.set(state.base, state)
 	}
 	scope.drafts = map
@@ -1264,7 +1263,7 @@ function original_draft_base(scope, value) {
 function original_of(state, item) {
 	let value = item
 	for (let current = /** @type {DraftState | undefined} */(state)/**/; current?.kind == "Set"; current = state_of(current.base)) {
-		for (const [ original, draft ] of current.members ?? []) {
+		for (const [ original, draft ] of /** @type {Map<unknown, unknown>} */(current.members)/**/) {
 			if (draft === value) {
 				value = original
 				break
@@ -1543,9 +1542,7 @@ function remember(
 			false
 		)
 	}
-	recent.result = result_tree === undefined
-		? undefined
-		: result
+	recent.result = result
 	recent.result_tree = !!result_tree
 	recent.value = value_tree === undefined
 		? undefined

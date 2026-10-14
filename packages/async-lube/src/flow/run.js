@@ -218,10 +218,10 @@ export function defer(c, job) {
  */
 export function drain(c) {
 	while (c.running < c.concurrency && c.queue.length) {
-		const name = /** @type {string} */(c.queue.shift())/**/
-		if (get_record(c, name).status == "pending") {
-			start(c, name)
-		}
+		start(
+			c,
+			/** @type {string} */(c.queue.shift())/**/
+		)
 	}
 }
 /**

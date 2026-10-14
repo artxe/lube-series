@@ -25,6 +25,113 @@ describe(
 	"start_of",
 	() => {
 		it(
+			"day entered briefly by a forward jump before midnight starts at the jump",
+			() => {
+				const rise = Date.parse("2024-01-09T22:30:00.000Z")
+				const fall = Date.parse("2024-01-09T22:50:00.000Z")
+				const native = Intl.DateTimeFormat
+				Intl.DateTimeFormat = /** @type {typeof Intl.DateTimeFormat} */(/** @type {unknown} */(class extends native {
+					/**
+					 * @override
+					 * @param {Date | number=} date
+					 * @returns {string}
+					 */
+					format(date) {
+						const time = Number(date)
+						return time >= rise && time < fall
+							? "1/10/2024, GMT+02:00"
+							: "1/10/2024, GMT+01:00"
+					}
+				}))/**/
+				try {
+					const zone = "Etc/GMT-1"
+					const inside = new Date("2024-01-09T22:40:00.000Z")
+					assert.equal(
+						dateToString(inside, "YYYY-MM-DD HH:mm", zone),
+						"2024-01-10 00:40"
+					)
+					assert.equal(
+						startOf(inside, "D", zone).getTime(),
+						rise
+					)
+					assert.equal(
+						dateToString(
+							new Date(rise - 1),
+							"YYYY-MM-DD HH:mm:ss.sss",
+							zone
+						),
+						"2024-01-09 23:29:59.999"
+					)
+					assert.equal(
+						dateToString(
+							new Date(rise),
+							"YYYY-MM-DD HH:mm:ss.sss",
+							zone
+						),
+						"2024-01-10 00:30:00.000"
+					)
+					assert.equal(
+						startOf(
+							new Date("2024-01-09T23:30:00.000Z"),
+							"D",
+							zone
+						).getTime(),
+						Date.parse("2024-01-09T23:00:00.000Z")
+					)
+				} finally {
+					Intl.DateTimeFormat = native
+				}
+			}
+		)
+		it(
+			"day that starts exactly where a forward jump lands starts at that instant",
+			() => {
+				const native = Intl.DateTimeFormat
+				let rise = 0
+				const fall = Date.parse("2024-01-09T22:50:00.000Z")
+				Intl.DateTimeFormat = /** @type {typeof Intl.DateTimeFormat} */(/** @type {unknown} */(class extends native {
+					/**
+					 * @override
+					 * @param {Date | number=} date
+					 * @returns {string}
+					 */
+					format(date) {
+						const time = Number(date)
+						return time >= rise && time < fall
+							? "1/10/2024, GMT+02:00"
+							: "1/10/2024, GMT+01:00"
+					}
+				}))/**/
+				try {
+					for (const [ zone, jump ] of [
+						[
+							"Etc/GMT-2",
+							"2024-01-09T22:00:00.000Z"
+						],
+						[
+							"Etc/GMT-3",
+							"2024-01-09T21:50:00.000Z"
+						]
+					]) {
+						rise = Date.parse(
+							/** @type {string} */(jump)/**/
+						)
+						assert.equal(
+							startOf(
+								new Date("2024-01-09T22:40:00.000Z"),
+								"D",
+								zone
+							).getTime(),
+							Date.parse("2024-01-09T22:00:00.000Z"),
+							jump
+						)
+					}
+				} finally {
+					Intl.DateTimeFormat = native
+				}
+			}
+		)
+		it(
 			"daylight saving gap at midnight",
 			() => {
 				assert.equal(
@@ -122,6 +229,39 @@ describe(
 							dateToString(previous, format) != dateToString(start, format)
 							|| previous.getTimezoneOffset() != start.getTimezoneOffset()
 						)
+					}
+				}
+			}
+		)
+		it(
+			"forward jump inside an hour keeps the start before the jump",
+			() => {
+				const date = new Date("1916-07-27T22:40:00.000Z")
+				const start = Date.parse("1916-07-27T22:25:08.000Z")
+				assert.equal(
+					startOf(date, "H", "Europe/Athens").getTime(),
+					start
+				)
+				assert.equal(
+					dateToString(
+						new Date(start),
+						"YYYY-MM-DDTHH:mm:ss.sss",
+						"Europe/Athens"
+					),
+					"1916-07-28T00:00:00.000"
+				)
+				const tz = process.env["TZ"]
+				try {
+					process.env["TZ"] = "Europe/Athens"
+					assert.equal(
+						startOf(date, "H").getTime(),
+						start
+					)
+				} finally {
+					if (tz === undefined) {
+						delete process.env["TZ"]
+					} else {
+						process.env["TZ"] = tz
 					}
 				}
 			}
@@ -347,6 +487,32 @@ describe(
 					startOf(date, "Y", "UTC").getTime(),
 					Date.parse("2024-01-01T00:00:00.000Z")
 				)
+			}
+		)
+		it(
+			"unit that starts before the Date range in the local time zone",
+			() => {
+				const first = new Date(-8.64e15)
+				const tz = process.env["TZ"]
+				try {
+					process.env["TZ"] = "Asia/Seoul"
+					for (const unit of /** @type {const} */([ "H", "m" ])/**/) {
+						assert.isNaN(
+							startOf(first, unit).getTime(),
+							unit
+						)
+						assert.isNaN(
+							startOf(first, unit, "Asia/Seoul").getTime(),
+							unit
+						)
+					}
+				} finally {
+					if (tz === undefined) {
+						delete process.env["TZ"]
+					} else {
+						process.env["TZ"] = tz
+					}
+				}
 			}
 		)
 		it(

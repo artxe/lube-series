@@ -255,9 +255,7 @@ export function open_socket(setup) {
 		const next = generation
 		function retry() {
 			stop_waiting?.()
-			if (next == generation) {
-				connect(next)
-			}
+			connect(next)
 		}
 		timer = setTimeout(retry, clamp_delay(delay))
 		if (typeof globalThis.addEventListener == "function") {

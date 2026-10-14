@@ -18,6 +18,13 @@ const packages = [
 	"eslint-plugin-lube",
 	"hangul-lube"
 ]
+/** @type {{ devDependencies: Record<string, string> }} */
+const root_manifest = JSON.parse(
+	readFileSync(
+		join(packages_dir, "../package.json"),
+		"utf8"
+	)
+)
 /**
  * @param {unknown} target
  * @returns {string[]}
@@ -55,6 +62,34 @@ function packed_files(dir) {
 	const [ result ] = JSON.parse(output)
 	return /** @type {{ files: { path: string }[] }} */(result)/**/.files.map(file => file.path)
 }
+describe(
+	"dev dependencies the root also lists",
+	() => {
+		for (const name of packages) {
+			it(
+				name,
+				() => {
+					/** @type {{ devDependencies?: Record<string, string> }} */
+					const manifest = JSON.parse(
+						readFileSync(
+							join(packages_dir, name, "package.json"),
+							"utf8"
+						)
+					)
+					for (const [ dependency, specifier ] of Object.entries(manifest.devDependencies ?? {})) {
+						if (dependency in root_manifest.devDependencies) {
+							assert.equal(
+								specifier,
+								root_manifest.devDependencies[dependency],
+								dependency
+							)
+						}
+					}
+				}
+			)
+		}
+	}
+)
 describe(
 	"published files",
 	() => {

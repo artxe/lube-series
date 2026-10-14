@@ -525,6 +525,30 @@ describe(
 			}
 		)
 		it(
+			"later change that puts the original back keeps it",
+			() => {
+				const base = { a: { n: 1 } }
+				const next = deepPatch(
+					base,
+					[
+						{
+							op: "replace",
+							path: [ "a", "n" ],
+							value: 2
+						},
+						{
+							op: "replace",
+							path: [ "a" ],
+							value: base.a
+						}
+					]
+				)
+				assert.notEqual(next, base)
+				assert.equal(next.a, base.a)
+				assert.equal(base.a.n, 1)
+			}
+		)
+		it(
 			"malformed changes name the change",
 			() => {
 				const base = {

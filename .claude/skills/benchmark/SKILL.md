@@ -4,12 +4,12 @@ description: Measure lube-series hot paths against native APIs and the popular l
 ---
 # Benchmark a lube-series change
 
-Keep every script and dependency in `.scratch/`, which git ignores.
+Keep every script and dependency in `.tmp/`, which git ignores.
 
 ## Baselines
 - Native: `structuredClone`, `node:util`'s `isDeepStrictEqual`.
-- Already in the workspace: `fast-deep-equal` and `lodash.merge` under `node_modules/.pnpm`.
-- For deepUpdate, deepMerge and deepDiff: install `immer mutative deepmerge microdiff` under `.scratch/`
+- Already in the workspace: `fast-deep-equal` under `node_modules/.pnpm`.
+- For deepUpdate, deepMerge and deepDiff: install `immer mutative deepmerge lodash.merge microdiff` under `.tmp/`
   with `npm i`. immer needs `enableMapSet()` and `setAutoFreeze(false)` to compare fairly.
 
 ## Harness
@@ -23,7 +23,7 @@ Keep every script and dependency in `.scratch/`, which git ignores.
   shuffled order, class instances holding a Date, and a deeply frozen state tree.
 
 ## Profiling
-- `node --cpu-prof --cpu-prof-dir=<dir> script.mjs`, then sum self time per function from the JSON
+- `node --cpu-prof --cpu-prof-dir=<dir> script.js`, then sum self time per function from the JSON
   (`nodes` plus `samples` and `timeDeltas`).
 - A large "(garbage collector)" share means allocation, not slow logic: WeakMap entries, a closure
   per call, or a copy that the code did not need.

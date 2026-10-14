@@ -26,6 +26,15 @@ export function cases(valid, invalid) {
 			code: "var o = { b: [ \"x\" ] as const, a: f() }",
 			languageOptions: language_options,
 			options: [ { checkKeys: false } ]
+		},
+		{
+			code: "interface I { b: 1; a: 2 }",
+			languageOptions: language_options,
+			options: [ { checkKeys: false } ]
+		},
+		{
+			code: "interface I { #b: 1; a: 2 }",
+			languageOptions: language_options
 		}
 	)
 	invalid.push(
@@ -37,6 +46,12 @@ export function cases(valid, invalid) {
 		},
 		{
 			code: "declare class Map {}\nvar o = { b: new Map(), a: y }",
+			errors: [ { messageId: "keys" } ],
+			languageOptions: language_options,
+			output: null
+		},
+		{
+			code: "var o = { b: new RegExp(/a/gg), a: y }",
 			errors: [ { messageId: "keys" } ],
 			languageOptions: language_options,
 			output: null

@@ -89,12 +89,11 @@ function apply_value(c, name, value) {
 	schedule(c)
 }
 /**
- * @param {RunContext} c
  * @param {NodeRecord} record
  * @returns {unknown[]}
  */
-export function args_of(c, record) {
-	return record.args ?? values_for(c, record)
+export function args_of(record) {
+	return /** @type {unknown[]} */(record.args)/**/
 }
 /**
  * @param {RunContext} c
@@ -236,11 +235,7 @@ export function forget_runs(record) {
  * @returns {NodeRecord}
  */
 export function get_record(c, name) {
-	const record = c.records.get(name)
-	if (!record) {
-		throw Error(`Unknown flow node "${name}"`)
-	}
-	return record
+	return /** @type {NodeRecord} */(c.records.get(name))/**/
 }
 /**
  * @param {RunContext} c
@@ -261,7 +256,7 @@ async function handle_error(c, name, error, from_items, index) {
 		try {
 			const value = await options.catch(
 				error,
-				...args_of(c, record),
+				...args_of(record),
 				make_context(
 					c,
 					record,
@@ -371,7 +366,6 @@ function launch(c, record, args) {
 		set_status(c, record, "waiting")
 		if (options.timeout) {
 			const timeout = options.timeout
-			const token = record.token
 			const deadline = record.resume_deadline ?? Date.now() + timeout
 			record.deadline = deadline
 			record.resume_deadline = void 0
@@ -379,9 +373,6 @@ function launch(c, record, args) {
 			 * @returns {void}
 			 */
 			function expire() {
-				if (record.status != "waiting" || token != record.token) {
-					return
-				}
 				const left = deadline - Date.now()
 				if (left > 0) {
 					record.timer = setTimeout(expire, clamp_delay(left))

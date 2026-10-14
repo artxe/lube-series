@@ -581,7 +581,10 @@ describe(
 				 * @returns {unknown}
 				 */
 				function reference(a, b) {
-					function plain(/** @type {unknown} */ value) {
+					/**
+					 * @param {unknown} value
+					 */
+					function plain(value) {
 						return value && typeof value == "object" && Object.getPrototypeOf(value) === Object.prototype
 					}
 					if (!plain(a) || !plain(b)) {

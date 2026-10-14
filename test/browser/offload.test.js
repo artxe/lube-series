@@ -15,6 +15,29 @@ describe(
 				)
 		}
 		it(
+			"rejects the call of a Worker that crashed, and runs the next call in a new Worker",
+			async () => {
+				const crashing = offload(
+					(/** @type {boolean} */ crash) => {
+						if (!crash) {
+							return "fine"
+						}
+						setTimeout(
+							() => {
+								throw RangeError("crashed")
+							}
+						)
+						return new Promise(() => {})
+					}
+				)
+				const error = /** @type {Error} */(await rejection(crashing(true)))/**/
+				assert.instanceOf(error, Error)
+				assert.include(error.message, "crashed")
+				assert.equal(await crashing(false), "fine")
+				crashing.close()
+			}
+		)
+		it(
 			"runs in a Worker and terminates it on cancel",
 			async () => {
 				const hash = offload(

@@ -59,7 +59,10 @@ function out_of_range(match) {
 		return false
 	}
 	const index = +month - 1
-	return index < 0 || index > 11 || day !== undefined && (+day < 1 || +day > last_day(+(year ?? 0), index)) || +(hour ?? 0) > (+(minute ?? 0) || +(second ?? 0) || +(match[7] ?? 0)
+	return index < 0 || index > 11 || day !== undefined && (+day < 1 || +day > last_day(
+		+/** @type {string} */(year)/**/,
+		index
+	)) || +(hour ?? 0) > (+(minute ?? 0) || +(second ?? 0) || +(match[7] ?? 0)
 		? 23
 		: 24) || +(minute ?? 0) > 59 || +(second ?? 0) > 59
 }
@@ -118,6 +121,9 @@ export default function(date, format, zone) {
 			? match
 			: null
 		if (parsed) {
+			if (parsed[1] == "-000000") {
+				return new Date(NaN)
+			}
 			if (zone === undefined && parsed[4] !== undefined) {
 				return native
 			}
@@ -127,7 +133,7 @@ export default function(date, format, zone) {
 			const fraction = parsed[7]
 			return date_of(
 				[
-					+(parsed[1] ?? NaN),
+					+/** @type {string} */(parsed[1])/**/,
 					+(parsed[2] ?? 1) - 1,
 					+(parsed[3] ?? 1),
 					+(parsed[4] ?? 0),

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.0
+
+### Breaking
+
+- **The strict config moves inline parameter types into `@param` tags** with the new
+  `prefer-param-tag`: `function f(/** @type {T} */ a) {}` becomes `@param {T} a` in the JSDoc block of
+  the declaration. It has a fix, so run `eslint --fix` once; a destructured parameter is left to you.
+
+### Added
+
+- `prefer-param-tag`, in the strict config: reports a function declaration whose parameters are typed
+  with inline comments, `function f(/** @type {T} */ a) {}`, and fixes it into `@param {T} a` tags in the
+  JSDoc block of the declaration, creating the block if there is none, each tag at the position of its
+  parameter among the existing `@param` tags. Arrow functions and function expressions stay, and a
+  destructured parameter is reported without a fix.
+
 ## 0.7.0
 
 ### Breaking
