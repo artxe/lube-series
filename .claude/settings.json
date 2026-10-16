@@ -3,6 +3,9 @@
     "commit": "",
     "pr": ""
   },
+  "worktree": {
+    "baseRef": "head"
+  },
   "permissions": {
     "allow": [
       "Bash(awk *)",

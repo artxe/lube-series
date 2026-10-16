@@ -4,9 +4,6 @@
 		"url": "https://github.com/artxe/lube-series/issues"
 	},
 	"description": "Syntax sugar for fetch requests, streams, async flows and durable runs",
-	"devDependencies": {
-		"@typescript/native": "npm:typescript@^7.0.2"
-	},
 	"engines": { "node": ">=18" },
 	"exports": {
 		".": {

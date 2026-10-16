@@ -4,9 +4,6 @@
 		"url": "https://github.com/artxe/lube-series/issues"
 	},
 	"description": "Simplify Date Manipulation with Time Zones in JavaScript",
-	"devDependencies": {
-		"@typescript/native": "npm:typescript@^7.0.2"
-	},
 	"engines": { "node": ">=18" },
 	"exports": {
 		".": {
