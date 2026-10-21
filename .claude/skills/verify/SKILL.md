@@ -46,8 +46,7 @@ Environment variables (`TZ`, `SIM_*`, `DATA_LUBE_*`) go in `.tmp/*.env` files as
      base, `DATA_LUBE_CASE=<seed>` replays one case). Copy `test/data-lube/properties.test.js` into
      `.tmp/` with larger counts.
 4. **Lint.** `npx eslint --fix <changed paths>`, then run it again without `--fix` and expect no
-   output. The `pretty-*` rules rewrite formatting, so never hand-format code first; write it, then
-   let `--fix` settle it.
+   output.
 5. **Types.** `pnpm dts` inside the changed package, then `pnpm lint`, which runs `tsc` over the repo and
    checks each handwritten `public.d.ts` on its own with `--skipLibCheck false`, since the root config skips
    lib checks and errors inside those files show up no other way. The flag is not used repo-wide because a

@@ -3,6 +3,12 @@
     "commit": "",
     "pr": ""
   },
+  "env": {
+    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "200000"
+  },
+  "worktree": {
+    "baseRef": "head"
+  },
   "permissions": {
     "allow": [
       "Bash(awk *)",

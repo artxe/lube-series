@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.1
+
+### Fixed
+
+- `svelte-naming-convention` no longer reports or renames an ambient TypeScript declaration (`declare function`, `declare const`, `declare let`, `declare var`, `declare class`, and anything inside `declare global { }` or `declare module "m" { }`) or its usages, since the name belongs to the host that injects it.
+- `svelte-naming-convention` renames every overload signature and the implementation of a function together with its calls, instead of only the calls.
+
 ## 0.8.0
 
 ### Breaking

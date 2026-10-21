@@ -38,7 +38,22 @@ export function cases(valid, invalid) {
 				"enum E { camelCase = 1 } var a: A.camelCase"
 			),
 			languageOptions: ts_options
-		}
+		},
+		...[
+			"declare function acquireVsCodeApi(): void; const api = acquireVsCodeApi()",
+			"declare const someGlobal: number; const value = someGlobal",
+			"declare let someGlobal: number; someGlobal = 1",
+			"declare var someGlobal: number; const value = someGlobal",
+			"declare namespace camelCase { type A = 1 } declare function camelCase(): camelCase.A",
+			"declare class SomeClass {} const value = new SomeClass()",
+			"declare global { function fromHost(): void; const someGlobal: number } fromHost()",
+			"declare module 'm' { function fromHost(): void; class SomeClass {} }"
+		].map(
+			code => ({
+				...valid_case(code),
+				languageOptions: ts_options
+			})
+		)
 	)
 	invalid.push(
 		invalid_case(
@@ -377,12 +392,19 @@ export function cases(valid, invalid) {
 		},
 		{
 			...invalid_case(
-				"declare namespace camelCase { type A = 1 } declare function camelCase(): camelCase.A",
-				[ 61, 74 ],
-				""
+				"function camelCase(a: number): void; function camelCase(a: unknown) {} camelCase(1)",
+				[ 10, 47, 72 ],
+				"function camel_case(a: number): void; function camel_case(a: unknown) {} camel_case(1)"
 			),
-			languageOptions: ts_options,
-			output: null
+			languageOptions: ts_options
+		},
+		{
+			...invalid_case(
+				"camelCase(1); function camelCase(a: number): void; function camelCase(a: unknown) {}",
+				[ 1, 24, 61 ],
+				"camel_case(1); function camel_case(a: number): void; function camel_case(a: unknown) {}"
+			),
+			languageOptions: ts_options
 		},
 		{
 			...invalid_case(

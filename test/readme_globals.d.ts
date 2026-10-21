@@ -1,4 +1,3 @@
-/* eslint-disable lube/svelte-naming-convention */
 import type { http } from "async-lube"
 declare global {
 	type Cart = { items: number[] }

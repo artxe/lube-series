@@ -188,7 +188,9 @@ export default {
 		 * @returns {void}
 		 */
 		function declare(node) {
-			add(declarations, node)
+			if (!is_ambient(node)) {
+				add(declarations, node)
+			}
 		}
 		/**
 		 * @param {import("../../private.js").AstNode & import("estree").Identifier} node
@@ -233,6 +235,22 @@ export default {
 				}
 			}
 			return depth > 0
+		}
+		/**
+		 * @param {import("../../private.js").AstNode} node
+		 * @returns {boolean}
+		 */
+		function is_ambient(node) {
+			for (
+				let current = /** @type {import("../../private.js").AstNode | undefined} */(node)/**/;
+				current;
+				current = current.parent
+			) {
+				if ("declare" in current && current.declare === true) {
+					return true
+				}
+			}
+			return false
 		}
 		/**
 		 * @param {import("../../private.js").AstNode} node
@@ -916,7 +934,7 @@ export default {
 					plans.set(
 						name,
 						{
-							atomic: !fix_same_names || variables_by_name.has(target) || nested_targets.has(target) || store_usages.has(name),
+							atomic: !fix_same_names || nodes.length > 1 || variables_by_name.has(target) || nested_targets.has(target) || store_usages.has(name),
 							exported: (export_locals.get(name) ?? []).filter(belongs),
 							fixable: !blocked.has(name)
 								&& fixable_name_regex.test(name)
@@ -930,21 +948,16 @@ export default {
 				}
 				/**
 				 * @param {import("../../private.js").NamingIdentifier} node
-				 * @param {import("../../private.js").NamingIdentifier[]} nodes
 				 * @param {import("../../private.js").NamingIdentifier[]} usages_held
 				 * @returns {import("../../private.js").RenameEdit[]}
 				 */
-				function declaration_fix(node, nodes, usages_held) {
+				function declaration_fix(node, usages_held) {
 					const variable = resolution.get(node)
 					return [
 						...declaration_edits(node, resolution),
-						...nodes.find(
-							other => resolution.get(other) == variable
-						) == node
-							? usages_held.filter(
-								usage => resolution.get(usage) == variable
-							).map(rename_edit)
-							: []
+						...usages_held.filter(
+							usage => resolution.get(usage) == variable
+						).map(rename_edit)
 					]
 				}
 				/** @type {import("../../private.js").RenameEdit[]} */
@@ -990,7 +1003,7 @@ export default {
 						for (const node of nodes) {
 							report(
 								node,
-								fixable && !used.length ? declaration_fix(node, nodes, usages_held) : null
+								fixable && !used.length ? declaration_fix(node, usages_held) : null
 							)
 						}
 					} else {
