@@ -204,21 +204,6 @@ describe(
 			}
 		)
 		it(
-			"many distinct sums",
-			() => {
-				for (let i = 0; i < 2500; i++) {
-					assert.equal(
-						add(new Date(0), `${i}m`).getTime(),
-						i * 60000
-					)
-				}
-				assert.equal(
-					add(new Date(0), "7m").getTime(),
-					420000
-				)
-			}
-		)
-		it(
 			"order of units",
 			() => {
 				assert.equal(

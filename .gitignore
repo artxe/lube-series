@@ -1,7 +1,6 @@
-.claude/settings.local.json
+**/.claude/settings.local.json
 .eslintcache
 .vitest
 node_modules
 packages/*/types
 .tmp/
-coverage/

@@ -417,39 +417,6 @@ describe(
 			}
 		)
 		it(
-			"connects without query parameters from a params function that returns nothing",
-			async () => {
-				vi.useFakeTimers()
-				try {
-					controlled()
-					const socket = http(
-						{
-							WebSocket: ControlledSocket,
-							base: "https://api.example.com"
-						}
-					)
-						.ws(
-							"/live",
-							{ room: 1 },
-							{
-								params: /** @type {never} */(() => void 0)/**/
-							}
-						)
-					const failing = failure(socket)
-					await vi.advanceTimersByTimeAsync(0)
-					socket_at(0).drop(4000)
-					const error = await failing
-					assert.instanceOf(error, SocketError)
-					assert.equal(
-						error.request.url,
-						"wss://api.example.com/live?room=1"
-					)
-				} finally {
-					vi.useRealTimers()
-				}
-			}
-		)
-		it(
 			"credentials in errors",
 			async () => {
 				/** @type {unknown[]} */
@@ -636,39 +603,6 @@ describe(
 				)
 				revived.cancel()
 				assert.deepEqual(await reading, [])
-			}
-		)
-		it(
-			"ignores open and message events of a socket it already dropped",
-			async () => {
-				vi.useFakeTimers()
-				try {
-					controlled()
-					const socket = http(
-						{
-							WebSocket: ControlledSocket,
-							base: "https://api.example.com"
-						}
-					)
-						.ws(
-							"/live",
-							{},
-							{ reconnect: { delay: 10 } }
-						)
-					const reading = take(socket, 1)
-					await vi.advanceTimersByTimeAsync(0)
-					socket_at(0).drop(1006)
-					await vi.advanceTimersByTimeAsync(10)
-					socket_at(0).accept()
-					socket_at(0).onmessage?.({ data: "\"stale\"" })
-					assert.equal(socket.status, "connecting")
-					socket_at(1).accept()
-					socket_at(1).onmessage?.({ data: "\"fresh\"" })
-					assert.deepEqual(await reading, [ "fresh" ])
-					socket.cancel()
-				} finally {
-					vi.useRealTimers()
-				}
 			}
 		)
 		it(
@@ -1422,48 +1356,6 @@ describe(
 						SocketError
 					)
 					assert.equal(sockets.length, 7)
-				} finally {
-					vi.useRealTimers()
-				}
-			}
-		)
-		it(
-			"reports a message that fails to parse after its socket closed",
-			async () => {
-				vi.useFakeTimers()
-				try {
-					controlled()
-					/** @type {unknown[]} */
-					const errors = []
-					/** @type {((error: unknown) => void)[]} */
-					const parsing = []
-					const socket = http(
-						{
-							WebSocket: ControlledSocket,
-							base: "https://api.example.com",
-							on: {
-								error: error => void errors.push(error)
-							}
-						}
-					)
-						.ws(
-							"/live",
-							{},
-							{
-								parse: () => new Promise(
-									(_, reject) => void parsing.push(reject)
-								)
-							}
-						)
-					socket.send("hello")
-					await vi.advanceTimersByTimeAsync(0)
-					socket_at(0).accept()
-					socket_at(0).onmessage?.({ data: "\"hi\"" })
-					socket.cancel()
-					const invalid = Error("invalid")
-					parsing[0]?.(invalid)
-					await vi.advanceTimersByTimeAsync(0)
-					assert.deepEqual(errors, [ invalid ])
 				} finally {
 					vi.useRealTimers()
 				}

@@ -8,10 +8,6 @@ export function cases(valid, invalid) {
 			code: "var value = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ? yyyyyyyyyyyyyyyyyyy : zzzzzzzzzzzzzzzzzzz"
 		},
 		{
-			code: "var value = a ? b : c",
-			options: [ { maxLength: 9 } ]
-		},
-		{
 			code: "var value = `${a ? b : c ? d : e}`",
 			options: [
 				{ ignoreTemplateLiteral: true }

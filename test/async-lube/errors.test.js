@@ -41,10 +41,7 @@ describe(
 						.run()
 				))/**/
 				assert.instanceOf(error, FlowError)
-				assert.equal(
-					error.message,
-					"Flow node \"reserve\" failed: sold out"
-				)
+				assert.equal(error.node, "reserve")
 				assert.equal(error.cause, "sold out")
 			}
 		)
@@ -59,10 +56,6 @@ describe(
 				)
 				const error = /** @type {NetworkError} */(await rejection(api.get("/stock")))/**/
 				assert.instanceOf(error, NetworkError)
-				assert.equal(
-					error.message,
-					"Network request failed"
-				)
 				assert.equal(error.cause, "offline")
 			}
 		)

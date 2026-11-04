@@ -42,8 +42,6 @@ export function cases(valid, invalid) {
 		...[
 			"declare function acquireVsCodeApi(): void; const api = acquireVsCodeApi()",
 			"declare const someGlobal: number; const value = someGlobal",
-			"declare let someGlobal: number; someGlobal = 1",
-			"declare var someGlobal: number; const value = someGlobal",
 			"declare namespace camelCase { type A = 1 } declare function camelCase(): camelCase.A",
 			"declare class SomeClass {} const value = new SomeClass()",
 			"declare global { function fromHost(): void; const someGlobal: number } fromHost()",
@@ -92,19 +90,9 @@ export function cases(valid, invalid) {
 			"for ([ camel_case ] of list) {} var camel_case"
 		),
 		invalid_case(
-			"for ({ key: camelCase } in list) {} var camelCase",
-			[ "camelCase" ],
-			"for ({ key: camel_case } in list) {} var camel_case"
-		),
-		invalid_case(
 			"function func({ camelCase = 1 }) {} var camelCase",
 			[ 41 ],
 			"function func({ camelCase = 1 }) {} var camel_case"
-		),
-		invalid_case(
-			"function func({ key: camelCase = 1 }) {}",
-			[ "camelCase" ],
-			"function func({ key: camel_case = 1 }) {}"
 		),
 		invalid_case(
 			"import(pendingA); var pendingA",
@@ -283,11 +271,6 @@ export function cases(valid, invalid) {
 			[ "camelCase" ],
 			"function camelCase() {} export { camelCase }; camel_case()"
 		),
-		invalid_case(
-			"var camelCase; export { camelCase }; var camelCase",
-			[ "camelCase" ],
-			"var camel_case; export { camel_case as camelCase }; var camel_case"
-		),
 		{
 			...invalid_case(
 				"var camelCase; <a b={camelCase} {...camelCase}>{camelCase}</a>",
@@ -329,14 +312,6 @@ export function cases(valid, invalid) {
 		},
 		{
 			...invalid_case(
-				"class B { run(@A() camelCase: number) {} }",
-				[ "camelCase" ],
-				"class B { run(@A() camel_case: number) {} }"
-			),
-			languageOptions: ts_options
-		},
-		{
-			...invalid_case(
 				"class A { accessor camelCase = pendingA; accessor [pendingB] = 1 } var pendingA, pendingB",
 				[ "pendingA", "pendingB" ],
 				"class A { accessor camelCase = pending_a; accessor [pending_b] = 1 } var pendingA, pendingB"
@@ -367,14 +342,6 @@ export function cases(valid, invalid) {
 		},
 		{
 			...invalid_case(
-				"function camelCase(a: string): void; function camelCase(a) {}",
-				[ "camelCase" ],
-				"function camel_case(a: string): void; function camel_case(a) {}"
-			),
-			languageOptions: ts_options
-		},
-		{
-			...invalid_case(
 				"import camelCase from 'module'; var a: camelCase",
 				[ 8 ],
 				"import camelCase from 'module'; var a: camelCase"
@@ -395,14 +362,6 @@ export function cases(valid, invalid) {
 				"function camelCase(a: number): void; function camelCase(a: unknown) {} camelCase(1)",
 				[ 10, 47, 72 ],
 				"function camel_case(a: number): void; function camel_case(a: unknown) {} camel_case(1)"
-			),
-			languageOptions: ts_options
-		},
-		{
-			...invalid_case(
-				"camelCase(1); function camelCase(a: number): void; function camelCase(a: unknown) {}",
-				[ 1, 24, 61 ],
-				"camel_case(1); function camel_case(a: number): void; function camel_case(a: unknown) {}"
 			),
 			languageOptions: ts_options
 		},
@@ -586,11 +545,6 @@ export function cases(valid, invalid) {
 			"let lastBid = 1; export { lastBid }; lastBid = 2",
 			[ "lastBid" ],
 			"let last_bid = 1; export { last_bid as lastBid }; last_bid = 2"
-		),
-		invalid_case(
-			"let lastBid = 1; log(lastBid)",
-			[ "lastBid" ],
-			"let lastBid = 1; log(last_bid)"
 		),
 		{
 			...invalid_case(

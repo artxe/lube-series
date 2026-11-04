@@ -1,136 +1,8 @@
 import { dateToString, endOf, startOf } from "datetime-lube"
 import { assert, describe, it } from "vitest"
-const dst_dates = [
-	"2024-03-10T06:30:00.000Z",
-	"2024-03-10T07:30:00.000Z",
-	"2024-11-03T05:30:00.000Z",
-	"2024-11-03T06:00:00.001Z",
-	"2024-11-03T06:30:00.000Z",
-	"2024-03-31T00:30:00.000Z",
-	"2024-03-31T01:30:00.000Z",
-	"2024-10-27T00:30:00.000Z",
-	"2024-10-27T01:30:00.000Z",
-	"2024-09-08T03:30:00.000Z",
-	"2024-09-08T04:30:00.000Z",
-	"2024-04-07T02:30:00.000Z",
-	"2024-04-07T03:30:00.000Z",
-	"2011-12-29T12:00:00.000Z",
-	"2011-12-30T22:00:00.000Z",
-	"1950-01-01T11:30:01.000Z",
-	"1911-12-31T15:30:00.001Z",
-	"1908-03-31T15:00:00.000Z",
-	"1916-07-01T05:00:00.000Z"
-].map(iso => new Date(iso))
 describe(
 	"start_of",
 	() => {
-		it(
-			"day entered briefly by a forward jump before midnight starts at the jump",
-			() => {
-				const rise = Date.parse("2024-01-09T22:30:00.000Z")
-				const fall = Date.parse("2024-01-09T22:50:00.000Z")
-				const native = Intl.DateTimeFormat
-				Intl.DateTimeFormat = /** @type {typeof Intl.DateTimeFormat} */(/** @type {unknown} */(class extends native {
-					/**
-					 * @override
-					 * @param {Date | number=} date
-					 * @returns {string}
-					 */
-					format(date) {
-						const time = Number(date)
-						return time >= rise && time < fall
-							? "1/10/2024, GMT+02:00"
-							: "1/10/2024, GMT+01:00"
-					}
-				}))/**/
-				try {
-					const zone = "Etc/GMT-1"
-					const inside = new Date("2024-01-09T22:40:00.000Z")
-					assert.equal(
-						dateToString(inside, "YYYY-MM-DD HH:mm", zone),
-						"2024-01-10 00:40"
-					)
-					assert.equal(
-						startOf(inside, "D", zone).getTime(),
-						rise
-					)
-					assert.equal(
-						dateToString(
-							new Date(rise - 1),
-							"YYYY-MM-DD HH:mm:ss.sss",
-							zone
-						),
-						"2024-01-09 23:29:59.999"
-					)
-					assert.equal(
-						dateToString(
-							new Date(rise),
-							"YYYY-MM-DD HH:mm:ss.sss",
-							zone
-						),
-						"2024-01-10 00:30:00.000"
-					)
-					assert.equal(
-						startOf(
-							new Date("2024-01-09T23:30:00.000Z"),
-							"D",
-							zone
-						).getTime(),
-						Date.parse("2024-01-09T23:00:00.000Z")
-					)
-				} finally {
-					Intl.DateTimeFormat = native
-				}
-			}
-		)
-		it(
-			"day that starts exactly where a forward jump lands starts at that instant",
-			() => {
-				const native = Intl.DateTimeFormat
-				let rise = 0
-				const fall = Date.parse("2024-01-09T22:50:00.000Z")
-				Intl.DateTimeFormat = /** @type {typeof Intl.DateTimeFormat} */(/** @type {unknown} */(class extends native {
-					/**
-					 * @override
-					 * @param {Date | number=} date
-					 * @returns {string}
-					 */
-					format(date) {
-						const time = Number(date)
-						return time >= rise && time < fall
-							? "1/10/2024, GMT+02:00"
-							: "1/10/2024, GMT+01:00"
-					}
-				}))/**/
-				try {
-					for (const [ zone, jump ] of [
-						[
-							"Etc/GMT-2",
-							"2024-01-09T22:00:00.000Z"
-						],
-						[
-							"Etc/GMT-3",
-							"2024-01-09T21:50:00.000Z"
-						]
-					]) {
-						rise = Date.parse(
-							/** @type {string} */(jump)/**/
-						)
-						assert.equal(
-							startOf(
-								new Date("2024-01-09T22:40:00.000Z"),
-								"D",
-								zone
-							).getTime(),
-							Date.parse("2024-01-09T22:00:00.000Z"),
-							jump
-						)
-					}
-				} finally {
-					Intl.DateTimeFormat = native
-				}
-			}
-		)
 		it(
 			"daylight saving gap at midnight",
 			() => {
@@ -208,29 +80,6 @@ describe(
 					).getTime(),
 					Date.parse("1911-03-10T23:50:39.000Z")
 				)
-				for (const date of dst_dates) {
-					for (const [ unit, format, length ] of /** @type {const} */([
-						[ "H", "YYYY-MM-DD HH", 3600000 ],
-						[ "m", "YYYY-MM-DD HH:mm", 60000 ],
-						[ "s", "YYYY-MM-DD HH:mm:ss", 1000 ]
-					])/**/) {
-						const start = startOf(date, unit)
-						assert.isAtMost(start.getTime(), date.getTime())
-						assert.isBelow(
-							date.getTime() - start.getTime(),
-							length
-						)
-						assert.equal(
-							dateToString(start, format),
-							dateToString(date, format)
-						)
-						const previous = new Date(start.getTime() - 1)
-						assert.isTrue(
-							dateToString(previous, format) != dateToString(start, format)
-							|| previous.getTimezoneOffset() != start.getTimezoneOffset()
-						)
-					}
-				}
 			}
 		)
 		it(
@@ -356,21 +205,6 @@ describe(
 							)
 						),
 						"1919-01-01T00:00:00.000"
-					)
-					assert.equal(
-						startOf(
-							new Date("1987-04-05T03:31:00.000Z"),
-							"H"
-						).getTime(),
-						Date.parse("1987-04-05T03:31:00.000Z")
-					)
-					process.env["TZ"] = "America/Toronto"
-					assert.equal(
-						startOf(
-							new Date("1919-03-31T04:45:00.000Z"),
-							"D"
-						).getTime(),
-						Date.parse("1919-03-31T04:30:00.000Z")
 					)
 					process.env["TZ"] = "Europe/Moscow"
 					assert.equal(

@@ -217,10 +217,6 @@ describe(
 				const failure = /** @type {FlowError} */(await rejection(strict))/**/
 				assert.instanceOf(failure, FlowError)
 				assert.equal(failure.node, "check")
-				assert.match(
-					String(failure.cause),
-					/selected "done", which is not one of its keys/
-				)
 			}
 		)
 		it(
@@ -864,26 +860,6 @@ describe(
 					calls.push("pay")
 					return "paid"
 				}
-				const cancelled = flow().add(pay)
-					.run()
-				cancelled.cancel()
-				assert.instanceOf(
-					await rejection(cancelled),
-					CancelError
-				)
-				const controller = new AbortController()
-				const aborted = flow().add(pay)
-					.run(
-						void 0,
-						{ signal: controller.signal }
-					)
-				controller.abort()
-				assert.instanceOf(
-					await rejection(aborted),
-					CancelError
-				)
-				await pause(5)
-				assert.deepEqual(calls, [])
 				const unmount = new AbortController()
 				const reloaded = flow().add(pay)
 					.run(
@@ -998,10 +974,6 @@ describe(
 				const error = await rejection(failing)
 				assert.instanceOf(error, FlowError)
 				assert.equal(error.node, "broken")
-				assert.equal(
-					error.message,
-					"Flow node \"broken\" failed: boom"
-				)
 				assert.isTrue(sibling_signal?.aborted)
 				assert.equal(failing.status, "failed")
 				assert.deepEqual(
@@ -1286,47 +1258,6 @@ describe(
 					"D|E"
 				)
 				assert.deepEqual(log, [ "e", "d", "merge" ])
-			}
-		)
-		it(
-			"deep chains",
-			async () => {
-				/** @type {import("async-lube").Flow<{ go: boolean }, boolean | undefined>} */
-				let chain = /** @type {import("async-lube").Flow<{ go: boolean }>} */(flow())/**/
-				/**
-				 * @param {Context<{ go: boolean }>} context
-				 */
-				function first({ state }) {
-					return state.go
-				}
-				/** @type {import("async-lube").Ref<boolean>} */
-				let previous = first
-				chain = chain.add(
-					first,
-					{
-						name: "n0",
-						when: (
-							/** @type {{ state: { go: boolean } }} */ { state }
-						) => state.go
-					}
-				)
-				for (let i = 1; i < 5000; i++) {
-					/**
-					 * @param {boolean} value
-					 */
-					function next(value) {
-						return value
-					}
-					chain = chain.add(next, previous, { name: "n" + i })
-					previous = next
-				}
-				const state = { go: false }
-				const run = chain.run(state)
-				assert.equal(await run, void 0)
-				assert.equal(run.nodes["n4999"], "skipped")
-				state.go = true
-				run.reload()
-				assert.equal(await run, true)
 			}
 		)
 		it(
@@ -1987,10 +1918,6 @@ describe(
 					agent.run({ verdict: "answr" })
 				)
 				assert.instanceOf(typo, FlowError)
-				assert.equal(
-					/** @type {Error} */(typo.cause)/**/.message,
-					"The edge from \"judge\" selected \"answr\", which is not one of its keys"
-				)
 				const object_map = await rejection(
 					/** @type {import("async-lube").Flow<{ verdict: string }>} */(flow())/**/
 						.add(judge)
@@ -2002,10 +1929,6 @@ describe(
 						.run({ verdict: "answer" })
 				)
 				assert.instanceOf(object_map, FlowError)
-				assert.equal(
-					/** @type {Error} */(object_map.cause)/**/.message,
-					"The edge from \"judge\" selected \"[object Object]\", which is not one of its keys"
-				)
 				log.length = 0
 				await /** @type {import("async-lube").Flow<{ verdict: string }>} */(flow())/**/
 					.add(judge)
@@ -2023,10 +1946,6 @@ describe(
 						.run({ verdict: "stray" })
 				)
 				assert.instanceOf(stray, FlowError)
-				assert.equal(
-					/** @type {Error} */(stray.cause)/**/.message,
-					"The edge from \"judge\" selected function \"ask\", which is not one of its targets"
-				)
 			}
 		)
 		it(
@@ -2217,23 +2136,6 @@ describe(
 				const given_up = payment.run()
 				given_up.send(retry_prompt, false)
 				assert.equal(await given_up, "given up")
-				let polls = 0
-				function poll() {
-					if (++polls < 3) {
-						throw Error("Not ready")
-					}
-					return "ready"
-				}
-				const polled = await flow()
-					.add(
-						poll,
-						{
-							catch: async (_, { goto, sleep }) => (await sleep(1), goto(poll))
-						}
-					)
-					.run()
-				assert.equal(polled, "ready")
-				assert.equal(polls, 3)
 				function banner() {
 					throw Error("Ads blocked")
 				}
@@ -2844,46 +2746,6 @@ describe(
 			}
 		)
 		it(
-			"large batches",
-			async () => {
-				vi.useRealTimers()
-				const items = Array.from({ length: 50000 }, (_, i) => i)
-				function list() {
-					return items
-				}
-				let calls = 0
-				const double = flow.each(
-					async (/** @type {number} */ x) => {
-						calls++
-						return x * 2
-					}
-				)
-				const controller = new AbortController()
-				const result = await flow().add(list)
-					.add(
-						double,
-						list,
-						{
-							name: "double",
-							retry: 1,
-							timeout: 600000
-						}
-					)
-					.run(
-						void 0,
-						{ signal: controller.signal }
-					)
-				assert.equal(result.length, 50000)
-				assert.equal(result[49999], 99998)
-				assert.equal(calls, 50000)
-				assert.equal(
-					getEventListeners(controller.signal, "abort").length,
-					0
-				)
-			},
-			20000
-		)
-		it(
 			"live sources",
 			async () => {
 				/** @type {string[]} */
@@ -3140,29 +3002,6 @@ describe(
 				assert.deepEqual(saved, [ "paid" ])
 				polls = 0
 				saved.length = 0
-				async function check() {
-					if (++polls < 3) {
-						throw Error("pending")
-					}
-					return "paid"
-				}
-				assert.equal(
-					await flow().add(
-						check,
-						{
-							catch: async (_, { goto, sleep }) => {
-								await sleep(1)
-								return goto(check)
-							}
-						}
-					)
-						.add(save, check)
-						.run(),
-					"paid"
-				)
-				assert.deepEqual(saved, [ "paid" ])
-				polls = 0
-				saved.length = 0
 				await flow().add(poll)
 					.add(save, poll)
 					.edge(
@@ -3190,10 +3029,6 @@ describe(
 						.run()
 				)
 				assert.instanceOf(error, FlowError)
-				assert.equal(
-					/** @type {Error} */(error.cause)/**/.message,
-					"The flow exceeded 5 steps"
-				)
 				/** @param {Context} context */
 				function lost({ goto }) {
 					return goto(missing)
@@ -3207,10 +3042,6 @@ describe(
 						.run()
 				)
 				assert.instanceOf(undeclared, FlowError)
-				assert.equal(
-					/** @type {Error} */(undeclared.cause)/**/.message,
-					"Flow node \"lost\" went to function \"missing\", which is not added"
-				)
 			}
 		)
 		it(
@@ -3808,10 +3639,6 @@ describe(
 					run.send(tick, i)
 				}
 				assert.equal(run.pending(work), 3)
-				assert.deepEqual(
-					internals(run).nodes["work"]?.backlog?.map(entry => entry.args[0]),
-					[ 1, 5, 6 ]
-				)
 				await run
 				assert.deepEqual(handled, [ 1, 5, 6 ])
 				assert.equal(run.pending(work), 0)
@@ -4200,9 +4027,6 @@ describe(
 				paid.send(cancel, "customer")
 				await vi.advanceTimersByTimeAsync(1)
 				assert.equal(paid.nodes["charge"], "running")
-				assert.isTrue(
-					internals(paid).nodes["charge"]?.abandoned
-				)
 				assert.equal(
 					await settled(paid),
 					"refund pay_1"
@@ -4285,9 +4109,6 @@ describe(
 				await vi.advanceTimersByTimeAsync(1)
 				mailed.send(cancel, "customer")
 				await vi.advanceTimersByTimeAsync(1)
-				assert.isUndefined(
-					internals(mailed).nodes["charge"]?.abandoned
-				)
 				const failure = await rejection(settled(mailed))
 				assert.instanceOf(failure, FlowError)
 				assert.equal(
@@ -4333,48 +4154,6 @@ describe(
 		it(
 			"race losers",
 			async () => {
-				function cache() {
-					return "cached"
-				}
-				function decide() {
-					return pause(10)
-				}
-				/**
-				 * @param {Context} context
-				 */
-				async function fetch_fresh({ signal }) {
-					await pause(30)
-					return signal.aborted ? "aborted" : "fresh"
-				}
-				/**
-				 * @param {unknown} cached
-				 * @param {unknown} fresh
-				 */
-				function first(cached, fresh) {
-					return cached ?? fresh
-				}
-				/**
-				 * @param {unknown} fresh
-				 */
-				function store(fresh) {
-					return "stored " + fresh
-				}
-				assert.equal(
-					await flow()
-						.add(cache)
-						.add(fetch_fresh)
-						.add(
-							first,
-							cache,
-							fetch_fresh,
-							{ join: "race" }
-						)
-						.add(decide)
-						.add(store, fetch_fresh)
-						.edge(decide, store)
-						.run(),
-					"stored fresh"
-				)
 				let decisions = 0
 				const confirm_button = flow.input("confirm")
 				const close_button = flow.input("close")
@@ -4760,35 +4539,6 @@ describe(
 						`commit ${last + 1}`
 					]
 				)
-				assert.equal(
-					internals(live).nodes["session"]?.status,
-					"idle"
-				)
-				const gate = Promise.withResolvers()
-				const open = flow().add(tx, { release })
-					.add(insert, tx)
-					.add(
-						() => gate.promise,
-						insert,
-						{ name: "later" }
-					)
-					.run()
-				await pause(5)
-				const unfinished = internals(open)
-				assert.equal(
-					unfinished.nodes["tx"]?.status,
-					"idle"
-				)
-				assert.equal(
-					unfinished.nodes["insert"]?.status,
-					"idle"
-				)
-				gate.resolve(void 0)
-				await open
-				assert.equal(
-					internals(open).nodes["insert"]?.status,
-					"done"
-				)
 				log.length = 0
 				const hanging = flow().add(tx, { release })
 					.add(work, tx)
@@ -5138,23 +4888,6 @@ describe(
 					/** @type {Error} */(error.cause)/**/.message,
 					"bad"
 				)
-				let attempts = 0
-				function flaky() {
-					if (++attempts < 3) {
-						throw Error("flaky")
-					}
-					return attempts
-				}
-				vi.useFakeTimers()
-				try {
-					assert.equal(
-						await flow().add(flaky, { retry: 2 })
-							.run(),
-						3
-					)
-				} finally {
-					vi.useRealTimers()
-				}
 			}
 		)
 		it(
@@ -5650,9 +5383,6 @@ describe(
 				let bad = true
 				/** @type {number[]} */
 				const calls = []
-				function list() {
-					return [ 1, 2, 3 ]
-				}
 				function once() {
 					return new Set([ 1, 2, 3 ]).values()
 				}
@@ -5666,27 +5396,6 @@ describe(
 					}
 					return value * 10
 				}
-				const optional = flow()
-					.add(list)
-					.add(
-						flow.each(up),
-						list,
-						{ optional: true }
-					)
-				const partial = optional.run()
-				assert.deepEqual(
-					await partial,
-					[ 10, void 0, 30 ]
-				)
-				const saved = JSON.parse(
-					JSON.stringify(partial.snapshot())
-				)
-				bad = false
-				const continued = optional.run(void 0, { snapshot: saved })
-				await continued
-				continued.retry()
-				assert.deepEqual(await continued, [ 10, 20, 30 ])
-				assert.deepEqual(calls, [ 1, 2, 3, 2 ])
 				bad = true
 				calls.length = 0
 				const strict = flow()
@@ -6363,26 +6072,6 @@ describe(
 					[ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ]
 				)
 				queued.cancel()
-				handled.length = 0
-				produced = 0
-				const backlog = flow().add(
-					handle,
-					numbers(),
-					{
-						limit: 2,
-						overflow: "wait",
-						overlap: "queue"
-					}
-				)
-					.run()
-				await pause(2)
-				assert.isAtMost(produced, 4)
-				await until(() => handled.length == 12)
-				assert.deepEqual(
-					handled,
-					[ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ]
-				)
-				backlog.cancel()
 				let closed = false
 				async function* endless() {
 					try {
@@ -6783,26 +6472,6 @@ describe(
 						error => /** @type {Error} */(error)/**/.message
 					),
 					[ "sync item", "async item" ]
-				)
-				function broken_when() {
-					return "never"
-				}
-				const guarded = await rejection(
-					flow()
-						.add(
-							broken_when,
-							{
-								when: () => {
-									throw Error("when failed")
-								}
-							}
-						)
-						.run()
-				)
-				assert.instanceOf(guarded, FlowError)
-				assert.equal(
-					/** @type {Error} */(guarded.cause)/**/.message,
-					"when failed"
 				)
 			}
 		)

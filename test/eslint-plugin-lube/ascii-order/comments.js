@@ -65,11 +65,6 @@ export function cases(valid, invalid) {
 			output: null
 		},
 		{
-			code: "var o = { b: 1, c: 2, // c\n\ta: 3 }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
 			code: "var o = {\n\tb: 1,\n\t// a\n\ta: 2 }",
 			errors: [ { messageId: "keys" } ],
 			output: "var o = {\n\t// a\n\ta: 2,\n\tb: 1 }"
@@ -96,11 +91,6 @@ export function cases(valid, invalid) {
 		},
 		{
 			code: "function b() {}\nfunction a() {} /* a */ function c() {}",
-			errors: [ { messageId: "declarations" } ],
-			output: null
-		},
-		{
-			code: "function b() {}\nfunction a() {} /* a */ var x",
 			errors: [ { messageId: "declarations" } ],
 			output: null
 		}

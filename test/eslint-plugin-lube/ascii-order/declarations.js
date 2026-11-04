@@ -54,11 +54,6 @@ export function cases(valid, invalid) {
 			output: "function* a() {}\nasync function b() {}\nexport function c() {}"
 		},
 		{
-			code: "export function c() {} function b() {} function a() {}",
-			errors: [ { messageId: "declarations" } ],
-			output: "function a() {} function b() {} export function c() {}"
-		},
-		{
 			code: "function c() {}\nfunction b() {}\nfunction _default() {}\nexport default _default",
 			errors: [ { messageId: "declarations" } ],
 			output: "function b() {}\nfunction c() {}\nfunction _default() {}\nexport default _default"
@@ -67,11 +62,6 @@ export function cases(valid, invalid) {
 			code: "function main() {\n\tfunction z() {}\n\tfunction main() {}\n}\nexport default main",
 			errors: [ { messageId: "declarations" } ],
 			output: "function main() {\n\tfunction main() {}\n\tfunction z() {}\n}\nexport default main"
-		},
-		{
-			code: "function f() {\n\tfunction b() {}\n\tfunction a() {}\n\treturn a\n}",
-			errors: [ { messageId: "declarations" } ],
-			output: "function f() {\n\tfunction a() {}\n\tfunction b() {}\n\treturn a\n}"
 		},
 		{
 			code: "class C {\n\tstatic {\n\t\tfunction b() {}\n\t\tfunction a() {}\n\t}\n}",

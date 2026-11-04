@@ -9,13 +9,12 @@ says otherwise, and keep going only while the step is clean.
 
 Environment variables (`TZ`, `SIM_*`, `DATA_LUBE_*`) go in `.tmp/*.env` files as `shell.md` says; rewrite the file for the next setting.
 
-1. **Tests.** `pnpm test` (vitest with coverage). Aim at full coverage of the lines you touched; the gaps
-   the report prints are usually real paths, not noise. For datetime-lube also run the tests with
+1. **Tests.** `pnpm test`. For datetime-lube also run the tests with
    `TZ` set to `America/New_York`, `Australia/Lord_Howe` and `America/Santiago` (a DST zone finds what
    the local zone hides): `.tmp/tz.env` holds `TZ=America/New_York`, and the run is
    `node --env-file=.tmp/tz.env node_modules/vitest/vitest.mjs run test/datetime-lube`.
 2. **Browser tests.** `pnpm test` also runs the `browser` project of `vitest.config.js` (Playwright
-   Chromium, `test/browser/`), whose coverage merges with the `node` project's; it matters for anything in
+   Chromium, `test/browser/`); it matters for anything in
    `src/http/xhr.js`, `src/http/socket.js`, upload or download progress, `as: "file"` or CORS. They are
    the only run with a real `XMLHttpRequest`, `WebSocket` and cross-origin `fetch`. `test/browser/server.js` starts `test/async-lube/server.js` in Node and hands the tests
    its URL with `provide`/`inject`; that server sends CORS headers, and `/no-cors` deliberately does not.

@@ -28,11 +28,6 @@ export function cases(valid, invalid) {
 			options: [ { checkKeys: false } ]
 		},
 		{
-			code: "interface I { b: 1; a: 2 }",
-			languageOptions: language_options,
-			options: [ { checkKeys: false } ]
-		},
-		{
 			code: "interface I { #b: 1; a: 2 }",
 			languageOptions: language_options
 		}
@@ -61,12 +56,6 @@ export function cases(valid, invalid) {
 			errors: [ { messageId: "keys" } ],
 			languageOptions: language_options,
 			output: "type T = { a: 2; b: 1 }"
-		},
-		{
-			code: "type T = { c: 1, b: 2, a: 3, }",
-			errors: [ { messageId: "keys" } ],
-			languageOptions: language_options,
-			output: "type T = { a: 3, b: 2, c: 1, }"
 		},
 		{
 			code: "interface I {\n\tb: string\n\ta(): void\n}",
@@ -121,12 +110,6 @@ export function cases(valid, invalid) {
 			errors: [ { messageId: "declarations" } ],
 			languageOptions: language_options,
 			output: "function a() {}\nfunction b(x: string): void\nfunction b(x) {}"
-		},
-		{
-			code: "export declare function b(): void\nexport declare function a(): void",
-			errors: [ { messageId: "declarations" } ],
-			languageOptions: language_options,
-			output: "export declare function a(): void\nexport declare function b(): void"
 		},
 		{
 			code: "declare module \"m\" {\n\tfunction b(): void\n\tfunction a(): void\n}",

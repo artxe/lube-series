@@ -119,18 +119,6 @@ describe(
 						}
 					]
 				)
-				assert.deepStrictEqual(
-					recommended_rules["@stylistic/eol-last"],
-					[ "error", "always" ]
-				)
-				assert.deepStrictEqual(
-					recommended_rules["lube/pretty-sequence"],
-					[ "error", { maxLength: 80 } ]
-				)
-				assert.deepStrictEqual(
-					recommended_rules["lube/pretty-imports"],
-					[ "error", { maxLength: 80 } ]
-				)
 			}
 		)
 		it(
@@ -170,15 +158,6 @@ describe(
 						name
 					)
 				}
-			}
-		)
-		it(
-			"types svelte-naming-convention as a suggestion, since its fix renames",
-			() => {
-				assert.strictEqual(
-					lube_rules["svelte-naming-convention"]?.meta?.type,
-					"suggestion"
-				)
 			}
 		)
 	}

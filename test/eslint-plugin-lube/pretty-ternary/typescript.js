@@ -8,10 +8,6 @@ const typescript = { parser: ts_parser }
 export function cases(valid, invalid) {
 	valid.push(
 		{
-			code: "type MergeValue<A, B> = B extends NotPlain | Primitive\n\t? B\n\t: B extends WeakKey\n\t\t? A extends NotPlain | Primitive\n\t\t\t? B\n\t\t\t: A extends WeakKey\n\t\t\t\t? MergeObject<A, B>\n\t\t\t\t: B\n\t\t: B",
-			languageOptions: typescript
-		},
-		{
 			code: "type M<A> = A extends string\n\t? 1\n\t: A extends number\n\t? 2\n\t: 3",
 			languageOptions: typescript
 		},

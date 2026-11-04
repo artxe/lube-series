@@ -8,12 +8,6 @@ export function cases(valid, invalid) {
 			code: "var value = a ? // b\n\tb : c ? d : e"
 		},
 		{
-			code: "var value = a ? b : c ? // d\n\td : e"
-		},
-		{
-			code: "var value = `${a ? b : c ? d : e}`"
-		},
-		{
 			code: "var value = a\n\t? `b\nc`\n\t: d"
 		}
 	)

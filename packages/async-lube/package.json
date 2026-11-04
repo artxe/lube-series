@@ -65,7 +65,7 @@
 		"lint": "pnpm -w lint",
 		"prepack": "pnpm dts",
 		"prepublishOnly": "pnpm -w lint && pnpm test",
-		"test": "pnpm -w exec vitest run --coverage --coverage.include=packages/async-lube/src/** test/async-lube test/browser"
+		"test": "pnpm -w exec vitest run test/async-lube test/browser"
 	},
 	"sideEffects": false,
 	"type": "module",

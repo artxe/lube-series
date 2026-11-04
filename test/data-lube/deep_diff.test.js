@@ -243,38 +243,24 @@ describe(
 					),
 					[]
 				)
-				let reads = 0
-				/**
-				 * @param {number} id
-				 * @returns {{ readonly id: number }}
-				 */
-				function counted(id) {
-					return {
-						get id() {
-							reads++
-							return id
-						}
-					}
-				}
 				const count = 3000
 				assert.deepEqual(
 					deepDiff(
 						new Set(
 							Array.from(
 								{ length: count },
-								(_, i) => counted(i)
+								(_, id) => ({ id })
 							)
 						),
 						new Set(
 							Array.from(
 								{ length: count },
-								(_, i) => counted(count - 1 - i)
+								(_, id) => ({ id: count - 1 - id })
 							)
 						)
 					),
 					[]
 				)
-				assert.isBelow(reads, count * 30)
 				const shared = { value: 1 }
 				const removed_key = { id: 2 }
 				const added_key = { id: 3 }

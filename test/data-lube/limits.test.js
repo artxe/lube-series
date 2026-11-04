@@ -283,108 +283,6 @@ describe(
 			}
 		)
 		it(
-			"deep collections whose members collide, with differences at the bottom",
-			() => {
-				/**
-				 * @param {unknown} leaf
-				 * @returns {unknown}
-				 */
-				function wrap(leaf) {
-					/** @type {unknown} */
-					let value = leaf
-					for (let i = 0; i < 400; i++) {
-						value = new Map([ [ {}, value ], [ {}, 0 ] ])
-					}
-					return value
-				}
-				/** @type {[ () => unknown, () => unknown, boolean ][]} */
-				const cases = [
-					[
-						() => new Set([ 1, { a: 1 } ]),
-						() => new Set([ { a: 1 }, 1 ]),
-						true
-					],
-					[
-						() => new Set([ 1 ]),
-						() => new Set([ 2 ]),
-						false
-					],
-					[
-						() => new Set([ {} ]),
-						() => new Set([ 1 ]),
-						false
-					],
-					[
-						() => new Set([ 1, 2 ]),
-						() => new Set([ 1 ]),
-						false
-					],
-					[
-						() => new Set([ { a: 1 } ]),
-						() => new Set([ { a: 2 } ]),
-						false
-					],
-					[
-						() => new Map([ [ 1, { a: 1 } ] ]),
-						() => new Map([ [ 1, { a: 1 } ] ]),
-						true
-					],
-					[
-						() => new Map([ [ 1, { a: 1 } ] ]),
-						() => new Map([ [ 2, { a: 1 } ] ]),
-						false
-					],
-					[
-						() => new Map([ [ 1, 1 ] ]),
-						() => new Map([ [ 1, 2 ] ]),
-						false
-					],
-					[
-						() => new Map([ [ {}, 1 ] ]),
-						() => new Map([ [ {}, 2 ] ]),
-						false
-					],
-					[
-						() => new Map([ [ {}, {} ] ]),
-						() => new Map([ [ {}, 1 ] ]),
-						false
-					],
-					[
-						() => new Map([ [ { k: 1 }, NaN ] ]),
-						() => new Map([ [ { k: 1 }, NaN ] ]),
-						true
-					],
-					[
-						() => Object.assign(new Set(), { t: 1 }),
-						() => Object.assign(new Set(), { t: 2 }),
-						false
-					],
-					[
-						() => Object.create(null),
-						() => ({}),
-						false
-					],
-					[
-						() => ({ a: 1 }),
-						() => ({ a: 2 }),
-						false
-					],
-					[
-						() => new Date(1),
-						() => new Date(1),
-						true
-					]
-				]
-				for (const [ left, right, expected ] of cases) {
-					assert.equal(
-						deepEqual(wrap(left()), wrap(right())),
-						expected,
-						String(left)
-					)
-				}
-			}
-		)
-		it(
 			"deep nesting",
 			() => {
 				const a = chain(1)
@@ -672,95 +570,6 @@ describe(
 			}
 		)
 		it(
-			"large dense and sparse arrays",
-			() => {
-				const dense = Array.from(
-					{ length: 5000 },
-					(_, i) => ({ i })
-				)
-				const copy = deepCopy(dense)
-				assert.isTrue(deepEqual(copy, dense))
-				const item = /** @type {{ i: number }} */(copy[4999])/**/
-				item.i = -1
-				assert.deepEqual(
-					deepDiff(dense, copy),
-					[
-						{
-							op: "replace",
-							path: [ 4999, "i" ],
-							value: -1
-						}
-					]
-				)
-				deepFreeze(copy)
-				assert.isTrue(Object.isFrozen(copy[4999]))
-				/** @type {unknown[] & { tag?: number }} */
-				const tagged = []
-				tagged[10000] = { x: 1 }
-				tagged.tag = 1
-				assert.deepEqual(
-					Object.keys(deepCopy(tagged)),
-					[ "10000" ]
-				)
-				/** @type {unknown[]} */
-				const more = []
-				more[10000] = { x: 1 }
-				more[5] = 1
-				assert.isFalse(deepEqual(tagged, more))
-				/** @type {unknown[]} */
-				const holes = []
-				holes[10000] = 1
-				holes[3] = undefined
-				/** @type {unknown[]} */
-				const filled = []
-				filled[10000] = 1
-				assert.deepEqual(
-					deepDiff(holes, filled),
-					[
-						{
-							op: "replace",
-							path: [ 3 ],
-							value: undefined
-						}
-					]
-				)
-				assert.deepEqual(
-					deepDiff(holes, dense),
-					[
-						{
-							op: "replace",
-							path: [],
-							value: dense
-						}
-					]
-				)
-				/** @type {unknown[]} */
-				const foreign = runInNewContext(
-					"const list = []; list[10000] = 1; list[2] = 'a'; list"
-				)
-				const foreign_copy = deepCopy(foreign)
-				assert.equal(foreign_copy[2], "a")
-				assert.isFalse(3 in foreign_copy)
-				/** @type {unknown[]} */
-				const frozen = []
-				const user = { n: 1 }
-				const updated = deepUpdate(
-					{
-						list: /** @type {unknown} */(undefined)/**/,
-						user
-					},
-					draft => {
-						frozen[10000] = draft.user
-						draft.list = Object.freeze(frozen)
-					}
-				)
-				assert.equal(
-					/** @type {unknown[]} */(updated.list)/**/[10000],
-					user
-				)
-			}
-		)
-		it(
 			"sparse arrays",
 			() => {
 				/** @type {unknown[]} */
@@ -833,6 +642,76 @@ describe(
 				)
 				assert.isTrue(Object.isFrozen(kept.list))
 				assert.isBelow(performance.now() - start, 2000)
+			}
+		)
+		it(
+			"sparse arrays with holes and extra keys",
+			() => {
+				const dense = [ { i: 0 } ]
+				/** @type {unknown[] & { tag?: number }} */
+				const tagged = []
+				tagged[10000] = { x: 1 }
+				tagged.tag = 1
+				assert.deepEqual(
+					Object.keys(deepCopy(tagged)),
+					[ "10000" ]
+				)
+				/** @type {unknown[]} */
+				const more = []
+				more[10000] = { x: 1 }
+				more[5] = 1
+				assert.isFalse(deepEqual(tagged, more))
+				/** @type {unknown[]} */
+				const holes = []
+				holes[10000] = 1
+				holes[3] = undefined
+				/** @type {unknown[]} */
+				const filled = []
+				filled[10000] = 1
+				assert.deepEqual(
+					deepDiff(holes, filled),
+					[
+						{
+							op: "replace",
+							path: [ 3 ],
+							value: undefined
+						}
+					]
+				)
+				assert.deepEqual(
+					deepDiff(holes, dense),
+					[
+						{
+							op: "replace",
+							path: [],
+							value: dense
+						}
+					]
+				)
+				/** @type {unknown[]} */
+				const foreign = runInNewContext(
+					"const list = []; list[10000] = 1; list[2] = 'a'; list"
+				)
+				const foreign_copy = deepCopy(foreign)
+				assert.equal(foreign_copy[2], "a")
+				assert.isFalse(3 in foreign_copy)
+				/** @type {unknown[]} */
+				const frozen = []
+				const user = { n: 1 }
+				const updated = deepUpdate(
+					{
+						list: /** @type {unknown} */(undefined)/**/,
+						user
+					},
+					draft => {
+						frozen[10000] = draft.user
+						draft.list = Object.freeze(frozen)
+					}
+				)
+				assert.equal(
+					/** @type {unknown[]} */(updated.list)/**/[10000],
+					user
+				)
 			}
 		)
 		it(

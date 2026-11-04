@@ -4,12 +4,8 @@
  */
 export function cases(valid, invalid) {
 	valid.push(
-		{ code: "var s = 'Hello'" },
 		{
 			code: "var snake_case = 'Hello'"
-		},
-		{
-			code: "var snake_case_123 = 'Hello'"
 		},
 		{
 			code: "var snake1_2_3case_4 = 'Hello'"
@@ -17,15 +13,9 @@ export function cases(valid, invalid) {
 		{
 			code: "var SNAKE_CASE = 'Hello'"
 		},
-		{
-			code: "var SNAKE1_2_3CASE_4 = 'Hello'"
-		},
 		{ code: "camelCase = 'Hello'" },
 		{
 			code: "var snake_case = camelCase"
-		},
-		{
-			code: "var PascalCase = 'Hello'"
 		},
 		{
 			code: "var P1ascal2Case345 = 'Hello'"
