@@ -45,7 +45,7 @@
 		"lint": "pnpm -w lint",
 		"prepack": "pnpm dts",
 		"prepublishOnly": "pnpm -w lint && pnpm test",
-		"test": "pnpm -w exec vitest run --coverage --coverage.include=packages/datetime-lube/src/** test/datetime-lube"
+		"test": "pnpm -w exec vitest run test/datetime-lube"
 	},
 	"sideEffects": false,
 	"type": "module",

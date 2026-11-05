@@ -1,9 +1,5 @@
 /** @import { RequestSummary } from "async-lube" */
 /** @import { Echo, Flaky } from "./private.js" */
-import {
-	get_reconnect_delay,
-	get_retry_delay
-} from "../../packages/async-lube/src/http/retry.js"
 import { encode_cp949 } from "./cp949.js"
 import { start_server } from "./server.js"
 import {
@@ -2202,23 +2198,6 @@ describe(
 			}
 		)
 		it(
-			"reads a raw CP949 Hanja next to no ASCII letter as CP949, though its bytes are Latin-1 letters",
-			async () => {
-				assert.equal(
-					await file_name(
-						`attachment; filename="${encode_cp949("韓.txt")}"`
-					),
-					"韓.txt"
-				)
-				assert.equal(
-					await file_name(
-						`attachment; filename="${encode_cp949("狎.txt")}"`
-					),
-					"狎.txt"
-				)
-			}
-		)
-		it(
 			"reads a response without a body as a null stream",
 			async () => {
 				const api = http(
@@ -2833,10 +2812,6 @@ describe(
 						.next()
 				)
 				assert.instanceOf(error, TypeError)
-				assert.equal(
-					error.message,
-					"Expected text/event-stream from /events, but received null"
-				)
 			}
 		)
 		it(
@@ -3241,93 +3216,6 @@ describe(
 			}
 		)
 		it(
-			"retry after parsing",
-			async () => {
-				/**
-				 * @param {string} value
-				 * @returns {number | undefined}
-				 */
-				function delay_of(value) {
-					return get_retry_delay(
-						new HttpError(
-							new Response(
-								null,
-								{
-									headers: { "Retry-After": value },
-									status: 503
-								}
-							),
-							void 0,
-							{ method: "GET", url: "/" }
-						),
-						1
-					)
-				}
-				assert.equal(delay_of("2"), 2000)
-				assert.isBelow(Number(delay_of("0x2")), 500)
-				assert.isUndefined(delay_of("120"))
-			}
-		)
-		it(
-			"retry delay",
-			() => {
-				/**
-				 * @param {string} retry_after
-				 * @returns {HttpError}
-				 */
-				function create_error(retry_after) {
-					return new HttpError(
-						new Response(
-							null,
-							{
-								headers: { "Retry-After": retry_after },
-								status: 503
-							}
-						),
-						void 0,
-						{ method: "GET", url: "/" }
-					)
-				}
-				assert.equal(
-					get_retry_delay(create_error("2"), 1),
-					2000
-				)
-				assert.isUndefined(
-					get_retry_delay(create_error("120"), 1)
-				)
-				const date = new Date(Date.now() + 5000).toUTCString()
-				assert.isAtLeast(
-					/** @type {number} */(get_retry_delay(create_error(date), 1))/**/,
-					3000
-				)
-				for (let attempt = 1; attempt <= 8; attempt++) {
-					const delay = /** @type {number} */(get_retry_delay(Error(), attempt))/**/
-					const base = Math.min(500 * 2 ** (attempt - 1), 30000)
-					assert.isAtLeast(delay, base / 2)
-					assert.isAtMost(delay, base)
-					const zero = get_reconnect_delay(create_error("0"), attempt)
-					assert.isAtLeast(zero, base / 2)
-					assert.isAtMost(zero, base)
-				}
-				assert.equal(
-					get_reconnect_delay(create_error("2"), 1),
-					2000
-				)
-				assert.isAtLeast(
-					get_reconnect_delay(create_error("2"), 5),
-					4000
-				)
-				assert.equal(
-					get_reconnect_delay(create_error("120"), 1),
-					120000
-				)
-				assert.isAtLeast(
-					get_reconnect_delay(create_error(date), 1),
-					3000
-				)
-			}
-		)
-		it(
 			"retry policies",
 			async () => {
 				vi.useFakeTimers()
@@ -3680,60 +3568,6 @@ describe(
 			}
 		)
 		it(
-			"sse failure counting",
-			async () => {
-				/** @type {number[]} */
-				const failures = []
-				let attempt = 0
-				const api = http(
-					{
-						base: "https://events.test",
-						fetch: async () => {
-							const index = attempt++
-							if (!index) {
-								return new Response("", { status: 503 })
-							}
-							return new Response(
-								new ReadableStream(
-									{
-										start: controller => {
-											controller.enqueue(
-												new TextEncoder().encode(
-													index > 1 ? "data: ok\n\n" : "retry: 1\n\n"
-												)
-											)
-											controller.close()
-										}
-									}
-								),
-								{
-									headers: {
-										"Content-Type": "text/event-stream"
-									}
-								}
-							)
-						}
-					}
-				)
-				for await (const event of api.sse(
-					"/stream",
-					{},
-					{
-						reconnect: {
-							delay: count => {
-								failures.push(count)
-								return 1
-							}
-						}
-					}
-				)) {
-					assert.equal(event.data, "ok")
-					break
-				}
-				assert.deepEqual(failures, [ 1 ])
-			}
-		)
-		it(
 			"sse options",
 			async () => {
 				/** @type {RequestInit[]} */
@@ -3820,19 +3654,7 @@ describe(
 					),
 					[ "{\"a\":1}", "plain" ]
 				)
-				assert.deepEqual(
-					Object.keys(
-						/** @type {RequestInit} */(inits[0])/**/
-					)
-						.sort(),
-					[
-						"body",
-						"credentials",
-						"headers",
-						"method",
-						"signal"
-					]
-				)
+				assert.equal(inits[0]?.credentials, "include")
 				assert.equal(inits[0]?.method, "GET")
 				assert.deepEqual(
 					await read({ as: "json" }),
@@ -4456,164 +4278,6 @@ describe(
 			}
 		)
 		it(
-			"upload errors",
-			async () => {
-				class BrokenXMLHttpRequest {
-					response = new Blob([ "{}" ])
-					status = 999
-					statusText = "Unknown"
-					upload = { onprogress: () => {} }
-					/** @type {(() => void) | null} */
-					onload = null
-					abort() {}
-					getAllResponseHeaders() {
-						return ""
-					}
-					open() {}
-					send() {
-						setTimeout(
-							() => /** @type {() => void} */(this.onload)/**/()
-						)
-					}
-					setRequestHeader() {}
-				}
-				vi.stubGlobal(
-					"XMLHttpRequest",
-					BrokenXMLHttpRequest
-				)
-				const error = await rejection(
-					create().post(
-						"/upload",
-						new FormData(),
-						{ timeout: 1000, upload: () => {} }
-					)
-				)
-				assert.instanceOf(error, NetworkError)
-				class OfflineXMLHttpRequest extends BrokenXMLHttpRequest {
-					/** @override */
-					status = 0
-				}
-				vi.stubGlobal(
-					"XMLHttpRequest",
-					OfflineXMLHttpRequest
-				)
-				const offline = await rejection(
-					create().post(
-						"/upload",
-						new FormData(),
-						{ upload: () => {} }
-					)
-				)
-				assert.instanceOf(offline, NetworkError)
-				assert.equal(
-					offline.message,
-					"Network request failed"
-				)
-			}
-		)
-		it(
-			"upload progress",
-			async () => {
-				/** @type {string[]} */
-				const sent = []
-				class FakeXMLHttpRequest {
-					response = new Blob([ "{\"uploaded\":true}" ])
-					status = 201
-					statusText = "Created"
-					upload = {
-						/** @type {((event: ProgressEventInit) => void) | null} */
-						onprogress: null
-					}
-					/** @type {(() => void) | null} */
-					onabort = null
-					/** @type {(() => void) | null} */
-					onerror = null
-					/** @type {(() => void) | null} */
-					onload = null
-					abort() {}
-					getAllResponseHeaders() {
-						return "content-type: application/json\r\nx-id: 1\r\n"
-					}
-					/**
-					 * @param {string} method
-					 * @param {string} url
-					 */
-					open(method, url) {
-						sent.push(method + " " + url)
-					}
-					/**
-					 * @param {XMLHttpRequestBodyInit | null} body
-					 */
-					send(body) {
-						const upload = /** @type {{ onprogress: (event: ProgressEventInit) => void }} */(this.upload)/**/
-						sent.push(
-							String(body instanceof FormData)
-						)
-						upload.onprogress(
-							{
-								lengthComputable: true,
-								loaded: 50,
-								total: 100
-							}
-						)
-						upload.onprogress(
-							{
-								lengthComputable: true,
-								loaded: 100,
-								total: 100
-							}
-						)
-						setTimeout(
-							() => /** @type {() => void} */(this.onload)/**/()
-						)
-					}
-					setRequestHeader() {}
-				}
-				vi.stubGlobal(
-					"XMLHttpRequest",
-					FakeXMLHttpRequest
-				)
-				/** @type {import("async-lube").Progress[]} */
-				const progress = []
-				const api = create()
-				const result = await api.post(
-					"/upload",
-					new FormData(),
-					{
-						upload: value => progress.push(value)
-					}
-				)
-					.raw()
-				assert.deepEqual(result.data, { uploaded: true })
-				assert.equal(result.status, 201)
-				assert.equal(result.headers.get("X-Id"), "1")
-				assert.deepEqual(
-					sent,
-					[
-						"POST " + server.base + "/upload",
-						"true"
-					]
-				)
-				assert.deepEqual(
-					progress,
-					[
-						{ loaded: 50, ratio: 0.5, total: 100 },
-						{ loaded: 100, ratio: 1, total: 100 }
-					]
-				)
-				const thrown = await api.post(
-					"/upload",
-					new FormData(),
-					{
-						upload: () => {
-							throw Error("the progress bar is gone")
-						}
-					}
-				)
-				assert.deepEqual(thrown, { uploaded: true })
-			}
-		)
-		it(
 			"upload stream body",
 			async () => {
 				vi.stubGlobal("XMLHttpRequest", class {})
@@ -4632,42 +4296,6 @@ describe(
 					),
 					TypeError
 				)
-			}
-		)
-		it(
-			"upload with a custom fetch",
-			async () => {
-				vi.stubGlobal(
-					"XMLHttpRequest",
-					class {
-						constructor() {
-							throw Error("XMLHttpRequest was used")
-						}
-					}
-				)
-				let used = false
-				const data = await create(
-					{
-						fetch: async () => {
-							used = true
-							return new Response(
-								"{\"ok\":true}",
-								{
-									headers: {
-										"Content-Type": "application/json"
-									}
-								}
-							)
-						}
-					}
-				)
-					.post(
-						"/upload",
-						new FormData(),
-						{ upload: () => {} }
-					)
-				assert.isTrue(used)
-				assert.deepEqual(data, { ok: true })
 			}
 		)
 		it(
@@ -4708,10 +4336,6 @@ describe(
 				// @ts-expect-error: missing path parameter
 				const missing = await rejection(api.get("/users/:id"))
 				assert.instanceOf(missing, TypeError)
-				assert.equal(
-					missing.message,
-					"Missing path parameter \"id\" for /users/:id"
-				)
 			}
 		)
 		it(

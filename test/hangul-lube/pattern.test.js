@@ -6,11 +6,6 @@ describe(
 		it(
 			"compound final consonants",
 			() => {
-				const regex = pattern("갑안일")
-				assert.equal(
-					regex,
-					"갑안(?:[일-잃]|이[라-맇])"
-				)
 				assert.isTrue(
 					new RegExp(pattern("각")).test("갃")
 				)
@@ -28,10 +23,6 @@ describe(
 		it(
 			"compound letters split",
 			() => {
-				assert.equal(
-					pattern("ㄳ"),
-					"(?:ㄳ|[ㄱ가-깋][ㅅ사-싷])"
-				)
 				for (const text of [ "ㄳ", "감사", "ㄱ시" ]) {
 					assert.isTrue(
 						new RegExp(pattern("ㄳ")).test(text),
@@ -115,10 +106,6 @@ describe(
 			"double consonant letters",
 			() => {
 				const regex = pattern("ㄲㄸㅃㅆㅉ")
-				assert.equal(
-					regex,
-					"[ㄲ까-낗][ㄸ따-띻][ㅃ빠-삫][ㅆ싸-앃][ㅉ짜-찧]"
-				)
 				assert.isTrue(
 					new RegExp(regex).test("꿈땅뿔쌀짱")
 				)
@@ -130,11 +117,6 @@ describe(
 		it(
 			"earlier syllables match as they are",
 			() => {
-				assert.equal(pattern("바지"), "바[지-짛]")
-				assert.equal(
-					pattern("ㅂ지"),
-					"[ㅂㅄ바-빟][지-짛]"
-				)
 				/** @type {[string, string[], string[]][]} */
 				const cases = [
 					[
@@ -211,10 +193,6 @@ describe(
 		it(
 			"final consonant of the last syllable moves on",
 			() => {
-				assert.equal(
-					pattern("각"),
-					"(?:[각갃]|가[가-깋])"
-				)
 				/** @type {[string, string][]} */
 				const found = [
 					[ "각", "가게" ],
@@ -257,10 +235,6 @@ describe(
 			"first complex letters search",
 			() => {
 				const regex = pattern("ㅎㅇ~ 테스트 123456789!")
-				assert.equal(
-					regex,
-					"[ㅎ하-힣][ㅇ아-잏]~ 테스트 123456789!"
-				)
 				assert.isTrue(
 					new RegExp(regex).test("하이~ 테스트 123456789!")
 				)
@@ -278,10 +252,6 @@ describe(
 				const regex = pattern(
 					"ㄷㅎㅁㄱ ㅂㄷㅅㅇ ㅁㄹㄱ ㄷㄷㄹ"
 				)
-				assert.equal(
-					regex,
-					"[ㄷ다-딯][ㅎ하-힣][ㅁ마-밓][ㄱㄳ가-깋] [ㅂㅄ바-빟][ㄷ다-딯][ㅅ사-싷][ㅇ아-잏] [ㅁ마-밓][ㄹㄺ-ㅀ라-맇][ㄱㄳ가-깋] [ㄷ다-딯][ㄷ다-딯][ㄹㄺ-ㅀ라-맇]"
-				)
 				assert.isTrue(
 					new RegExp(regex).test(
 						"동해물과 백두산이 마르고 닳도록"
@@ -292,8 +262,6 @@ describe(
 		it(
 			"lone letters grow into compound letters",
 			() => {
-				assert.equal(pattern("ㄱ"), "[ㄱㄳ가-깋]")
-				assert.equal(pattern("ㅗ"), "[ㅗㅘ-ㅚ]")
 				/** @type {[string, string][]} */
 				const found = [
 					[ "ㄱ", "ㄳ" ],

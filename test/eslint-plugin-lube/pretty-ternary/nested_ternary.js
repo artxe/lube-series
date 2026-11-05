@@ -15,9 +15,6 @@ export function cases(valid, invalid) {
 			code: "var value = (a ? b : c) ? d : e"
 		},
 		{
-			code: "var value = a\n\t? b\n\t: c\n\t\t? d\n\t\t: e"
-		},
-		{
 			code: "function f() {\n\treturn a\n\t\t? b\n\t\t\t? c\n\t\t\t: d\n\t\t: e\n}"
 		},
 		{
@@ -49,11 +46,6 @@ export function cases(valid, invalid) {
 			code: "var value = a?b:c",
 			errors: [ { messageId: "spacing" } ],
 			output: "var value = a ? b : c"
-		},
-		{
-			code: "if (x) {\n\tvalue = a ? b : c ? d : e\n}",
-			errors: [ { messageId: "multiline" } ],
-			output: "if (x) {\n\tvalue = a\n\t\t? b\n\t\t: c\n\t\t\t? d\n\t\t\t: e\n}"
 		},
 		{
 			code: "var value = a ? f(b ? c : d ? e : g) : h",

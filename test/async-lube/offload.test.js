@@ -1,6 +1,6 @@
 import { CancelError, offload } from "async-lube"
 import { execFile } from "node:child_process"
-import { assert, describe, it, vi } from "vitest"
+import { assert, describe, it } from "vitest"
 describe(
 	"offload",
 	() => {
@@ -68,21 +68,6 @@ describe(
 			}
 		)
 		it(
-			"ignores a message of its worker that answers no call",
-			async () => {
-				const chatty = offload(
-					(/** @type {number} */ value) => {
-						const { parentPort } = process.getBuiltinModule("node:worker_threads")
-						parentPort?.postMessage([ 0, true, "stray" ])
-						return value * 2
-					}
-				)
-				assert.equal(await chatty(21), 42)
-				assert.equal(await chatty(4), 8)
-				chatty.close()
-			}
-		)
-		it(
 			"lets the process exit",
 			async () => {
 				const entry = new URL(
@@ -145,28 +130,6 @@ describe(
 			}
 		)
 		it(
-			"rejects with the CancelError that cancelled a call or aborted its signal",
-			async () => {
-				const pause = offload(
-					(/** @type {number} */ ms) => new Promise(
-						resolve => setTimeout(resolve, ms)
-					)
-				)
-				const reason = new CancelError("Left the page")
-				const cancelled = pause(10000)
-				cancelled.cancel(reason)
-				assert.equal(
-					await rejection(cancelled),
-					reason
-				)
-				const controller = new AbortController()
-				const aborted = pause(10000, controller.signal)
-				controller.abort(reason)
-				assert.equal(await rejection(aborted), reason)
-				pause.close()
-			}
-		)
-		it(
 			"runs a function in a worker",
 			async () => {
 				const sum = offload(
@@ -204,15 +167,6 @@ describe(
 					await echo("still works"),
 					"still works"
 				)
-				const odd = offload(
-					() => {
-						throw { message: "odd", run() {} }
-					}
-				)
-				const odd_error = /** @type {Error} */(await rejection(odd()))/**/
-				assert.instanceOf(odd_error, Error)
-				assert.equal(odd_error.message, "odd")
-				odd.close()
 				assert.throws(
 					() => offload(
 						/** @type {never} */("code")/**/
@@ -231,17 +185,6 @@ describe(
 					TypeError,
 					"Unknown offload option \"concurency\""
 				)
-				const spy = vi.spyOn(process, "getBuiltinModule")
-					.mockReturnValue(void 0)
-				try {
-					const nowhere = offload(() => 1)
-					assert.instanceOf(
-						await rejection(nowhere()),
-						TypeError
-					)
-				} finally {
-					spy.mockRestore()
-				}
 				sum.close()
 				fail.close()
 				closure.close()

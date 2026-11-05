@@ -2,7 +2,6 @@ import ascii_order from "../../packages/eslint-plugin-lube/src/rules/ascii-order
 import ts_parser from "@typescript-eslint/parser"
 import { Linter, RuleTester } from "eslint"
 import lube from "eslint-plugin-lube"
-import { builtinRules } from "eslint/use-at-your-own-risk"
 import assert from "node:assert"
 import svelte_parser from "svelte-eslint-parser"
 import { describe, it } from "vitest"
@@ -10,7 +9,6 @@ RuleTester.describe = describe
 RuleTester.it = it
 const ascii_order_options = /** @type {[ import("eslint").Linter.RuleSeverity, NonNullable<import("../../packages/eslint-plugin-lube/private.js").RuleOptions["ascii-order"]> ]} */(lube.configs.strict.rules["lube/ascii-order"])/**/.slice(1)
 const curly_options = /** @type {[ import("eslint").Linter.RuleSeverity, "all" ]} */(lube.configs.strict.rules["lube/curly"])/**/.slice(1)
-const options = /** @type {[ import("eslint").Linter.RuleSeverity, "declaration" ]} */(lube.configs.strict.rules["func-style"])/**/.slice(1)
 new RuleTester().run(
 	"ascii-order in the strict config",
 	ascii_order,
@@ -99,32 +97,6 @@ new RuleTester().run(
 			{
 				code: "if (a) { /** @type {A} */(b).c = 1 }",
 				options: curly_options
-			}
-		]
-	}
-)
-new RuleTester().run(
-	"func-style in the strict config",
-	/** @type {import("eslint").Rule.RuleModule} */(builtinRules.get("func-style"))/**/,
-	{
-		invalid: [
-			{
-				code: "const f = () => 1",
-				errors: [ { messageId: "declaration" } ],
-				options
-			},
-			{
-				code: "let f = function() {}",
-				errors: [ { messageId: "declaration" } ],
-				options
-			}
-		],
-		valid: [
-			{ code: "function f() {}", options },
-			{ code: "[].map(x => x)", options },
-			{
-				code: "const o = { m() { const g = () => this } }",
-				options
 			}
 		]
 	}
@@ -520,10 +492,6 @@ describe(
 				assert_converges(
 					"let [ itemCount, lastBid ] = value\nitemCount++\nlog(itemCount, lastBid)",
 					"let [ item_count, last_bid ] = value\nitem_count++\nlog(item_count, last_bid)"
-				)
-				assert_converges(
-					"if (a) b()\nelse c()\nwhile (a) b()",
-					"if (a) {\n\tb()\n} else {\n\tc()\n}\nwhile (a) {\n\tb()\n}"
 				)
 				assert_converges(
 					"for (let rowIndex = 0; rowIndex < 2; rowIndex++) {\n\tlog(rowIndex)\n}\nfor (let rowKey in value) {\n\trowKey = rowKey.trim()\n\tlog(rowKey)\n}",

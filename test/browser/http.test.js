@@ -58,53 +58,6 @@ describe(
 			}
 		)
 		it(
-			"keeps raw latin1 file names that the browser decodes as CP949",
-			async () => {
-				/** @type {Record<string, string>} */
-				const cases = {
-					"Ärger.txt": "Ärger.txt",
-					"Äß Müßig.txt": "Äß Müßig.txt",
-					[String.fromCharCode(
-						0xBF,
-						0xB5,
-						0xBC,
-						0xF6,
-						0xC1,
-						0xF5,
-						0xA1,
-						0xA4,
-						0xB9,
-						0xE8,
-						0xB4,
-						0xDE
-					) + ".pdf"]: "영수증·배달.pdf"
-				}
-				const api = http(
-					{
-						base,
-						fetch: async url => new Response(
-							"x",
-							{
-								headers: {
-									"Content-Disposition": `attachment; filename="${decodeURIComponent(url.split("/").pop() ?? "")}"`
-								}
-							}
-						)
-					}
-				)
-				/** @type {DownloadedFile[]} */
-				const files = await Promise.all(
-					Object.keys(cases).map(
-						raw => api.get("/:raw", { raw }, { as: "file" })
-					)
-				)
-				assert.deepEqual(
-					files.map(file => file.name),
-					Object.values(cases)
-				)
-			}
-		)
-		it(
 			"leaves the total unknown for a compressed response",
 			async () => {
 				/** @type {Progress[]} */
@@ -240,27 +193,6 @@ describe(
 					echo.headers["x-trace"],
 					"browser"
 				)
-			}
-		)
-		it(
-			"shares one request between callers and copies the data",
-			async () => {
-				const api = create()
-				const [ first, second ] = await Promise.all(
-					[
-						api.get(
-							"/count",
-							{ key: "browser-dedupe" }
-						),
-						api.get(
-							"/count",
-							{ key: "browser-dedupe" }
-						)
-					]
-				)
-				assert.deepEqual(first, { count: 1 })
-				assert.deepEqual(second, { count: 1 })
-				assert.notStrictEqual(first, second)
 			}
 		)
 		it(

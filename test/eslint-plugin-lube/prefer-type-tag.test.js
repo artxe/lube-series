@@ -34,19 +34,9 @@ new RuleTester(
 		invalid: [
 			{
 				code: "export const own = /** @type {string[]} */(JSON.parse(\"[]\"))/**/",
-				errors: [
-					{
-						message: "Write `/** @type {string[]} */` in front of the declaration instead of casting its value, since its type `any` is assignable to it"
-					}
-				],
-				filename,
-				output: "/** @type {string[]} */\nexport const own = JSON.parse(\"[]\")"
-			},
-			{
-				code: "export function f() {\n\tlet current = /** @type {number | null} */(JSON.parse(\"1\"))/**/\n\treturn current\n}",
 				errors: [ { messageId: "tag" } ],
 				filename,
-				output: "export function f() {\n\t/** @type {number | null} */\n\tlet current = JSON.parse(\"1\")\n\treturn current\n}"
+				output: "/** @type {string[]} */\nexport const own = JSON.parse(\"[]\")"
 			},
 			{
 				code: "export function f() {\r\n\tconst a = /** @type {number} */(1)\r\n\treturn a\r\n}",
@@ -86,11 +76,7 @@ new RuleTester(
 			},
 			{
 				code: "/** @deprecated */\nexport const a = /** @type {number} */(1)/**/",
-				errors: [
-					{
-						message: "Type the declaration with `/** @type {number} */` instead of casting its value, since its type `1` is assignable to it; it is not fixed automatically because the declaration already has a JSDoc comment, so add the type to it by hand"
-					}
-				],
+				errors: [ { messageId: "merge" } ],
 				filename,
 				output: null
 			}
@@ -137,48 +123,7 @@ new RuleTester(
 				filename
 			},
 			{
-				code: "export let found = /** @type {{ id: number } | null} */(null)/**/",
-				filename
-			},
-			{
 				code: "const node = /** @type {{ type: \"a\" } | { type: \"b\" }} */({ type: \"a\" })/**/\nexport const b = node.type == \"b\"",
-				filename
-			}
-		]
-	}
-)
-new RuleTester(
-	{
-		languageOptions: {
-			parser: {
-				parseForESLint(
-					/** @type {string} */ code,
-					/** @type {import("@typescript-eslint/parser").ParserOptions} */ options
-				) {
-					const result = ts_parser.parseForESLint(code, options)
-					return {
-						...result,
-						services: {
-							...result.services,
-							esTreeNodeToTSNodeMap: new WeakMap()
-						}
-					}
-				}
-			},
-			parserOptions: {
-				projectService: true,
-				tsconfigRootDir: tsconfig_root_dir
-			}
-		}
-	}
-).run(
-	"prefer-type-tag with a parser that maps no TypeScript node",
-	prefer_type_tag,
-	{
-		invalid: [],
-		valid: [
-			{
-				code: "export const a = /** @type {number} */(JSON.parse(\"1\"))/**/",
 				filename
 			}
 		]

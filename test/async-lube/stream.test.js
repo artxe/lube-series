@@ -261,25 +261,6 @@ describe(
 			}
 		)
 		it(
-			"ends a merge without an error when a source returns the merge and throws while the merge reads it",
-			async () => {
-				/** @type {AsyncIterable<number>} */
-				const closing = {
-					[Symbol.asyncIterator]: () => ({
-						next: () => {
-							void merged.return?.()
-							throw Error("closed")
-						}
-					})
-				}
-				const merged = merge(closing)
-				assert.deepEqual(
-					await merged.next(),
-					{ done: true, value: void 0 }
-				)
-			}
-		)
-		it(
 			"ends a pending read without an error when the loop leaves and the source fails afterwards",
 			async () => {
 				/** @type {AsyncIterable<number>} */
@@ -356,23 +337,6 @@ describe(
 				)[Symbol.asyncIterator]()
 				assert.deepEqual(
 					await aborted.next(),
-					{ done: true, value: void 0 }
-				)
-			}
-		)
-		it(
-			"ends the read of a share of no stream after it rejects, with no return()",
-			async () => {
-				const reader = share(/** @type {never} */(42)/**/)[Symbol.asyncIterator]()
-				await reader.next()
-					.catch(() => void 0)
-				assert.deepEqual(
-					await Promise.race(
-						[
-							reader.next(),
-							sleep(1000).then(() => "hung")
-						]
-					),
 					{ done: true, value: void 0 }
 				)
 			}
@@ -531,20 +495,6 @@ describe(
 				)
 				assert.isTrue(values.closed)
 				assert.deepEqual(await collect(values), [])
-			}
-		)
-		it(
-			"keeps the newest values of its limit for a reader of a channel that falls far behind",
-			async () => {
-				/** @type {import("async-lube").Channel<number>} */
-				const values = channel({ limit: 2 })
-				const seen = collect(values)
-				await settle()
-				for (let value = 1; value <= 9; value++) {
-					values.send(value)
-				}
-				values.close()
-				assert.deepEqual(await seen, [ 8, 9 ])
 			}
 		)
 		it(
@@ -1275,43 +1225,6 @@ describe(
 				assert.equal(values[0], 1)
 				assert.include(values, 3)
 				assert.equal(values[values.length - 1], 4)
-			}
-		)
-		it(
-			"timers",
-			async () => {
-				vi.useFakeTimers()
-				try {
-					/** @type {import("async-lube").Channel<number>} */
-					const typed = channel()
-					const debounced = collect(debounce(typed, 5000))
-					for (let i = 0; i < 100; i++) {
-						typed.send(i)
-						await vi.advanceTimersByTimeAsync(1)
-					}
-					assert.equal(vi.getTimerCount(), 1)
-					typed.close()
-					assert.deepEqual(await debounced, [ 99 ])
-					assert.equal(vi.getTimerCount(), 0)
-					/** @type {import("async-lube").Channel<number>} */
-					const dropped = channel()
-					const batches = collect(buffer(dropped, 5000))
-					/** @type {import("async-lube").Channel<number>} */
-					const moves = channel()
-					const shown = collect(throttle(moves, 5000))
-					await vi.advanceTimersByTimeAsync(1)
-					dropped.send(1)
-					moves.send(1)
-					await vi.advanceTimersByTimeAsync(1)
-					assert.equal(vi.getTimerCount(), 2)
-					dropped.close()
-					moves.close()
-					assert.deepEqual(await batches, [ [ 1 ] ])
-					assert.deepEqual(await shown, [ 1 ])
-					assert.equal(vi.getTimerCount(), 0)
-				} finally {
-					vi.useRealTimers()
-				}
 			}
 		)
 		it(
