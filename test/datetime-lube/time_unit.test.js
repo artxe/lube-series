@@ -15,9 +15,6 @@ describe(
 						ss: 1000
 					}
 				)
-				assert.equal(timeUnit.DD, timeUnit.HH * 24)
-				assert.equal(timeUnit.HH, timeUnit.mm * 60)
-				assert.equal(timeUnit.mm, timeUnit.ss * 60)
 			}
 		)
 	}

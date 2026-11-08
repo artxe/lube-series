@@ -314,14 +314,6 @@ describe(
 					diff(from, to, "M", "America/New_York"),
 					1
 				)
-				/**
-				 * @param {string} text
-				 * @param {import("datetime-lube").TimeZone} zone
-				 * @returns {Date}
-				 */
-				function wall(text, zone) {
-					return stringToDate(text, "YYYY-MM-DD HH:mm:ss", zone)
-				}
 				const johns = wall(
 					"2009-10-01 00:00:00",
 					"America/St_Johns"
@@ -403,6 +395,14 @@ describe(
 						),
 						unit
 					)
+				}
+				/**
+				 * @param {string} text
+				 * @param {import("datetime-lube").TimeZone} zone
+				 * @returns {Date}
+				 */
+				function wall(text, zone) {
+					return stringToDate(text, "YYYY-MM-DD HH:mm:ss", zone)
 				}
 			}
 		)

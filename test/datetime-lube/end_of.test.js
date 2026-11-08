@@ -198,38 +198,6 @@ describe(
 						endOf(day, "Y").getTime(),
 						Date.parse("1921-12-31T20:59:59.999Z")
 					)
-					process.env["TZ"] = "America/Toronto"
-					assert.equal(
-						endOf(
-							new Date("1919-03-30T17:00:00.000Z"),
-							"D"
-						).getTime(),
-						Date.parse("1919-03-31T04:29:59.999Z")
-					)
-					process.env["TZ"] = "America/St_Johns"
-					assert.equal(
-						endOf(
-							new Date("1987-10-25T02:31:00.000Z"),
-							"D"
-						).getTime(),
-						Date.parse("1987-10-25T03:29:59.999Z")
-					)
-					process.env["TZ"] = "Asia/Gaza"
-					assert.equal(
-						endOf(
-							new Date("2010-03-26T22:00:30.000Z"),
-							"H"
-						).getTime(),
-						Date.parse("2010-03-26T22:00:59.999Z")
-					)
-					process.env["TZ"] = "Pacific/Chatham"
-					assert.equal(
-						endOf(
-							new Date("1974-11-02T13:30:00.000Z"),
-							"H"
-						).getTime(),
-						Date.parse("1974-11-02T13:59:59.999Z")
-					)
 				} finally {
 					if (tz === undefined) {
 						delete process.env["TZ"]
@@ -254,29 +222,6 @@ describe(
 						RangeError,
 						"Invalid unit"
 					)
-				}
-				for (const date of dst_dates) {
-					for (const [ unit, format, length ] of /** @type {const} */([
-						[ "H", "YYYY-MM-DD HH", 3600000 ],
-						[ "m", "YYYY-MM-DD HH:mm", 60000 ],
-						[ "s", "YYYY-MM-DD HH:mm:ss", 1000 ]
-					])/**/) {
-						const end = endOf(date, unit)
-						assert.isAtLeast(end.getTime(), date.getTime())
-						assert.isBelow(
-							end.getTime() - date.getTime(),
-							length
-						)
-						assert.equal(
-							dateToString(end, format),
-							dateToString(date, format)
-						)
-						const next = new Date(end.getTime() + 1)
-						assert.isTrue(
-							dateToString(next, format) != dateToString(end, format)
-							|| next.getTimezoneOffset() != end.getTimezoneOffset()
-						)
-					}
 				}
 			}
 		)

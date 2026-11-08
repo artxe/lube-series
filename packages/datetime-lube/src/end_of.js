@@ -70,7 +70,7 @@ export default function(date, unit, zone) {
 		const result = new Date(time + rest - 1)
 		if (
 			result.getTimezoneOffset() == date.getTimezoneOffset()
-			&& result.getSeconds() == (ms > 1000 ? 59 : date.getSeconds())
+				&& result.getSeconds() == (ms > 1000 ? 59 : date.getSeconds())
 		) {
 			return result
 		}
@@ -121,7 +121,7 @@ export default function(date, unit, zone) {
 		const next = offset_of(wall - offset, zone)
 		if (
 			next == offset
-			|| wall - next > time && offset_of(wall - next, zone) == next
+				|| wall - next > time && offset_of(wall - next, zone) == next
 		) {
 			return new Date(wall - next - 1)
 		}

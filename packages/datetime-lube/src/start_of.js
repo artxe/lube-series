@@ -64,7 +64,7 @@ export default function(date, unit, zone) {
 		const result = new Date(time - rest)
 		if (
 			result.getTimezoneOffset() == date.getTimezoneOffset()
-			&& result.getSeconds() == (ms > 1000 ? 0 : date.getSeconds())
+				&& result.getSeconds() == (ms > 1000 ? 0 : date.getSeconds())
 		) {
 			return result
 		}

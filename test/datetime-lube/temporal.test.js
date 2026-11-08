@@ -143,36 +143,13 @@ const clock_units = { H: 3600000, m: 60000, s: 1000 }
 /**
  * @param {number} seed
  * @param {string} local
+ * @returns {void}
  */
 function check(seed, local) {
 	const random = create_random(seed)
-	/**
-	 * @param {number} count
-	 * @returns {number}
-	 */
-	function int(count) {
-		return Math.floor(random() * count)
-	}
-	/**
-	 * @template T
-	 * @param {readonly T[]} items
-	 * @returns {T}
-	 */
-	function pick(items) {
-		return /** @type {T} */(items[Math.floor(random() * items.length)])/**/
-	}
 	const picked = pick(zones)
 	const zone = picked || local
 	const arg = picked || undefined
-	/** @returns {number} */
-	function instant() {
-		const base = Temporal.PlainDate.from(pick(anchors)).toZonedDateTime({ timeZone: zone }).epochMilliseconds
-		const spread = random() < 0.5 ? 21600000 : 259200000
-		const ms = base + Math.round((random() * 2 - 1) * spread)
-		return random() < 0.5
-			? Math.round(ms / 900000) * 900000 + pick([ 0, 0, 1, 999, 59999 ])
-			: ms
-	}
 	const ms = instant()
 	const date = new Date(ms)
 	const at = `seed ${seed}: ${iso(ms, zone)} ${picked || `local ${local}`}`
@@ -303,6 +280,30 @@ function check(seed, local) {
 		time.offsetNanoseconds / 1e6,
 		at
 	)
+	/** @returns {number} */
+	function instant() {
+		const base = Temporal.PlainDate.from(pick(anchors)).toZonedDateTime({ timeZone: zone }).epochMilliseconds
+		const spread = random() < 0.5 ? 21600000 : 259200000
+		const millis = base + Math.round((random() * 2 - 1) * spread)
+		return random() < 0.5
+			? Math.round(millis / 900000) * 900000 + pick([ 0, 0, 1, 999, 59999 ])
+			: millis
+	}
+	/**
+	 * @param {number} count
+	 * @returns {number}
+	 */
+	function int(count) {
+		return Math.floor(random() * count)
+	}
+	/**
+	 * @template T
+	 * @param {readonly T[]} items
+	 * @returns {T}
+	 */
+	function pick(items) {
+		return /** @type {T} */(items[Math.floor(random() * items.length)])/**/
+	}
 }
 /**
  * @param {Temporal.ZonedDateTime} time

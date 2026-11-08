@@ -7,6 +7,7 @@ const formatters = new Map()
 /**
  * @param {string} name
  * @param {string=} zone
+ * @returns {void}
  */
 function check_zone(name, zone) {
 	if (zone === undefined || formatters.has(zone)) {
@@ -178,7 +179,7 @@ function offset_of(time, zone) {
 	}
 	return (match[1] == "-" ? -1 : 1) * (
 		(+/** @type {string} */(match[2])/**/ * 60 + +/** @type {string} */(match[3])/**/) * 60000
-		+ +(match[4] ?? 0) * 1000
+			+ +(match[4] ?? 0) * 1000
 	)
 }
 /**

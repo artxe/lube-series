@@ -108,7 +108,7 @@ export default function(
 					/** @type {number} */(fields[0])/**/
 				)
 				: pad(
-				/** @type {number} */(fields[/** @type {number} */(part[0])/**/])/**/ + /** @type {number} */(part[2])/**/,
+					/** @type {number} */(fields[/** @type {number} */(part[0])/**/])/**/ + /** @type {number} */(part[2])/**/,
 					/** @type {number} */(part[1])/**/
 				)
 	}

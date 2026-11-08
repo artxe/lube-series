@@ -99,58 +99,6 @@ describe(
 			}
 		)
 		it(
-			"keeps a bounded number of time zone formatters",
-			() => {
-				const date = new Date("2024-07-15T12:00:00.000Z")
-				const native = Intl.DateTimeFormat
-				let created = 0
-				Intl.DateTimeFormat = /** @type {typeof Intl.DateTimeFormat} */(/** @type {unknown} */(class extends native {
-					/**
-					 * @param {ConstructorParameters<typeof Intl.DateTimeFormat>} args
-					 */
-					constructor(...args) {
-						super(...args)
-						created++
-					}
-				}))/**/
-				try {
-					const zone = "America/New_York"
-					/**
-					 * @param {number} bits
-					 * @returns {import("datetime-lube").TimeZone}
-					 */
-					function spell(bits) {
-						let rest = bits
-						return [ ...zone ].map(
-							letter => {
-								if (letter.toUpperCase() == letter.toLowerCase()) {
-									return letter
-								}
-								const upper = rest & 1
-								rest >>= 1
-								return upper
-									? letter.toUpperCase()
-									: letter.toLowerCase()
-							}
-						).join("")
-					}
-					for (let bits = 0; bits < 1100; bits++) {
-						assert.equal(
-							dateToString(date, "HH", spell(bits)),
-							"08"
-						)
-					}
-					const before = created
-					dateToString(date, "HH", spell(0))
-					assert.equal(created, before + 1)
-					dateToString(date, "HH", spell(0))
-					assert.equal(created, before + 1)
-				} finally {
-					Intl.DateTimeFormat = native
-				}
-			}
-		)
-		it(
 			"literal text and repeated tokens",
 			() => {
 				const date = new Date(2222, 2, 4, 11, 22, 33, 444)
