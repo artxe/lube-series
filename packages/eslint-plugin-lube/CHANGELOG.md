@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.1
+
+### Fixed
+
+- **`no-ambiguous-start` allows the first statement of a file**: no line is above it for it to join, so a `.json` file linted as JavaScript, whose top-level array starts with `[`, is no longer reported. Comments before it do not count as a line above.
+
 ## 0.9.0
 
 ### Breaking

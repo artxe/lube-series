@@ -5,7 +5,7 @@ export default {
 		return {
 			ExpressionStatement(node) {
 				const token = source_code.getFirstToken(node)
-				if (!token) {
+				if (!token || !source_code.getTokenBefore(node, { includeComments: false })) {
 					return
 				}
 				const kind = token.type == "Template"

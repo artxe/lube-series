@@ -18,7 +18,7 @@
 		"eslint": "^10.14.0",
 		"eslint-plugin-lube": "workspace:^",
 		"hangul-lube": "workspace:^",
-		"playwright": "^1.64.1",
+		"playwright": "^1.65.0",
 		"svelte": "^5.57.3",
 		"svelte-eslint-parser": "^1.10.1",
 		"typescript": "npm:@typescript/typescript6@^6.0.2",

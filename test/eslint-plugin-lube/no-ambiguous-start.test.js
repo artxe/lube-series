@@ -9,7 +9,11 @@ new RuleTester().run(
 	{
 		invalid: [
 			{
-				code: "(a || b).run()",
+				code: "foo();\n[1, 2]",
+				errors: [ { messageId: "start" } ]
+			},
+			{
+				code: "foo();\n(a || b).run()",
 				errors: [
 					{
 						data: { kind: "`(`" },
@@ -27,7 +31,7 @@ new RuleTester().run(
 				]
 			},
 			{
-				code: "`x`.trim()",
+				code: "foo();\n`x`.trim()",
 				errors: [
 					{
 						data: { kind: "a template literal" },
@@ -45,6 +49,10 @@ new RuleTester().run(
 			}
 		],
 		valid: [
+			"[1, 2]",
+			"[\n\t{ \"a\": 1 },\n\t{ \"b\": [ 2 ] }\n]",
+			"// c\n/* d */\n[1]",
+			"(a || b).run()",
 			"foo()",
 			"const [a] = b",
 			"a.b = [1, 2]",

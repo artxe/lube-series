@@ -4,6 +4,7 @@ Disallows an expression statement that starts with `(`, `[` or a template litera
 - Without semicolons such a statement joins the line above and becomes a call, an index or a tagged template of it.
 - A JSDoc cast in front is not a token, so `/** @type {T} */(x).y = 1` counts too.
 - Assign the value to a `const` first, or write the statement another way.
+- The first statement of a file is allowed, since no line is above it (a `.json` file linted as JavaScript, whose top-level array starts with `[`).
 - It has no fix.
 
 ## options
