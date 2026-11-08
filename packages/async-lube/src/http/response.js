@@ -73,9 +73,7 @@ function decode_plain_name(name) {
 	}
 	return decoded
 }
-/**
- * @returns {RegExp}
- */
+/** @returns {RegExp} */
 function get_cp949_regex() {
 	if (cp949_regex) {
 		return cp949_regex
@@ -427,11 +425,6 @@ export function track_progress(response, on_progress) {
 		: void 0
 	let loaded = 0
 	let complete = false
-	/** @param {import("../../public.js").Progress} progress */
-	function report(progress) {
-		complete = progress.ratio == 1
-		call_progress(notify, progress)
-	}
 	report(to_progress(0, total))
 	const body = response.body.pipeThrough(
 		new TransformStream(
@@ -459,4 +452,12 @@ export function track_progress(response, on_progress) {
 			statusText: response.statusText
 		}
 	)
+	/**
+	 * @param {import("../../public.js").Progress} progress
+	 * @returns {void}
+	 */
+	function report(progress) {
+		complete = progress.ratio == 1
+		call_progress(notify, progress)
+	}
 }

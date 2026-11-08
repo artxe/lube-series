@@ -10,22 +10,39 @@ import {
 describe(
 	"limiter",
 	() => {
-		/**
-		 * @param {PromiseLike<unknown>} promise
-		 * @returns {Promise<unknown>}
-		 */
-		function rejection(promise) {
-			return Promise.resolve(promise)
-				.then(
-					() => assert.fail("No error occurred"),
-					error => error
-				)
-		}
 		afterEach(() => vi.useRealTimers())
 		beforeEach(
 			() => {
 				vi.useFakeTimers()
 				vi.setTimerTickMode("nextTimerAsync")
+			}
+		)
+		it(
+			"a fixed window limits calls to count starts per window",
+			async () => {
+				const quota = limiter(
+					{
+						rate: {
+							count: 2,
+							per: 1000,
+							window: "fixed"
+						}
+					}
+				)
+				/** @type {number[]} */
+				const started = []
+				const calls = [ 1, 2, 3, 4, 5 ].map(
+					id => quota(() => started.push(id))
+				)
+				await vi.advanceTimersByTimeAsync(0)
+				assert.deepEqual(started, [ 1, 2 ])
+				await vi.advanceTimersByTimeAsync(999)
+				assert.deepEqual(started, [ 1, 2 ])
+				await vi.advanceTimersByTimeAsync(1)
+				assert.deepEqual(started, [ 1, 2, 3, 4 ])
+				await vi.advanceTimersByTimeAsync(1000)
+				await Promise.all(calls)
+				assert.deepEqual(started, [ 1, 2, 3, 4, 5 ])
 			}
 		)
 		it(
@@ -65,20 +82,6 @@ describe(
 				let peak = 0
 				/** @type {number[]} */
 				const order = []
-				/**
-				 * @param {number} id
-				 * @returns {Promise<number>}
-				 */
-				async function query(id) {
-					active++
-					peak = Math.max(peak, active)
-					await new Promise(
-						resolve => setTimeout(resolve, 10)
-					)
-					active--
-					order.push(id)
-					return id
-				}
 				const results = Promise.all(
 					[ 1, 2, 3, 4, 5 ].map(id => pool(() => query(id)))
 				)
@@ -175,6 +178,20 @@ describe(
 					TypeError,
 					"Unknown limiter option \"rate.par\""
 				)
+				/**
+				 * @param {number} id
+				 * @returns {Promise<number>}
+				 */
+				async function query(id) {
+					active++
+					peak = Math.max(peak, active)
+					await new Promise(
+						resolve => setTimeout(resolve, 10)
+					)
+					active--
+					order.push(id)
+					return id
+				}
 			}
 		)
 		it(
@@ -217,18 +234,6 @@ describe(
 				const per_user = limiter({ concurrency: 1 })
 				/** @type {string[]} */
 				const log = []
-				/**
-				 * @param {string} user
-				 * @param {number} ms
-				 * @returns {Promise<void>}
-				 */
-				async function job(user, ms) {
-					log.push(`start ${user}`)
-					await new Promise(
-						resolve => setTimeout(resolve, ms)
-					)
-					log.push(`end ${user}`)
-				}
 				const alice = per_user.key("alice")
 				await Promise.all(
 					[
@@ -285,6 +290,18 @@ describe(
 				)
 				await vi.advanceTimersByTimeAsync(1000)
 				assert.equal(vi.getTimerCount(), 0)
+				/**
+				 * @param {string} user
+				 * @param {number} ms
+				 * @returns {Promise<void>}
+				 */
+				async function job(user, ms) {
+					log.push(`start ${user}`)
+					await new Promise(
+						resolve => setTimeout(resolve, ms)
+					)
+					log.push(`end ${user}`)
+				}
 			}
 		)
 		it(
@@ -332,5 +349,163 @@ describe(
 				assert.equal(pool.running, 0)
 			}
 		)
+		it(
+			"take answers at once with 0 or the milliseconds until a start is free, with a sliding window",
+			async () => {
+				const quota = limiter(
+					{ rate: { count: 2, per: 1000 } }
+				)
+				assert.equal(quota.take(), 0)
+				await vi.advanceTimersByTimeAsync(300)
+				assert.equal(quota.take(), 0)
+				assert.equal(quota.take(), 700)
+				await vi.advanceTimersByTimeAsync(400)
+				assert.equal(quota.take(), 300)
+				await vi.advanceTimersByTimeAsync(300)
+				assert.equal(quota.take(), 0)
+				assert.equal(quota.take(), 300)
+				await vi.advanceTimersByTimeAsync(300)
+				assert.equal(quota.take(), 0)
+			}
+		)
+		it(
+			"take counts each key apart and takes the key of a keyed limiter from the same keys",
+			async () => {
+				const quota = limiter(
+					{ rate: { count: 1, per: 1000 } }
+				)
+				assert.equal(quota.take("a"), 0)
+				assert.equal(quota.take("b"), 0)
+				assert.equal(quota.take("a"), 1000)
+				assert.equal(quota.key("a").take(), 1000)
+				assert.equal(quota.key("b").take("a"), 1000)
+				assert.equal(quota.key("a").take("c"), 0)
+				assert.equal(quota.key("c").take(), 1000)
+				assert.equal(quota.take(), 0)
+				assert.equal(quota.take(), 1000)
+				await vi.advanceTimersByTimeAsync(1000)
+				assert.equal(quota.take("a"), 0)
+				assert.equal(quota.take(), 0)
+			}
+		)
+		it(
+			"take shares the rate window with calls, so a call after a take waits",
+			async () => {
+				const quota = limiter(
+					{
+						rate: {
+							count: 1,
+							per: 1000,
+							window: "fixed"
+						}
+					}
+				)
+				assert.equal(quota.take(), 0)
+				/** @type {number[]} */
+				const started = []
+				const call = quota(() => started.push(Date.now()))
+				await vi.advanceTimersByTimeAsync(999)
+				assert.deepEqual(started, [])
+				await vi.advanceTimersByTimeAsync(1)
+				await call
+				assert.lengthOf(started, 1)
+				assert.equal(quota.take(), 1000)
+				const lease = quota.acquire()
+				await vi.advanceTimersByTimeAsync(999)
+				assert.equal(quota.take(), 1)
+				await vi.advanceTimersByTimeAsync(1)
+				const held = await lease
+				held.release()
+				assert.equal(quota.take(), 1000)
+			}
+		)
+		it(
+			"take starts a fresh window for a key whose window has passed",
+			async () => {
+				const quota = limiter(
+					{ rate: { count: 1, per: 1000 } }
+				)
+				assert.equal(quota.take("socket"), 0)
+				await vi.advanceTimersByTimeAsync(1000)
+				assert.equal(vi.getTimerCount(), 0)
+				assert.equal(quota.take("socket"), 0)
+				assert.equal(quota.take("socket"), 1000)
+			}
+		)
+		it(
+			"take throws without a rate, and the window must be sliding or fixed",
+			() => {
+				assert.throws(
+					() => limiter({ concurrency: 1 }).take("a"),
+					TypeError,
+					"take() of limiter() needs a rate"
+				)
+				assert.throws(
+					() => limiter({}).take(),
+					TypeError,
+					"needs a rate"
+				)
+				assert.throws(
+					() => limiter(
+						/** @type {never} */({
+							rate: {
+								count: 1,
+								per: 10,
+								window: "tumbling"
+							}
+						})/**/
+					),
+					TypeError,
+					"window"
+				)
+				assert.equal(
+					limiter(
+						{
+							rate: {
+								count: 1,
+								per: 10,
+								window: "sliding"
+							}
+						}
+					).take(),
+					0
+				)
+			}
+		)
+		it(
+			"take with a fixed window frees all starts when the window ends",
+			async () => {
+				const quota = limiter(
+					{
+						rate: {
+							count: 2,
+							per: 1000,
+							window: "fixed"
+						}
+					}
+				)
+				assert.equal(quota.take(), 0)
+				await vi.advanceTimersByTimeAsync(600)
+				assert.equal(quota.take(), 0)
+				assert.equal(quota.take(), 400)
+				await vi.advanceTimersByTimeAsync(399)
+				assert.equal(quota.take(), 1)
+				await vi.advanceTimersByTimeAsync(1)
+				assert.equal(quota.take(), 0)
+				assert.equal(quota.take(), 0)
+				assert.equal(quota.take(), 1000)
+			}
+		)
+		/**
+		 * @param {PromiseLike<unknown>} promise
+		 * @returns {Promise<unknown>}
+		 */
+		function rejection(promise) {
+			return Promise.resolve(promise)
+				.then(
+					() => assert.fail("No error occurred"),
+					error => error
+				)
+		}
 	}
 )

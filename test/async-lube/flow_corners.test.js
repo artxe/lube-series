@@ -1,4 +1,4 @@
-/** @import { NodeContext as Context } from "async-lube" */
+/** @import { NodeContext as Context, Skip } from "async-lube" */
 /** @import { SavedFlow } from "./private.js" */
 import {
 	CancelError,
@@ -17,46 +17,6 @@ import {
 describe(
 	"flow corners",
 	() => {
-		/**
-		 * @param {{ snapshot(): import("async-lube").FlowSnapshot }} run
-		 * @returns {SavedFlow}
-		 */
-		function internals(run) {
-			return /** @type {SavedFlow} */(/** @type {unknown} */(run.snapshot()))/**/
-		}
-		/**
-		 * @param {number} ms
-		 * @returns {Promise<void>}
-		 */
-		function pause(ms) {
-			return new Promise(
-				resolve => setTimeout(resolve, ms)
-			)
-		}
-		/**
-		 * @param {PromiseLike<unknown>} promise
-		 * @returns {Promise<unknown>}
-		 */
-		function rejection(promise) {
-			return Promise.resolve(promise)
-				.then(
-					() => assert.fail("No error occurred"),
-					error => error
-				)
-		}
-		/**
-		 * @param {() => boolean} condition
-		 * @returns {Promise<void>}
-		 */
-		async function until(condition) {
-			const started = Date.now()
-			while (!condition()) {
-				if (Date.now() - started > 2000) {
-					assert.fail("Timed out")
-				}
-				await pause(5)
-			}
-		}
 		afterEach(() => vi.useRealTimers())
 		beforeEach(
 			() => {
@@ -67,9 +27,6 @@ describe(
 		it(
 			"a catch that ends after the run was cancelled records nothing",
 			async () => {
-				function charge() {
-					throw Error("declined")
-				}
 				let caught = 0
 				const run = flow().add(
 					charge,
@@ -92,14 +49,15 @@ describe(
 				assert.equal(caught, 1)
 				assert.deepEqual(run.errors, {})
 				assert.equal(run.nodes["charge"], "cancelled")
+				/** @returns {void} */
+				function charge() {
+					throw Error("declined")
+				}
 			}
 		)
 		it(
 			"a catch that throws fails the run with its error",
 			async () => {
-				function charge() {
-					throw Error("declined")
-				}
 				const run = flow().add(
 					charge,
 					{
@@ -119,20 +77,15 @@ describe(
 					/** @type {Error} */(run.errors["charge"])/**/.message,
 					"refund failed"
 				)
+				/** @returns {void} */
+				function charge() {
+					throw Error("declined")
+				}
 			}
 		)
 		it(
 			"a fallback list goes to every node in it",
 			async () => {
-				function cache() {
-					return "cache"
-				}
-				function mirror() {
-					return "mirror"
-				}
-				function primary() {
-					throw Error("down")
-				}
 				const run = flow().add(mirror)
 					.add(cache)
 					.add(
@@ -149,17 +102,23 @@ describe(
 						primary: "skipped"
 					}
 				)
+				/** @returns {string} */
+				function cache() {
+					return "cache"
+				}
+				/** @returns {string} */
+				function mirror() {
+					return "mirror"
+				}
+				/** @returns {void} */
+				function primary() {
+					throw Error("down")
+				}
 			}
 		)
 		it(
 			"a fallback past maxSteps fails the run",
 			async () => {
-				function backup() {
-					return "backup"
-				}
-				function primary() {
-					throw Error("down")
-				}
 				const run = flow({ maxSteps: 1 }).add(backup)
 					.add(primary, { fallback: backup })
 					.run()
@@ -169,20 +128,19 @@ describe(
 					error.message,
 					"Flow node \"backup\" failed: The flow exceeded 1 steps"
 				)
+				/** @returns {string} */
+				function backup() {
+					return "backup"
+				}
+				/** @returns {void} */
+				function primary() {
+					throw Error("down")
+				}
 			}
 		)
 		it(
 			"a finished node that gets a release is saved to run again",
 			async () => {
-				function open() {
-					return "tx"
-				}
-				/**
-				 * @param {string} tx
-				 */
-				function use(tx) {
-					return tx + "!"
-				}
 				const plain = flow().add(open)
 					.add(use, open)
 					.run()
@@ -212,6 +170,17 @@ describe(
 				)
 				assert.equal(await resumed, "tx!")
 				assert.deepEqual(released, [ "tx" ])
+				/** @returns {string} */
+				function open() {
+					return "tx"
+				}
+				/**
+				 * @param {string} tx
+				 * @returns {string}
+				 */
+				function use(tx) {
+					return tx + "!"
+				}
 			}
 		)
 		it(
@@ -219,15 +188,6 @@ describe(
 			async () => {
 				/** @type {import("async-lube").Input<number[]>} */
 				const value = flow.input("value")
-				/**
-				 * @param {number} n
-				 */
-				function check(n) {
-					if (n < 0) {
-						throw Error("negative")
-					}
-					return n
-				}
 				const run = flow().add(value)
 					.add(
 						flow.each(check),
@@ -241,6 +201,16 @@ describe(
 				assert.deepEqual(await run, [ 1, void 0 ])
 				run.retry()
 				assert.deepEqual(await run, [ 1, 4 ])
+				/**
+				 * @param {number} n
+				 * @returns {number}
+				 */
+				function check(n) {
+					if (n < 0) {
+						throw Error("negative")
+					}
+					return n
+				}
 			}
 		)
 		it(
@@ -249,15 +219,6 @@ describe(
 				const value = flow.input("value")
 				/** @type {string[]} */
 				const keys = []
-				/**
-				 * @param {unknown} n
-				 * @param {Context} context
-				 */
-				async function write(n, { key, sleep }) {
-					keys.push(key)
-					await sleep(10)
-					return n
-				}
 				const run = flow().add(value)
 					.add(write, flow.queue(value))
 					.run(void 0, { id: "r" })
@@ -274,21 +235,22 @@ describe(
 					keys,
 					[ "r:write:1", "r:write:2" ]
 				)
+				/**
+				 * @param {unknown} n
+				 * @param {Context} context
+				 * @returns {Promise<unknown>}
+				 */
+				async function write(n, { key, sleep }) {
+					keys.push(key)
+					await sleep(10)
+					return n
+				}
 			}
 		)
 		it(
 			"a queue node that an optional failure holds counts no pending update",
 			async () => {
 				const value = flow.input("value")
-				/**
-				 * @param {unknown} n
-				 */
-				function positive(n) {
-					if (Number(n) < 0) {
-						throw Error("negative")
-					}
-					return n
-				}
 				const run = flow().add(value)
 					.add(
 						positive,
@@ -302,6 +264,16 @@ describe(
 				assert.equal(run.pending(positive), 0)
 				run.send(value, 2)
 				assert.equal(await run, 2)
+				/**
+				 * @param {unknown} n
+				 * @returns {unknown}
+				 */
+				function positive(n) {
+					if (Number(n) < 0) {
+						throw Error("negative")
+					}
+					return n
+				}
 			}
 		)
 		it(
@@ -312,29 +284,12 @@ describe(
 				const source_gates = []
 				/** @type {(() => void)[]} */
 				const target_gates = []
-				/**
-					 * @param {(() => void)[]} gates
-					 * @returns {Promise<void>}
-					 */
-				async function release(gates) {
-					await until(() => gates.length > 0)
-					;/** @type {() => void} */(gates.shift())/**/()
-					await pause(1)
-				}
-				/**
-				 * @param {unknown} n
-				 */
-				async function source(n) {
-					await new Promise(
-						resolve => source_gates.push(() => resolve(void 0))
-					)
-					return n
-				}
 				/** @type {Record<string, number[]>} */
 				const results = {}
 				for (const overlap of /** @type {const} */([ "queue", "rerun", "restart" ])/**/) {
 					let starts = 0
 					let finished = 0
+					/** @returns {Promise<string>} */
 					async function target() {
 						starts++
 						await new Promise(
@@ -380,6 +335,26 @@ describe(
 						restart: [ 2, 2 ]
 					}
 				)
+				/**
+				 * @param {(() => void)[]} gates
+				 * @returns {Promise<void>}
+				 */
+				async function release(gates) {
+					await until(() => gates.length > 0)
+					const open = /** @type {() => void} */(gates.shift())/**/
+					open()
+					await pause(1)
+				}
+				/**
+				 * @param {unknown} n
+				 * @returns {Promise<unknown>}
+				 */
+				async function source(n) {
+					await new Promise(
+						resolve => source_gates.push(() => resolve(void 0))
+					)
+					return n
+				}
 			}
 		)
 		it(
@@ -388,24 +363,7 @@ describe(
 				const value = flow.input("value")
 				/** @type {(() => void)[]} */
 				const gates = []
-				/**
-				 * @param {unknown} n
-				 */
-				async function source(n) {
-					await new Promise(
-						resolve => gates.push(() => resolve(void 0))
-					)
-					return n
-				}
 				let starts = 0
-				/**
-				 * @param {Context} context
-				 */
-				async function target({ sleep }) {
-					starts++
-					await sleep(30)
-					return "target"
-				}
 				const run = flow().add(value)
 					.add(
 						source,
@@ -420,11 +378,31 @@ describe(
 				}
 				for (let n = 1; n <= 4; n++) {
 					await until(() => gates.length > 0)
-					;/** @type {() => void} */(gates.shift())/**/()
+					const open = /** @type {() => void} */(gates.shift())/**/
+					open()
 					await pause(1)
 				}
 				assert.equal(await run, "target")
 				assert.equal(starts, 4)
+				/**
+				 * @param {unknown} n
+				 * @returns {Promise<unknown>}
+				 */
+				async function source(n) {
+					await new Promise(
+						resolve => gates.push(() => resolve(void 0))
+					)
+					return n
+				}
+				/**
+				 * @param {Context} context
+				 * @returns {Promise<string>}
+				 */
+				async function target({ sleep }) {
+					starts++
+					await sleep(30)
+					return "target"
+				}
 			}
 		)
 		it(
@@ -433,26 +411,8 @@ describe(
 				const value = flow.input("value")
 				/** @type {(() => void)[]} */
 				const gates = []
-				/**
-				 * @param {unknown} n
-				 */
-				async function source(n) {
-					await new Promise(
-						resolve => gates.push(() => resolve(void 0))
-					)
-					return n
-				}
 				/** @type {unknown[]} */
 				const seen = []
-				/**
-				 * @param {unknown} n
-				 * @param {Context} context
-				 */
-				async function dependent(n, { sleep }) {
-					seen.push(n)
-					await sleep(30)
-					return n
-				}
 				const run = flow().add(value)
 					.add(
 						source,
@@ -466,47 +426,38 @@ describe(
 				}
 				for (let n = 1; n <= 3; n++) {
 					await until(() => gates.length > 0)
-					;/** @type {() => void} */(gates.shift())/**/()
+					const open = /** @type {() => void} */(gates.shift())/**/
+					open()
 					await pause(1)
 				}
 				assert.equal(await run, 3)
 				assert.equal(seen.at(-1), 3)
 				assert.isAbove(seen.length, 1)
+				/**
+				 * @param {unknown} n
+				 * @param {Context} context
+				 * @returns {Promise<unknown>}
+				 */
+				async function dependent(n, { sleep }) {
+					seen.push(n)
+					await sleep(30)
+					return n
+				}
+				/**
+				 * @param {unknown} n
+				 * @returns {Promise<unknown>}
+				 */
+				async function source(n) {
+					await new Promise(
+						resolve => gates.push(() => resolve(void 0))
+					)
+					return n
+				}
 			}
 		)
 		it(
 			"a race abandons a dependency whose other dependent waits for a removed edge",
 			async () => {
-				/**
-				 * @param {string | undefined} first
-				 * @param {string | undefined} second
-				 */
-				function r(first, second) {
-					return first ?? second
-				}
-				function w() {
-					return "w"
-				}
-				/**
-				 * @param {Context} context
-				 */
-				async function x({ sleep }) {
-					await sleep(5)
-					return "x"
-				}
-				/**
-				 * @param {Context} context
-				 */
-				async function y({ sleep }) {
-					await sleep(50)
-					return "y"
-				}
-				/**
-				 * @param {string} value
-				 */
-				function z(value) {
-					return value
-				}
 				const started = flow().add(x)
 					.add(y)
 					.add(w)
@@ -532,6 +483,41 @@ describe(
 				assert.equal(await resumed, "x")
 				assert.equal(resumed.nodes["y"], "skipped")
 				assert.equal(resumed.nodes["z"], "idle")
+				/**
+				 * @param {string | undefined} first
+				 * @param {string | undefined} second
+				 * @returns {string | undefined}
+				 */
+				function r(first, second) {
+					return first ?? second
+				}
+				/** @returns {string} */
+				function w() {
+					return "w"
+				}
+				/**
+				 * @param {Context} context
+				 * @returns {Promise<string>}
+				 */
+				async function x({ sleep }) {
+					await sleep(5)
+					return "x"
+				}
+				/**
+				 * @param {Context} context
+				 * @returns {Promise<string>}
+				 */
+				async function y({ sleep }) {
+					await sleep(50)
+					return "y"
+				}
+				/**
+				 * @param {string} value
+				 * @returns {string}
+				 */
+				function z(value) {
+					return value
+				}
 			}
 		)
 		it(
@@ -539,17 +525,6 @@ describe(
 			async () => {
 				const job = flow.input("job")
 				let opened = 0
-				function open() {
-					opened++
-					return "tx"
-				}
-				/**
-				 * @param {string} tx
-				 * @param {unknown} value
-				 */
-				function work(tx, value) {
-					return tx + ":" + String(value)
-				}
 				const run = flow().add(job)
 					.add(open, { release: () => {} })
 					.add(work, open, flow.queue(job))
@@ -559,29 +534,25 @@ describe(
 				run.send(job, 1)
 				assert.equal(await run, "tx:1")
 				assert.equal(opened, 1)
+				/** @returns {string} */
+				function open() {
+					opened++
+					return "tx"
+				}
+				/**
+				 * @param {string} tx
+				 * @param {unknown} value
+				 * @returns {string}
+				 */
+				function work(tx, value) {
+					return tx + ":" + String(value)
+				}
 			}
 		)
 		it(
 			"a resource stays closed when another dependency of its dependent skips",
 			async () => {
 				let opened = 0
-				/**
-				 * @param {Context} context
-				 */
-				async function load({ sleep }) {
-					await sleep(5)
-					return "data"
-				}
-				function never() {
-					return 1
-				}
-				function open() {
-					opened++
-					return "tx"
-				}
-				function write() {
-					return "written"
-				}
 				const run = flow().add(never, { when: () => false })
 					.add(open, { release: () => {} })
 					.add(load)
@@ -590,6 +561,27 @@ describe(
 				assert.isUndefined(await run)
 				assert.equal(opened, 0)
 				assert.equal(run.nodes["write"], "skipped")
+				/**
+				 * @param {Context} context
+				 * @returns {Promise<string>}
+				 */
+				async function load({ sleep }) {
+					await sleep(5)
+					return "data"
+				}
+				/** @returns {number} */
+				function never() {
+					return 1
+				}
+				/** @returns {string} */
+				function open() {
+					opened++
+					return "tx"
+				}
+				/** @returns {string} */
+				function write() {
+					return "written"
+				}
 			}
 		)
 		it(
@@ -607,10 +599,6 @@ describe(
 					}
 				)
 				let calls = 0
-				function make() {
-					calls++
-					return hostile
-				}
 				let reloads = 0
 				const run = flow().add(make)
 					.run(
@@ -630,22 +618,18 @@ describe(
 					"Flow node \"make\" failed: no access"
 				)
 				assert.equal(calls, 2)
+				/** @returns {{}} */
+				function make() {
+					calls++
+					return hostile
+				}
 			}
 		)
 		it(
 			"a retry delay that ends as the run is cancelled starts no attempt",
 			async () => {
 				vi.setTimerTickMode("manual")
-				async function flush() {
-					for (let i = 0; i < 50; i++) {
-						await Promise.resolve()
-					}
-				}
 				let calls = 0
-				function flaky() {
-					calls++
-					throw Error("busy")
-				}
 				/** @type {string[]} */
 				const events = []
 				const retried = flow().add(
@@ -686,16 +670,23 @@ describe(
 				)
 				assert.equal(run.status, "cancelled")
 				assert.equal(resumed.status, "cancelled")
+				/** @returns {void} */
+				function flaky() {
+					calls++
+					throw Error("busy")
+				}
+				/** @returns {Promise<void>} */
+				async function flush() {
+					for (let i = 0; i < 50; i++) {
+						await Promise.resolve()
+					}
+				}
 			}
 		)
 		it(
 			"a run cancelled while retry.when decides does not retry",
 			async () => {
 				let calls = 0
-				function flaky() {
-					calls++
-					throw Error("busy")
-				}
 				/** @type {string[]} */
 				const events = []
 				const run = flow().add(
@@ -722,29 +713,19 @@ describe(
 				)
 				assert.equal(calls, 1)
 				assert.deepEqual(events, [ "start", "cancel" ])
+				/** @returns {void} */
+				function flaky() {
+					calls++
+					throw Error("busy")
+				}
 			}
 		)
 		it(
 			"a running node whose dependency reloads and skips is skipped",
 			async () => {
 				let skipping = false
-				/**
-				 * @param {Context} context
-				 */
-				function source({ skip }) {
-					return skipping ? skip() : 1
-				}
 				/** @type {unknown[]} */
 				const seen = []
-				/**
-				 * @param {number} n
-				 * @param {Context} context
-				 */
-				async function work(n, { sleep }) {
-					seen.push(n)
-					await sleep(10)
-					return n
-				}
 				const runs = [
 					flow().add(source)
 						.add(work, source)
@@ -763,17 +744,28 @@ describe(
 					assert.equal(run.nodes["work"], "skipped")
 				}
 				assert.deepEqual(seen, [ 1, 1 ])
+				/**
+				 * @param {Context} context
+				 * @returns {1 | Skip}
+				 */
+				function source({ skip }) {
+					return skipping ? skip() : 1
+				}
+				/**
+				 * @param {number} n
+				 * @param {Context} context
+				 * @returns {Promise<number>}
+				 */
+				async function work(n, { sleep }) {
+					seen.push(n)
+					await sleep(10)
+					return n
+				}
 			}
 		)
 		it(
 			"a snapshot gives a node that became an edge target its activation",
 			async () => {
-				function a() {
-					return "a"
-				}
-				function b() {
-					return "b"
-				}
 				const before = flow().add(a)
 					.add(b)
 					.run()
@@ -790,14 +782,19 @@ describe(
 					internals(after).nodes["b"]?.activators,
 					[ "*" ]
 				)
+				/** @returns {string} */
+				function a() {
+					return "a"
+				}
+				/** @returns {string} */
+				function b() {
+					return "b"
+				}
 			}
 		)
 		it(
 			"a snapshot leaves out errors of nodes the flow does not have",
 			async () => {
-				function soft() {
-					throw Error("soft")
-				}
 				const optional = flow().add(soft, { optional: true })
 				const run = optional.run()
 				await run
@@ -812,24 +809,15 @@ describe(
 					Object.keys(resumed.snapshot().errors),
 					[ "soft" ]
 				)
+				/** @returns {void} */
+				function soft() {
+					throw Error("soft")
+				}
 			}
 		)
 		it(
 			"a snapshot leaves out the caught error of a node that runs again on resume",
 			async () => {
-				function open() {
-					return "tx"
-				}
-				/**
-				 * @param {Context} context
-				 */
-				async function slow({ sleep }) {
-					await sleep(10)
-					return "slow"
-				}
-				function use() {
-					throw Error("failed")
-				}
 				const run = flow().add(open, { release: () => {} })
 					.add(
 						use,
@@ -847,23 +835,27 @@ describe(
 				)
 				assert.notProperty(saved.errors, "use")
 				assert.equal(await run, "slow")
+				/** @returns {string} */
+				function open() {
+					return "tx"
+				}
+				/**
+				 * @param {Context} context
+				 * @returns {Promise<string>}
+				 */
+				async function slow({ sleep }) {
+					await sleep(10)
+					return "slow"
+				}
+				/** @returns {void} */
+				function use() {
+					throw Error("failed")
+				}
 			}
 		)
 		it(
 			"a snapshot that keeps a node waiting for a removed edge does not keep its targets waiting",
 			async () => {
-				function a() {
-					return "a"
-				}
-				function b() {
-					return "b"
-				}
-				function s() {
-					return "s"
-				}
-				function t() {
-					return "t"
-				}
 				const started = flow().add(a)
 					.add(b)
 					.add(s)
@@ -898,37 +890,31 @@ describe(
 						t: "skipped"
 					}
 				)
+				/** @returns {string} */
+				function a() {
+					return "a"
+				}
+				/** @returns {string} */
+				function b() {
+					return "b"
+				}
+				/** @returns {string} */
+				function s() {
+					return "s"
+				}
+				/** @returns {string} */
+				function t() {
+					return "t"
+				}
 			}
 		)
 		it(
 			"a stream queue node that goes to its fallback lets the stream read on",
 			async () => {
 				let produced = 0
-				async function* numbers() {
-					for (let value = 1; value <= 6; value++) {
-						produced = value
-						yield value
-					}
-				}
 				/** @type {number[]} */
 				const handled = []
-				/**
-				 * @param {number} value
-				 * @param {Context} context
-				 */
-				async function handle(value, { sleep }) {
-					await sleep(5)
-					if (value % 2) {
-						throw Error("odd")
-					}
-					handled.push(value)
-					return value
-				}
 				let recovered = 0
-				function recover() {
-					recovered++
-					return 0
-				}
 				const run = flow().add(recover)
 					.add(
 						handle,
@@ -946,6 +932,31 @@ describe(
 				assert.equal(recovered, 3)
 				assert.equal(produced, 6)
 				run.cancel()
+				/**
+				 * @param {number} value
+				 * @param {Context} context
+				 * @returns {Promise<number>}
+				 */
+				async function handle(value, { sleep }) {
+					await sleep(5)
+					if (value % 2) {
+						throw Error("odd")
+					}
+					handled.push(value)
+					return value
+				}
+				/** @returns {AsyncGenerator<number, void, unknown>} */
+				async function* numbers() {
+					for (let value = 1; value <= 6; value++) {
+						produced = value
+						yield value
+					}
+				}
+				/** @returns {number} */
+				function recover() {
+					recovered++
+					return 0
+				}
 			}
 		)
 		it(
@@ -954,12 +965,6 @@ describe(
 				const controller = new AbortController()
 				/** @type {import("async-lube").Channel<number>} */
 				const source = channel()
-				/**
-				 * @param {number} n
-				 */
-				function use(n) {
-					return n
-				}
 				const run = flow().add(use, source)
 					.run(
 						void 0,
@@ -971,27 +976,21 @@ describe(
 				source.fail(Error("lost"))
 				await pause(1)
 				assert.equal(run.status, "cancelled")
+				/**
+				 * @param {number} n
+				 * @returns {number}
+				 */
+				function use(n) {
+					return n
+				}
 			}
 		)
 		it(
 			"a stream waits for room only while its queue holds values",
 			async () => {
 				let produced = 0
-				async function* numbers() {
-					for (let value = 1; value <= 3; value++) {
-						produced = value
-						yield value
-					}
-				}
 				/** @type {number[]} */
 				const handled = []
-				/**
-				 * @param {number} n
-				 */
-				function handle(n) {
-					handled.push(n)
-					return n
-				}
 				const go = flow.input("go")
 				const waiting = flow().add(go)
 					.add(
@@ -1025,14 +1024,26 @@ describe(
 				assert.equal(await buffered, 3)
 				assert.deepEqual(handled, [ 3 ])
 				buffered.cancel()
+				/**
+				 * @param {number} n
+				 * @returns {number}
+				 */
+				function handle(n) {
+					handled.push(n)
+					return n
+				}
+				/** @returns {AsyncGenerator<number, void, unknown>} */
+				async function* numbers() {
+					for (let value = 1; value <= 3; value++) {
+						produced = value
+						yield value
+					}
+				}
 			}
 		)
 		it(
 			"a sub-flow keeps its optional failures through snapshots",
 			async () => {
-				function broken() {
-					throw Error("broken")
-				}
 				const leaf = flow().add(broken, { optional: true })
 				const middle = flow().add(
 					flow.each(leaf),
@@ -1062,19 +1073,16 @@ describe(
 					saved.nodes.middle.subs
 				)
 				assert.isUndefined(await resumed)
+				/** @returns {void} */
+				function broken() {
+					throw Error("broken")
+				}
 			}
 		)
 		it(
 			"a when that cancels the run and throws leaves it cancelled",
 			async () => {
-				async function load() {
-					return 1
-				}
 				let ran = 0
-				function guarded() {
-					ran++
-					return 2
-				}
 				const run = flow().add(load)
 					.add(
 						guarded,
@@ -1093,36 +1101,27 @@ describe(
 				)
 				assert.equal(ran, 0)
 				assert.deepEqual(run.errors, {})
+				/** @returns {number} */
+				function guarded() {
+					ran++
+					return 2
+				}
+				/** @returns {Promise<number>} */
+				async function load() {
+					return 1
+				}
 			}
 		)
 		it(
 			"an each source that ends as the run is cancelled runs no items",
 			async () => {
 				let calls = 0
-				/**
-				 * @param {number} n
-				 */
-				function double(n) {
-					calls++
-					return n * 2
-				}
 				/** @type {IteratorResult<number>} */
 				const first = { done: false, value: 1 }
 				/** @type {IteratorResult<number>} */
 				const last = { done: true, value: void 0 }
 				/** @type {{ cancel(): void }[]} */
 				const runs = []
-				/**
-				 * @param {(step: IteratorResult<number>) => void} resolve
-				 * @returns {Promise<void>}
-				 */
-				function end_as_cancelled(resolve) {
-					resolve(last)
-					for (const run of runs) {
-						run.cancel()
-					}
-					return Promise.resolve()
-				}
 				let reads = 0
 				/** @type {AsyncIterable<number>} */
 				const source = {
@@ -1144,23 +1143,30 @@ describe(
 				)
 				assert.equal(calls, 0)
 				assert.equal(reads, 2)
+				/**
+				 * @param {number} n
+				 * @returns {number}
+				 */
+				function double(n) {
+					calls++
+					return n * 2
+				}
+				/**
+				 * @param {(step: IteratorResult<number>) => void} resolve
+				 * @returns {Promise<void>}
+				 */
+				function end_as_cancelled(resolve) {
+					resolve(last)
+					for (const item of runs) {
+						item.cancel()
+					}
+					return Promise.resolve()
+				}
 			}
 		)
 		it(
 			"an edge selection that cannot become a string after the step limit keeps the first error",
 			async () => {
-				function first() {
-					return 1
-				}
-				/**
-				 * @param {number} n
-				 */
-				function second(n) {
-					return n
-				}
-				function third() {
-					return 3
-				}
 				const run = flow({ maxSteps: 1 }).add(first)
 					.add(second, first)
 					.add(third)
@@ -1176,6 +1182,21 @@ describe(
 					error.message,
 					"Flow node \"second\" failed: The flow exceeded 1 steps"
 				)
+				/** @returns {number} */
+				function first() {
+					return 1
+				}
+				/**
+				 * @param {number} n
+				 * @returns {number}
+				 */
+				function second(n) {
+					return n
+				}
+				/** @returns {number} */
+				function third() {
+					return 3
+				}
 			}
 		)
 		it(
@@ -1184,16 +1205,6 @@ describe(
 				const value = flow.input("value")
 				/** @type {unknown[]} */
 				const written = []
-				function audit() {
-					return "audit"
-				}
-				/**
-				 * @param {unknown} n
-				 */
-				function write(n) {
-					written.push(n)
-					return n
-				}
 				const run = flow().add(value)
 					.add(write, flow.queue(value))
 					.add(audit)
@@ -1219,6 +1230,18 @@ describe(
 				)
 				assert.deepEqual(written, [ 1 ])
 				assert.equal(run.nodes["write"], "done")
+				/** @returns {string} */
+				function audit() {
+					return "audit"
+				}
+				/**
+				 * @param {unknown} n
+				 * @returns {unknown}
+				 */
+				function write(n) {
+					written.push(n)
+					return n
+				}
 			}
 		)
 		it(
@@ -1234,15 +1257,6 @@ describe(
 		it(
 			"an item catch cannot skip its item and is ignored after cancel",
 			async () => {
-				/**
-				 * @param {number} n
-				 */
-				function check(n) {
-					if (n < 0) {
-						throw Error("negative")
-					}
-					return n
-				}
 				const skipping = flow().add(
 					flow.each(check),
 					{
@@ -1293,6 +1307,16 @@ describe(
 				await pause(10)
 				assert.deepEqual(late.errors, {})
 				assert.deepEqual(thrown.errors, {})
+				/**
+				 * @param {number} n
+				 * @returns {number}
+				 */
+				function check(n) {
+					if (n < 0) {
+						throw Error("negative")
+					}
+					return n
+				}
 			}
 		)
 		it(
@@ -1300,16 +1324,6 @@ describe(
 			async () => {
 				/** @type {((error: unknown) => void) | undefined} */
 				let fail_read
-				/**
-				 * @returns {Promise<IteratorResult<number>>}
-				 */
-				function read() {
-					return new Promise(
-						(_, reject) => {
-							fail_read = reject
-						}
-					)
-				}
 				/** @type {AsyncIterable<number>} */
 				const socket = {
 					[Symbol.asyncIterator]: () => ({
@@ -1319,12 +1333,6 @@ describe(
 							return { done: true, value: void 0 }
 						}
 					})
-				}
-				/**
-				 * @param {number} n
-				 */
-				function use(n) {
-					return n
 				}
 				const run = flow().add(use, socket)
 					.run()
@@ -1337,17 +1345,26 @@ describe(
 				await pause(1)
 				assert.equal(run.status, "cancelled")
 				assert.deepEqual(run.errors, {})
+				/** @returns {Promise<IteratorResult<number>>} */
+				function read() {
+					return new Promise(
+						(_, reject) => {
+							fail_read = reject
+						}
+					)
+				}
+				/**
+				 * @param {number} n
+				 * @returns {number}
+				 */
+				function use(n) {
+					return n
+				}
 			}
 		)
 		it(
 			"check follows edges and passes shared dependencies once",
 			() => {
-				function first() {
-					return 1
-				}
-				function later() {
-					return 2
-				}
 				assert.deepEqual(
 					flow().add(first)
 						.add(later)
@@ -1355,35 +1372,6 @@ describe(
 						.check(),
 					[]
 				)
-				function base() {
-					return 1
-				}
-				/**
-				 * @param {number} a
-				 * @param {number} b
-				 */
-				function both(a, b) {
-					return a + b
-				}
-				/**
-				 * @param {number | undefined} a
-				 * @param {number | undefined} b
-				 */
-				function close(a, b) {
-					return a ?? b
-				}
-				/**
-				 * @param {number} n
-				 */
-				function left(n) {
-					return n
-				}
-				/**
-				 * @param {number} n
-				 */
-				function right(n) {
-					return n
-				}
 				assert.deepEqual(
 					flow().add(base, { finish: true })
 						.add(left, base)
@@ -1394,6 +1382,48 @@ describe(
 						.check(),
 					[]
 				)
+				/** @returns {number} */
+				function base() {
+					return 1
+				}
+				/**
+				 * @param {number} a
+				 * @param {number} b
+				 * @returns {number}
+				 */
+				function both(a, b) {
+					return a + b
+				}
+				/**
+				 * @param {number | undefined} a
+				 * @param {number | undefined} b
+				 * @returns {number | undefined}
+				 */
+				function close(a, b) {
+					return a ?? b
+				}
+				/** @returns {number} */
+				function first() {
+					return 1
+				}
+				/** @returns {number} */
+				function later() {
+					return 2
+				}
+				/**
+				 * @param {number} n
+				 * @returns {number}
+				 */
+				function left(n) {
+					return n
+				}
+				/**
+				 * @param {number} n
+				 * @returns {number}
+				 */
+				function right(n) {
+					return n
+				}
 			}
 		)
 		it(
@@ -1401,20 +1431,6 @@ describe(
 			async () => {
 				let prepared = 0
 				const failing = new Set([ 1 ])
-				/**
-				 * @param {number} base
-				 * @param {Context} context
-				 */
-				function finish(base, { index }) {
-					if (failing.delete(Number(index))) {
-						throw Error("busy")
-					}
-					return base + Number(index)
-				}
-				function prepare() {
-					prepared++
-					return 10
-				}
 				const per_item = flow().add(prepare)
 					.add(finish, prepare)
 				const run = flow().add(
@@ -1424,14 +1440,27 @@ describe(
 					.run([ "a", "b" ])
 				assert.deepEqual(await run, [ 10, 11 ])
 				assert.equal(prepared, 2)
+				/**
+				 * @param {number} base
+				 * @param {Context} context
+				 * @returns {number}
+				 */
+				function finish(base, { index }) {
+					if (failing.delete(Number(index))) {
+						throw Error("busy")
+					}
+					return base + Number(index)
+				}
+				/** @returns {number} */
+				function prepare() {
+					prepared++
+					return 10
+				}
 			}
 		)
 		it(
 			"errors name a flow and values that are not nodes",
 			async () => {
-				function step() {
-					return 1
-				}
 				const sub = flow().add(step)
 				assert.throws(
 					() => flow().add(sub)
@@ -1445,21 +1474,15 @@ describe(
 					"42 is not added to the flow"
 				)
 				assert.equal(await run, 1)
+				/** @returns {number} */
+				function step() {
+					return 1
+				}
 			}
 		)
 		it(
 			"flow.each() called directly maps an async iterable",
 			async () => {
-				async function* letters() {
-					yield "a"
-					yield "b"
-				}
-				/**
-				 * @param {string} letter
-				 */
-				function upper(letter) {
-					return letter.toUpperCase()
-				}
 				assert.deepEqual(
 					await flow.each(upper)(letters()),
 					[ "A", "B" ]
@@ -1475,6 +1498,18 @@ describe(
 					await flow.each(shout)(letters()),
 					[ "a!", "b!" ]
 				)
+				/** @returns {AsyncGenerator<"a" | "b", void, unknown>} */
+				async function* letters() {
+					yield "a"
+					yield "b"
+				}
+				/**
+				 * @param {string} letter
+				 * @returns {string}
+				 */
+				function upper(letter) {
+					return letter.toUpperCase()
+				}
 			}
 		)
 		it(
@@ -1482,9 +1517,6 @@ describe(
 			async () => {
 				const approve = flow.input("approve")
 				const review = flow().add(approve)
-				function tally() {
-					return 0
-				}
 				const run = flow().add(tally)
 					.add(
 						flow.each(review),
@@ -1521,14 +1553,15 @@ describe(
 				)
 				run.reload("reviews.0")
 				assert.equal(run.status, "done")
+				/** @returns {number} */
+				function tally() {
+					return 0
+				}
 			}
 		)
 		it(
 			"options that do not apply are rejected",
 			() => {
-				function step() {
-					return 1
-				}
 				assert.throws(
 					() => flow(
 						/** @type {never} */({ retries: 1 })/**/
@@ -1564,24 +1597,15 @@ describe(
 						),
 					"Invalid flow snapshot"
 				)
+				/** @returns {number} */
+				function step() {
+					return 1
+				}
 			}
 		)
 		it(
 			"reload starts a node that an edited snapshot holds as pending",
 			async () => {
-				function held() {
-					return "held"
-				}
-				function late() {
-					return "late"
-				}
-				/**
-				 * @param {Context} context
-				 */
-				async function slow({ sleep }) {
-					await sleep(5)
-					return "slow"
-				}
 				const limited = flow({ concurrency: 1 }).add(slow)
 					.add(late)
 					.add(held)
@@ -1614,6 +1638,22 @@ describe(
 						slow: "done"
 					}
 				)
+				/** @returns {string} */
+				function held() {
+					return "held"
+				}
+				/** @returns {string} */
+				function late() {
+					return "late"
+				}
+				/**
+				 * @param {Context} context
+				 * @returns {Promise<string>}
+				 */
+				async function slow({ sleep }) {
+					await sleep(5)
+					return "slow"
+				}
 			}
 		)
 		it(
@@ -1622,15 +1662,6 @@ describe(
 				const controller = new AbortController()
 				const value = flow.input("value")
 				let calls = 0
-				/**
-				 * @param {unknown} v
-				 */
-				function once(v) {
-					if (!calls++) {
-						throw Error("first")
-					}
-					return v
-				}
 				const run = flow().add(value)
 					.add(once, value)
 					.run(
@@ -1646,6 +1677,16 @@ describe(
 				run.send(value, 2)
 				assert.equal(run.status, "cancelled")
 				assert.equal(calls, 1)
+				/**
+				 * @param {unknown} v
+				 * @returns {unknown}
+				 */
+				function once(v) {
+					if (!calls++) {
+						throw Error("first")
+					}
+					return v
+				}
 			}
 		)
 		it(
@@ -1653,20 +1694,6 @@ describe(
 			async () => {
 				const a = flow.input("a")
 				const b = flow.input("b")
-				/**
-				 * @param {unknown} x
-				 * @param {unknown} y
-				 */
-				function sum(x, y) {
-					return Number(x) + Number(y)
-				}
-				/**
-				 * @param {Context} context
-				 */
-				async function warm({ sleep }) {
-					await sleep(5)
-					return 0
-				}
 				const run = flow().add(warm)
 					.add(
 						flow().add(a)
@@ -1679,17 +1706,27 @@ describe(
 				run.send("group.a", 1)
 				run.send("group.b", 2)
 				assert.equal(await run, 3)
+				/**
+				 * @param {unknown} x
+				 * @param {unknown} y
+				 * @returns {number}
+				 */
+				function sum(x, y) {
+					return Number(x) + Number(y)
+				}
+				/**
+				 * @param {Context} context
+				 * @returns {Promise<number>}
+				 */
+				async function warm({ sleep }) {
+					await sleep(5)
+					return 0
+				}
 			}
 		)
 		it(
 			"the step limit failing a queued node keeps the first error, also for a catch",
 			async () => {
-				function broken() {
-					throw Error("broken")
-				}
-				function next() {
-					return "next"
-				}
 				const failed = flow(
 					{ concurrency: 1, maxSteps: 1 }
 				).add(broken)
@@ -1728,7 +1765,55 @@ describe(
 				)
 				assert.lengthOf(signals, 1)
 				assert.isFalse(signals[0]?.aborted)
+				/** @returns {void} */
+				function broken() {
+					throw Error("broken")
+				}
+				/** @returns {string} */
+				function next() {
+					return "next"
+				}
 			}
 		)
+		/**
+		 * @param {{ snapshot(): import("async-lube").FlowSnapshot }} run
+		 * @returns {SavedFlow}
+		 */
+		function internals(run) {
+			return /** @type {SavedFlow} */(/** @type {unknown} */(run.snapshot()))/**/
+		}
+		/**
+		 * @param {number} ms
+		 * @returns {Promise<void>}
+		 */
+		function pause(ms) {
+			return new Promise(
+				resolve => setTimeout(resolve, ms)
+			)
+		}
+		/**
+		 * @param {PromiseLike<unknown>} promise
+		 * @returns {Promise<unknown>}
+		 */
+		function rejection(promise) {
+			return Promise.resolve(promise)
+				.then(
+					() => assert.fail("No error occurred"),
+					error => error
+				)
+		}
+		/**
+		 * @param {() => boolean} condition
+		 * @returns {Promise<void>}
+		 */
+		async function until(condition) {
+			const started = Date.now()
+			while (!condition()) {
+				if (Date.now() - started > 2000) {
+					assert.fail("Timed out")
+				}
+				await pause(5)
+			}
+		}
 	}
 )

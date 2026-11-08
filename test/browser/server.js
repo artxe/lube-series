@@ -10,9 +10,7 @@ export async function setup({ provide }) {
 	servers.push(server)
 	provide("base", server.base)
 }
-/**
- * @returns {Promise<void>}
- */
+/** @returns {Promise<void>} */
 export async function teardown() {
 	await Promise.all(
 		servers.splice(0)

@@ -21,9 +21,7 @@ export function encode_cp949(text) {
 	}
 	return bytes
 }
-/**
- * @returns {Map<string, number>}
- */
+/** @returns {Map<string, number>} */
 function get_codes() {
 	if (codes) {
 		return codes

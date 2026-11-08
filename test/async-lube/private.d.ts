@@ -126,6 +126,7 @@ export type HttpFuzzExpect = {
 	unauthorized: number
 }
 export type HttpFuzzHooks = { delay: number, error: unknown[], refresh: number, request: number, response: number, unauthorized: unknown[], when: number }
+export type HttpFuzzTimer = { fn: () => void, owner: string, real: ReturnType<typeof setTimeout> | undefined }
 export type SseFuzzCase = { connections: number, last_ids: number[], next_id: number, open: Set<import("node:http").ServerResponse>, script: SseFuzzConnection[] }
 export type SseFuzzConnection =
 	| { gap: number, k: "events", n: number, retry: number | undefined, then: "drop" | "end" | "stay" }

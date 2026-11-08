@@ -10,42 +10,6 @@ describe(
 	"xhr in a browser",
 	() => {
 		const base = inject("base")
-		/**
-		 * @param {import("async-lube").HttpConfig=} config
-		 * @returns {import("async-lube").Http}
-		 */
-		function create(config) {
-			return http({ base, ...config })
-		}
-		/**
-		 * @param {number} size
-		 * @returns {FormData}
-		 */
-		function form(size) {
-			const data = new FormData()
-			data.append(
-				"file",
-				new Blob(
-					[ new Uint8Array(size) ],
-					{
-						type: "application/octet-stream"
-					}
-				),
-				"big.bin"
-			)
-			return data
-		}
-		/**
-		 * @param {PromiseLike<unknown>} promise
-		 * @returns {Promise<unknown>}
-		 */
-		function rejection(promise) {
-			return Promise.resolve(promise)
-				.then(
-					() => assert.fail("No error occurred"),
-					error => error
-				)
-		}
 		it(
 			"cancels an upload in flight",
 			async () => {
@@ -296,5 +260,41 @@ describe(
 				)
 			}
 		)
+		/**
+		 * @param {import("async-lube").HttpConfig=} config
+		 * @returns {import("async-lube").Http}
+		 */
+		function create(config) {
+			return http({ base, ...config })
+		}
+		/**
+		 * @param {number} size
+		 * @returns {FormData}
+		 */
+		function form(size) {
+			const data = new FormData()
+			data.append(
+				"file",
+				new Blob(
+					[ new Uint8Array(size) ],
+					{
+						type: "application/octet-stream"
+					}
+				),
+				"big.bin"
+			)
+			return data
+		}
+		/**
+		 * @param {PromiseLike<unknown>} promise
+		 * @returns {Promise<unknown>}
+		 */
+		function rejection(promise) {
+			return Promise.resolve(promise)
+				.then(
+					() => assert.fail("No error occurred"),
+					error => error
+				)
+		}
 	}
 )

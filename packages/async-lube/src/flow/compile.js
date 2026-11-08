@@ -26,49 +26,6 @@ export function compile(definition) {
 		)
 	)
 	const by_name = new Set(by_ref.values())
-	/**
-	 * @param {unknown} target
-	 * @returns {string | undefined}
-	 */
-	function name_of(target) {
-		return typeof target == "string"
-			? by_name.has(target)
-				? target
-				: void 0
-			: by_ref.get(target)
-	}
-	/**
-	 * @param {unknown} target
-	 * @param {string} message
-	 * @returns {string}
-	 */
-	function resolve(target, message) {
-		const name = name_of(target)
-		if (name == null) {
-			throw Error(
-				message.replace("%s", describe(target))
-			)
-		}
-		return name
-	}
-	/**
-	 * @param {DefinitionNode} node
-	 * @returns {Record<string, "keep" | "queue" | "restart"> | undefined}
-	 */
-	function to_arrive(node) {
-		/** @type {Record<string, "keep" | "queue" | "restart"> | undefined} */
-		let arrive
-		for (const dep of node.deps) {
-			if (!/** @type {RefProbe} */(dep)/**/?.[ARRIVE]) {
-				continue
-			}
-			(arrive ??= Object.create(null))[resolve(
-				to_ref(dep),
-				`Flow node "${node.name}" depends on %s, which is not added`
-			)] = /** @type {{ policy: "keep" | "queue" | "restart" }} */(/** @type {unknown} */(dep))/**/.policy
-		}
-		return arrive
-	}
 	/** @type {ProgramNode[]} */
 	const nodes = source_nodes.map(
 		node => ({
@@ -152,30 +109,6 @@ export function compile(definition) {
 	}
 	/** @type {Map<string, Set<string>>} */
 	const downstream = new Map()
-	/**
-	 * @param {string} name
-	 * @returns {Set<string>}
-	 */
-	function downstream_of(name) {
-		let found = downstream.get(name)
-		if (found) {
-			return found
-		}
-		found = new Set()
-		const stack = [ name ]
-		while (stack.length) {
-			const current = /** @type {string} */(stack.pop())/**/
-			for (const dependent of /** @type {ProgramNode} */(nodes_by_name.get(current))/**/.dependents) {
-				if (found.has(dependent)) {
-					continue
-				}
-				found.add(dependent)
-				stack.push(dependent)
-			}
-		}
-		downstream.set(name, found)
-		return found
-	}
 	/** @type {Map<string, ProgramEdge>} */
 	const edges = new Map()
 	for (const edge of definition.edges) {
@@ -267,4 +200,73 @@ export function compile(definition) {
 	}
 	programs.set(definition, program)
 	return program
+	/**
+	 * @param {string} name
+	 * @returns {Set<string>}
+	 */
+	function downstream_of(name) {
+		let found = downstream.get(name)
+		if (found) {
+			return found
+		}
+		found = new Set()
+		const stack = [ name ]
+		while (stack.length) {
+			const current = /** @type {string} */(stack.pop())/**/
+			for (const dependent of /** @type {ProgramNode} */(nodes_by_name.get(current))/**/.dependents) {
+				if (found.has(dependent)) {
+					continue
+				}
+				found.add(dependent)
+				stack.push(dependent)
+			}
+		}
+		downstream.set(name, found)
+		return found
+	}
+	/**
+	 * @param {unknown} target
+	 * @returns {string | undefined}
+	 */
+	function name_of(target) {
+		return typeof target == "string"
+			? by_name.has(target)
+				? target
+				: void 0
+			: by_ref.get(target)
+	}
+	/**
+	 * @param {unknown} target
+	 * @param {string} message
+	 * @returns {string}
+	 */
+	function resolve(target, message) {
+		const name = name_of(target)
+		if (name == null) {
+			throw Error(
+				message.replace("%s", describe(target))
+			)
+		}
+		return name
+	}
+	/**
+	 * @param {DefinitionNode} node
+	 * @returns {Record<string, "keep" | "queue" | "restart"> | undefined}
+	 */
+	function to_arrive(node) {
+		/** @type {Record<string, "keep" | "queue" | "restart"> | undefined} */
+		let arrive
+		for (const dep of node.deps) {
+			if (!/** @type {RefProbe} */(dep)/**/?.[ARRIVE]) {
+				continue
+			}
+			/** @type {Record<string, "keep" | "queue" | "restart">} */
+			const target = arrive ??= Object.create(null)
+			target[resolve(
+				to_ref(dep),
+				`Flow node "${node.name}" depends on %s, which is not added`
+			)] = /** @type {{ policy: "keep" | "queue" | "restart" }} */(/** @type {unknown} */(dep))/**/.policy
+		}
+		return arrive
+	}
 }

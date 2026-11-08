@@ -8,17 +8,6 @@ import { afterEach, assert, describe, it, vi } from "vitest"
 describe(
 	"attempt",
 	() => {
-		/**
-		 * @param {PromiseLike<unknown>} promise
-		 * @returns {Promise<unknown>}
-		 */
-		function rejection(promise) {
-			return Promise.resolve(promise)
-				.then(
-					() => assert.fail("No error occurred"),
-					error => error
-				)
-		}
 		afterEach(() => vi.useRealTimers())
 		it(
 			"attempt",
@@ -255,5 +244,16 @@ describe(
 				assert.equal(error.cause, 42)
 			}
 		)
+		/**
+		 * @param {PromiseLike<unknown>} promise
+		 * @returns {Promise<unknown>}
+		 */
+		function rejection(promise) {
+			return Promise.resolve(promise)
+				.then(
+					() => assert.fail("No error occurred"),
+					error => error
+				)
+		}
 	}
 )

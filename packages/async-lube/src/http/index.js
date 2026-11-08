@@ -74,9 +74,7 @@ function http(
 			options,
 			false
 		),
-		/**
-		 * @param {import("../../public.js").ExtendConfig} next
-		 */
+		/** @param {import("../../public.js").ExtendConfig} next */
 		extend: next => {
 			/** @type {Record<string, unknown>} */
 			const merged = { ...config }

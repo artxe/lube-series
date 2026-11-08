@@ -178,12 +178,12 @@ async function execute(c, spec, signal) {
  */
 function is_raw_body(body) {
 	return typeof body == "string"
-	|| body instanceof ArrayBuffer
-	|| ArrayBuffer.isView(body)
-	|| body instanceof Blob
-	|| body instanceof FormData
-	|| body instanceof ReadableStream
-	|| body instanceof URLSearchParams
+		|| body instanceof ArrayBuffer
+		|| ArrayBuffer.isView(body)
+		|| body instanceof Blob
+		|| body instanceof FormData
+		|| body instanceof ReadableStream
+		|| body instanceof URLSearchParams
 }
 /**
  * @param {AsyncIterable<unknown>} lines
@@ -228,17 +228,6 @@ export function request(
 	/** @type {import("../../public.js").RequestSummary} */
 	const summary = { method, url: path }
 	const controller = new AbortController()
-	/**
-	 * @param {unknown} reason
-	 * @returns {void}
-	 */
-	function cancel(reason) {
-		return controller.abort(
-			reason instanceof CancelError
-				? reason
-				: new CancelError(reason ?? "Cancelled", summary)
-		)
-	}
 	const is_stream = options.as != null && stream_types.has(options.as)
 	const raw = (async () => {
 		const unlink = link_signal(
@@ -249,11 +238,6 @@ export function request(
 		let keeps_link = false
 		/** @type {string | undefined} */
 		let latest_key
-		function forget_latest() {
-			if (latest_key != null && c.shared.latest.get(latest_key) == cancel) {
-				c.shared.latest.delete(latest_key)
-			}
-		}
 		/** @type {Job | undefined} */
 		let job
 		try {
@@ -401,6 +385,7 @@ export function request(
 				return result
 			}
 			keeps_link = true
+			/** @returns {void} */
 			function done() {
 				unlink()
 				forget_latest()
@@ -452,6 +437,12 @@ export function request(
 				)
 			}
 		}
+		/** @returns {void} */
+		function forget_latest() {
+			if (latest_key != null && c.shared.latest.get(latest_key) == cancel) {
+				c.shared.latest.delete(latest_key)
+			}
+		}
 	})()
 	const data = raw.then(result => result.data)
 	return /** @type {import("../../public.js").LubeRequest<T>} */(Object.assign(
@@ -471,6 +462,17 @@ export function request(
 			}
 		}
 	))/**/
+	/**
+	 * @param {unknown} reason
+	 * @returns {void}
+	 */
+	function cancel(reason) {
+		return controller.abort(
+			reason instanceof CancelError
+				? reason
+				: new CancelError(reason ?? "Cancelled", summary)
+		)
+	}
 }
 /**
  * @param {ClientContext} c
@@ -498,45 +500,6 @@ async function send(c, spec, attempt, job_signal) {
 	let keeps_link = false
 	/** @type {Response | undefined} */
 	let response
-	function abort_error() {
-		return timed_out
-			? new TimeoutError(
-				/** @type {number} */(timeout)/**/,
-				summary
-			)
-			: to_cancel_error(job_signal.reason, summary)
-	}
-	/**
-	 * @param {AsyncIterable<unknown>} lines
-	 * @returns {AsyncGenerator<unknown, void, undefined>}
-	 */
-	async function* guard_lines(lines) {
-		try {
-			yield* lines
-		} catch (error) {
-			if (controller.signal.aborted) {
-				throw abort_error()
-			}
-			if (error instanceof SyntaxError) {
-				throw invalid_json(error)
-			}
-			throw new NetworkError(error, summary)
-		}
-	}
-	/**
-	 * @param {SyntaxError} error
-	 * @returns {SyntaxError}
-	 */
-	function invalid_json(error) {
-		/** @type {SyntaxError & { request?: import("../../public.js").RequestSummary, response?: Response | undefined }} */
-		const invalid = new SyntaxError(
-			`Invalid JSON in the response of ${summary.method} ${summary.url}: ${error.message}`
-		)
-		invalid.cause = error
-		invalid.request = summary
-		invalid.response = response
-		return invalid
-	}
 	try {
 		const headers = new Headers()
 		await race_signal(
@@ -650,7 +613,7 @@ async function send(c, spec, attempt, job_signal) {
 		}
 		if (options.as == "ndjson" || options.as == "events") {
 			data = guard_lines(
-			/** @type {AsyncIterable<unknown>} */(data)/**/
+				/** @type {AsyncIterable<unknown>} */(data)/**/
 			)
 		}
 		if (options.parse) {
@@ -703,6 +666,46 @@ async function send(c, spec, attempt, job_signal) {
 		if (!keeps_link) {
 			unlink()
 		}
+	}
+	/** @returns {TimeoutError | CancelError} */
+	function abort_error() {
+		return timed_out
+			? new TimeoutError(
+				/** @type {number} */(timeout)/**/,
+				summary
+			)
+			: to_cancel_error(job_signal.reason, summary)
+	}
+	/**
+	 * @param {AsyncIterable<unknown>} lines
+	 * @returns {AsyncGenerator<unknown, void, undefined>}
+	 */
+	async function* guard_lines(lines) {
+		try {
+			yield* lines
+		} catch (error) {
+			if (controller.signal.aborted) {
+				throw abort_error()
+			}
+			if (error instanceof SyntaxError) {
+				throw invalid_json(error)
+			}
+			throw new NetworkError(error, summary)
+		}
+	}
+	/**
+	 * @param {SyntaxError} error
+	 * @returns {SyntaxError}
+	 */
+	function invalid_json(error) {
+		/** @type {SyntaxError & { request?: import("../../public.js").RequestSummary, response?: Response | undefined }} */
+		const invalid = new SyntaxError(
+			`Invalid JSON in the response of ${summary.method} ${summary.url}: ${error.message}`
+		)
+		invalid.cause = error
+		invalid.request = summary
+		invalid.response = response
+		return invalid
 	}
 }
 /**
@@ -816,9 +819,7 @@ function watch_stream(stream, done) {
 	const reader = stream.getReader()
 	return new ReadableStream(
 		{
-			/**
-			 * @param {unknown} reason
-			 */
+			/** @param {unknown} reason */
 			cancel(reason) {
 				done()
 				return reader.cancel(reason)

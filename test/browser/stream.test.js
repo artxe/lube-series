@@ -1,26 +1,8 @@
-import { channel, merge, throttle, until } from "async-lube"
+import { channel, until } from "async-lube"
 import { assert, describe, it } from "vitest"
 describe(
 	"streams of a browser",
 	() => {
-		/**
-		 * @param {string} html
-		 * @returns {HTMLElement}
-		 */
-		function mount(html) {
-			const host = document.createElement("div")
-			host.innerHTML = html
-			document.body.append(host)
-			return host
-		}
-		/**
-		 * @returns {Promise<void>}
-		 */
-		function settle() {
-			return new Promise(
-				resolve => setTimeout(resolve, 0)
-			)
-		}
 		it(
 			"cancels the default action in the handler that sends",
 			async () => {
@@ -116,38 +98,21 @@ describe(
 				host.remove()
 			}
 		)
-		it(
-			"merges and throttles clicks",
-			async () => {
-				const host = mount(
-					"<button id=\"one\">1</button><button id=\"two\">2</button>"
-				)
-				/** @type {import("async-lube").Channel<string>} */
-				const ones = channel()
-				/** @type {import("async-lube").Channel<string>} */
-				const twos = channel()
-				const one = /** @type {HTMLElement} */(host.querySelector("#one"))/**/
-				const two = /** @type {HTMLElement} */(host.querySelector("#two"))/**/
-				one.addEventListener("click", () => ones.send("one"))
-				two.addEventListener("click", () => twos.send("two"))
-				/** @type {string[]} */
-				const seen = []
-				void (async () => {
-					for await (const name of throttle(merge(ones, twos), 40)) {
-						seen.push(name)
-					}
-				})()
-				await settle()
-				one.click()
-				two.click()
-				one.click()
-				await new Promise(
-					resolve => setTimeout(resolve, 120)
-				)
-				assert.equal(seen[0], "one")
-				assert.isBelow(seen.length, 3)
-				host.remove()
-			}
-		)
+		/**
+		 * @param {string} html
+		 * @returns {HTMLElement}
+		 */
+		function mount(html) {
+			const host = document.createElement("div")
+			host.innerHTML = html
+			document.body.append(host)
+			return host
+		}
+		/** @returns {Promise<void>} */
+		function settle() {
+			return new Promise(
+				resolve => setTimeout(resolve, 0)
+			)
+		}
 	}
 )

@@ -80,8 +80,8 @@ function check_sse_options(options) {
  */
 function is_reconnectable(error) {
 	return error instanceof NetworkError
-	|| error instanceof TimeoutError
-	|| error instanceof HttpError && (error.status < 400 || error.status >= 500 || sse_retry_statuses.has(error.status))
+		|| error instanceof TimeoutError
+		|| error instanceof HttpError && (error.status < 400 || error.status >= 500 || sse_retry_statuses.has(error.status))
 }
 /**
  * @param {string} data
@@ -125,6 +125,45 @@ export function sse(c, path, params, options) {
 			}
 		)
 		: noop
+	return {
+		[Symbol.asyncIterator]() {
+			const controller = new AbortController()
+			current = controller
+			return watch_records(
+				connect(controller),
+				left => {
+					if (!left) {
+						return
+					}
+					controller.abort(
+						new CancelError("The event stream was closed")
+					)
+					if (current == controller) {
+						set_status(
+							closed.signal.aborted ? "closed" : "idle"
+						)
+					}
+				}
+			)
+		},
+		/**
+		 * @param {unknown} reason
+		 * @returns {void}
+		 */
+		cancel(reason) {
+			unwatch()
+			closed.abort(
+				new CancelError(reason ?? "Cancelled")
+			)
+			set_status("closed")
+		},
+		get lastEventId() {
+			return last_event_id
+		},
+		get status() {
+			return options.signal?.aborted ? "closed" : stream_status
+		}
+	}
 	/**
 	 * @param {AbortController} controller
 	 * @returns {AsyncGenerator<import("../../public.js").ServerEvent<unknown>, void, undefined>}
@@ -137,15 +176,6 @@ export function sse(c, path, params, options) {
 		let last_error
 		/** @type {number | undefined} */
 		let server_retry
-		/**
-		 * @param {import("../../public.js").ConnectionStatus} next
-		 * @returns {void}
-		 */
-		function show(next) {
-			if (current == controller && !controller.signal.aborted) {
-				set_status(next)
-			}
-		}
 		try {
 			if (controller.signal.aborted) {
 				return
@@ -297,6 +327,15 @@ export function sse(c, path, params, options) {
 				new CancelError("The event stream was closed")
 			)
 		}
+		/**
+		 * @param {import("../../public.js").ConnectionStatus} next
+		 * @returns {void}
+		 */
+		function show(next) {
+			if (current == controller && !controller.signal.aborted) {
+				set_status(next)
+			}
+		}
 	}
 	/**
 	 * @param {import("../../public.js").ConnectionStatus} next
@@ -310,45 +349,6 @@ export function sse(c, path, params, options) {
 		try {
 			options.onStatus?.(next)
 		} catch {}
-	}
-	return {
-		[Symbol.asyncIterator]() {
-			const controller = new AbortController()
-			current = controller
-			return watch_records(
-				connect(controller),
-				left => {
-					if (!left) {
-						return
-					}
-					controller.abort(
-						new CancelError("The event stream was closed")
-					)
-					if (current == controller) {
-						set_status(
-							closed.signal.aborted ? "closed" : "idle"
-						)
-					}
-				}
-			)
-		},
-		/**
-		 * @param {unknown} reason
-		 * @returns {void}
-		 */
-		cancel(reason) {
-			unwatch()
-			closed.abort(
-				new CancelError(reason ?? "Cancelled")
-			)
-			set_status("closed")
-		},
-		get lastEventId() {
-			return last_event_id
-		},
-		get status() {
-			return options.signal?.aborted ? "closed" : stream_status
-		}
 	}
 }
 /**
@@ -368,15 +368,16 @@ function wait(delay, signal, online) {
 				resolve()
 				return
 			}
+			const timer = setTimeout(done, clamp_delay(delay))
+			const unwatch = on_abort(signal, done)
+			globalThis.addEventListener("online", done)
+			/** @returns {void} */
 			function done() {
 				clearTimeout(timer)
 				unwatch()
 				globalThis.removeEventListener("online", done)
 				resolve()
 			}
-			const timer = setTimeout(done, clamp_delay(delay))
-			const unwatch = on_abort(signal, done)
-			globalThis.addEventListener("online", done)
 		}
 	)
 }

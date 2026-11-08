@@ -80,9 +80,9 @@ function check_socket_options(options) {
  */
 function is_raw_message(data) {
 	return typeof data == "string"
-	|| data instanceof ArrayBuffer
-	|| ArrayBuffer.isView(data)
-	|| typeof Blob != "undefined" && data instanceof Blob
+		|| data instanceof ArrayBuffer
+		|| ArrayBuffer.isView(data)
+		|| typeof Blob != "undefined" && data instanceof Blob
 }
 /**
  * @param {unknown} error
@@ -90,8 +90,8 @@ function is_raw_message(data) {
  */
 function is_reconnectable(error) {
 	return error instanceof NetworkError
-	|| error instanceof TimeoutError
-	|| error instanceof SocketError && reconnect_codes.has(error.code)
+		|| error instanceof TimeoutError
+		|| error instanceof SocketError && reconnect_codes.has(error.code)
 }
 /**
  * @param {SocketSetup} setup
@@ -127,6 +127,140 @@ export function open_socket(setup) {
 	/** @type {ReturnType<typeof setTimeout> | undefined} */
 	let timer
 	const unlink = link_signal(closed, options.signal ?? void 0)
+	if (closed.signal.aborted) {
+		status = "closed"
+	} else {
+		on_abort(
+			closed.signal,
+			() => {
+				unlink()
+				finish(void 0)
+			}
+		)
+	}
+	return {
+		/** @returns {AsyncIterableIterator<unknown>} */
+		[Symbol.asyncIterator]() {
+			/** @type {SocketLoop} */
+			const loop = {
+				buffer: [],
+				ended: closed.signal.aborted,
+				error: void 0,
+				head: 0,
+				wake: void 0
+			}
+			let finished = false
+			let started = false
+			return {
+				[Symbol.asyncIterator]() {
+					return this
+				},
+				async next() {
+					if (!started) {
+						started = true
+						if (!loop.ended) {
+							loops.add(loop)
+							start()
+						}
+					}
+					for (;;) {
+						if (finished) {
+							return { done: true, value: void 0 }
+						}
+						if (loop.head < loop.buffer.length) {
+							const message = loop.buffer[loop.head]
+							loop.buffer[loop.head++] = void 0
+							if (loop.head == loop.buffer.length) {
+								loop.buffer = []
+								loop.head = 0
+							} else if (loop.head > 1024 && loop.head * 2 > loop.buffer.length) {
+								loop.buffer = loop.buffer.slice(loop.head)
+								loop.head = 0
+							}
+							if (!(message instanceof Promise)) {
+								return { done: false, value: message }
+							}
+							/** @type {unknown} */
+							let value
+							try {
+								value = await message
+							} catch (error) {
+								if (finished) {
+									return { done: true, value: void 0 }
+								}
+								stop()
+								throw error
+							}
+							if (finished) {
+								return { done: true, value: void 0 }
+							}
+							return { done: false, value }
+						}
+						if (loop.error) {
+							const { value } = loop.error
+							stop()
+							throw value
+						}
+						if (loop.ended) {
+							return stop()
+						}
+						await new Promise(
+							resolve => {
+								loop.wake = () => resolve(void 0)
+							}
+						)
+						loop.wake = void 0
+					}
+				},
+				async return() {
+					return stop()
+				}
+			}
+			/** @returns {IteratorResult<unknown>} */
+			function stop() {
+				if (!finished) {
+					finished = true
+					loops.delete(loop)
+					loop.wake?.()
+				}
+				return { done: true, value: void 0 }
+			}
+		},
+		/**
+		 * @param {unknown} reason
+		 * @returns {void}
+		 */
+		cancel: reason => closed.abort(
+			new CancelError(reason ?? "Cancelled", summary)
+		),
+		/**
+		 * @param {unknown} data
+		 * @returns {boolean}
+		 */
+		send: data => {
+			if (closed.signal.aborted) {
+				throw closed.signal.reason instanceof CancelError
+					? closed.signal.reason
+					: new CancelError(closed.signal.reason, summary)
+			}
+			const payload = serialize(data)
+			if (status == "open" && current?.readyState == 1) {
+				write(payload)
+				return true
+			}
+			if (outbox_limit > 0) {
+				if (outbox.length >= outbox_limit) {
+					outbox.shift()
+				}
+				outbox.push(payload)
+			}
+			start()
+			return false
+		},
+		get status() {
+			return status
+		}
+	}
 	/**
 	 * @param {number} id
 	 * @returns {Promise<void>}
@@ -189,9 +323,7 @@ export function open_socket(setup) {
 			lose(id, error)
 		}
 	}
-	/**
-	 * @returns {void}
-	 */
+	/** @returns {void} */
 	function detach() {
 		generation++
 		stop_waiting?.()
@@ -253,10 +385,6 @@ export function open_socket(setup) {
 		setup.report(error)
 		set_status("connecting")
 		const next = generation
-		function retry() {
-			stop_waiting?.()
-			connect(next)
-		}
 		timer = setTimeout(retry, clamp_delay(delay))
 		if (typeof globalThis.addEventListener == "function") {
 			globalThis.addEventListener("online", retry)
@@ -265,6 +393,11 @@ export function open_socket(setup) {
 				clearTimeout(timer)
 				globalThis.removeEventListener("online", retry)
 			}
+		}
+		/** @returns {void} */
+		function retry() {
+			stop_waiting?.()
+			connect(next)
 		}
 	}
 	/**
@@ -368,9 +501,7 @@ export function open_socket(setup) {
 			options.onStatus?.(next)
 		} catch {}
 	}
-	/**
-	 * @returns {void}
-	 */
+	/** @returns {void} */
 	function start() {
 		if (status != "idle") {
 			return
@@ -386,142 +517,6 @@ export function open_socket(setup) {
 		current?.send(
 			/** @type {never} */(payload)/**/
 		)
-	}
-	if (closed.signal.aborted) {
-		status = "closed"
-	} else {
-		on_abort(
-			closed.signal,
-			() => {
-				unlink()
-				finish(void 0)
-			}
-		)
-	}
-	return {
-		/**
-		 * @returns {AsyncIterableIterator<unknown>}
-		 */
-		[Symbol.asyncIterator]() {
-			/** @type {SocketLoop} */
-			const loop = {
-				buffer: [],
-				ended: closed.signal.aborted,
-				error: void 0,
-				head: 0,
-				wake: void 0
-			}
-			let finished = false
-			let started = false
-			/** @returns {IteratorResult<unknown>} */
-			function stop() {
-				if (!finished) {
-					finished = true
-					loops.delete(loop)
-					loop.wake?.()
-				}
-				return { done: true, value: void 0 }
-			}
-			return {
-				[Symbol.asyncIterator]() {
-					return this
-				},
-				async next() {
-					if (!started) {
-						started = true
-						if (!loop.ended) {
-							loops.add(loop)
-							start()
-						}
-					}
-					for (;;) {
-						if (finished) {
-							return { done: true, value: void 0 }
-						}
-						if (loop.head < loop.buffer.length) {
-							const message = loop.buffer[loop.head]
-							loop.buffer[loop.head++] = void 0
-							if (loop.head == loop.buffer.length) {
-								loop.buffer = []
-								loop.head = 0
-							} else if (loop.head > 1024 && loop.head * 2 > loop.buffer.length) {
-								loop.buffer = loop.buffer.slice(loop.head)
-								loop.head = 0
-							}
-							if (!(message instanceof Promise)) {
-								return { done: false, value: message }
-							}
-							/** @type {unknown} */
-							let value
-							try {
-								value = await message
-							} catch (error) {
-								if (finished) {
-									return { done: true, value: void 0 }
-								}
-								stop()
-								throw error
-							}
-							if (finished) {
-								return { done: true, value: void 0 }
-							}
-							return { done: false, value }
-						}
-						if (loop.error) {
-							const { value } = loop.error
-							stop()
-							throw value
-						}
-						if (loop.ended) {
-							return stop()
-						}
-						await new Promise(
-							resolve => {
-								loop.wake = () => resolve(void 0)
-							}
-						)
-						loop.wake = void 0
-					}
-				},
-				async return() {
-					return stop()
-				}
-			}
-		},
-		/**
-		 * @param {unknown} reason
-		 * @returns {void}
-		 */
-		cancel: reason => closed.abort(
-			new CancelError(reason ?? "Cancelled", summary)
-		),
-		/**
-		 * @param {unknown} data
-		 * @returns {boolean}
-		 */
-		send: data => {
-			if (closed.signal.aborted) {
-				throw closed.signal.reason instanceof CancelError
-					? closed.signal.reason
-					: new CancelError(closed.signal.reason, summary)
-			}
-			const payload = serialize(data)
-			if (status == "open" && current?.readyState == 1) {
-				write(payload)
-				return true
-			}
-			if (outbox_limit > 0) {
-				if (outbox.length >= outbox_limit) {
-					outbox.shift()
-				}
-				outbox.push(payload)
-			}
-			start()
-			return false
-		},
-		get status() {
-			return status
-		}
 	}
 }
 /**

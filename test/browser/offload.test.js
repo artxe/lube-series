@@ -1,19 +1,41 @@
 import { CancelError, offload } from "async-lube"
-import { assert, describe, it } from "vitest"
+import { assert, describe, inject, it } from "vitest"
 describe(
 	"offload in a browser",
 	() => {
-		/**
-		 * @param {PromiseLike<unknown>} promise
-		 * @returns {Promise<unknown>}
-		 */
-		function rejection(promise) {
-			return Promise.resolve(promise)
-				.then(
-					() => assert.fail("No error occurred"),
-					error => error
+		it(
+			"loads a stateful Worker from a module, batches its calls and closes it",
+			async () => {
+				/** @type {number[]} */
+				const sizes = []
+				const store = offload(
+					`${inject("base")}/worker-module.js`,
+					{
+						data: { start: 10 },
+						onBatch: value => {
+							sizes.push(
+								/** @type {{ size: number }} */(value)/**/.size
+							)
+						}
+					}
 				)
-		}
+				await store.ready
+				assert.deepEqual(
+					await Promise.all(
+						[ store.call(1), store.call(2) ]
+					),
+					[ 11, 13 ]
+				)
+				assert.deepEqual(sizes, [ 2 ])
+				const error = /** @type {Error} */(await rejection(store.call("fail")))/**/
+				assert.equal(error.message, "bad request")
+				await store.close()
+				assert.instanceOf(
+					await rejection(store.call(1)),
+					CancelError
+				)
+			}
+		)
 		it(
 			"rejects the call of a Worker that crashed, and runs the next call in a new Worker",
 			async () => {
@@ -82,5 +104,16 @@ describe(
 				broken.close()
 			}
 		)
+		/**
+		 * @param {PromiseLike<unknown>} promise
+		 * @returns {Promise<unknown>}
+		 */
+		function rejection(promise) {
+			return Promise.resolve(promise)
+				.then(
+					() => assert.fail("No error occurred"),
+					error => error
+				)
+		}
 	}
 )

@@ -872,7 +872,8 @@ export function start_run(
 				}
 				for (const [ dep, values ] of record.queued ?? []) {
 					if (values.length) {
-						(data.queued ??= {})[dep] = [ ...values ]
+						const queued = data.queued ??= {}
+						queued[dep] = [ ...values ]
 					}
 				}
 				const in_flight = record.node.options.overlap == "queue" && active_statuses.has(status) && record.args

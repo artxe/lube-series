@@ -15,6 +15,7 @@ import {
 	type NodeContext,
 	type NodeStatus,
 	type OffloadCall,
+	type OffloadSetup,
 	type ReconnectOptions,
 	type RetryOptions,
 	type ServerEvent,
@@ -41,16 +42,20 @@ import {
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2)
 	? true
 	: false
+/** @returns {void} */
+function define<D, Q, R, B>(_: OffloadSetup<D, Q, R, B>) {}
+/** @returns {void} */
 function expect_type<A, B>(_: Equal<A, B>) {}
 type User = { id: number, name: string }
+/** @returns {User} */
 function parse_user(data: unknown): User {
 	if (
 		typeof data == "object"
-		&& data
-		&& "id" in data
-		&& typeof data.id == "number"
-		&& "name" in data
-		&& typeof data.name == "string"
+			&& data
+			&& "id" in data
+			&& typeof data.id == "number"
+			&& "name" in data
+			&& typeof data.name == "string"
 	) {
 		return { id: data.id, name: data.name }
 	}
@@ -83,6 +88,7 @@ const api = http(
 		timeout: 10000
 	}
 )
+/** @returns {Promise<void>} */
 async function arrive_syntax() {
 	const bread = flow.input<string>("bread")
 	const patty = flow.input<number>("patty")
@@ -90,9 +96,6 @@ async function arrive_syntax() {
 	const queued: DependencyPolicy<typeof bread> = flow.queue(bread)
 	const dep: Dep<string> = queued
 	void dep
-	function burger(b: string, p: number, c: boolean) {
-		return `${b}${p}${c}`
-	}
 	const run = flow()
 		.add(bread)
 		.add(patty)
@@ -126,20 +129,14 @@ async function arrive_syntax() {
 	run.idle().then(
 		done => expect_type<typeof done, void>(true)
 	)
+	/** @returns {string} */
+	function burger(b: string, p: number, c: boolean) {
+		return `${b}${p}${c}`
+	}
 }
+/** @returns {Promise<void>} */
 async function backend_syntax() {
 	type Tx = { commit(): Promise<void>, id: number, rollback(): Promise<void> }
-	async function begin(): Promise<Tx> {
-		return {
-			commit: async () => {},
-			id: 1,
-			rollback: async () => {}
-		}
-	}
-	function insert(tx: Tx, { key }: NodeContext) {
-		expect_type<typeof key, string>(true)
-		return tx.id
-	}
 	const saved = flow()
 		.add(
 			begin,
@@ -193,6 +190,28 @@ async function backend_syntax() {
 	)
 	// @ts-expect-error: an unknown option is rejected
 	void limiter({ concurency: 2 })
+	const packets = limiter(
+		{
+			rate: {
+				count: 20,
+				per: 1000,
+				window: "fixed"
+			}
+		}
+	)
+	expect_type<ReturnType<typeof packets.take>, number>(true)
+	void packets.take()
+	void packets.key("a").take("b")
+	void limiter(
+		{
+			rate: {
+				count: 1,
+				per: 10,
+				// @ts-expect-error: the window is sliding or fixed
+				window: "tumbling"
+			}
+		}
+	)
 	void attempt(
 		() => 1,
 		// @ts-expect-error: an unknown option is rejected
@@ -218,6 +237,31 @@ async function backend_syntax() {
 	// @ts-expect-error: the arguments are checked
 	void resize("bytes", 2)
 	resize.close()
+	const store = offload<string, number, { path: string }, { size: number }>(
+		new URL("./store.js", import.meta.url),
+		{
+			data: { path: "db" },
+			delay: 5,
+			onBatch: value => value.size
+		}
+	)
+	const found = store.call("key")
+	expect_type<typeof found, Promise<number>>(true)
+	const ready: Promise<void> = store.ready
+	const closed: Promise<void> = store.close()
+	void ready
+	void closed
+	// @ts-expect-error: the request is checked
+	void store.call(1)
+	void define<{ path: string }, string, number, { size: number }>(
+		({ path }) => ({
+			batch: async run => {
+				await run()
+				return { size: path.length }
+			},
+			call: request => request.length
+		})
+	)
 	const lease = await db.acquire()
 	lease.release()
 	const per_user: Limiter = db.key("user-1")
@@ -257,9 +301,6 @@ async function backend_syntax() {
 	}
 	for await (const list of latest(typed, async () => [ 1 ])) {
 		expect_type<typeof list, number[]>(true)
-	}
-	async function* spell(q: string) {
-		yield* q
 	}
 	for await (const letter of latest(
 		typed,
@@ -304,38 +345,29 @@ async function backend_syntax() {
 	void opaque
 	// @ts-expect-error: an unknown run option
 	saved.run(undefined, { ids: "a" })
+	/** @returns {Promise<Tx>} */
+	async function begin(): Promise<Tx> {
+		return {
+			commit: async () => {},
+			id: 1,
+			rollback: async () => {}
+		}
+	}
+	/** @returns {number} */
+	function insert(tx: Tx, { key }: NodeContext) {
+		expect_type<typeof key, string>(true)
+		return tx.id
+	}
+	/** @returns {AsyncGenerator<string, void, unknown>} */
+	async function* spell(q: string) {
+		yield* q
+	}
 }
+/** @returns {Promise<void>} */
 async function flow_syntax() {
 	type Cart = { items: string[], total: number }
 	type Paid = { id: string }
-	function get_cart(
-		{ signal }: NodeContext<unknown>
-	) {
-		return api.get<Cart>("/cart", {}, { signal })
-	}
-	function get_quote(
-		cart: Cart,
-		user: User,
-		{ state }: NodeContext<{ coupon?: string }>
-	) {
-		return cart.total - (state.coupon ? user.id : 0)
-	}
-	function get_user() {
-		return api.get<User>("/me")
-	}
 	const otp = flow.input<string>("otp")
-	function pay(quote: number, code: string) {
-		return api.post<Paid>("/pay", { code, quote })
-	}
-	function pay_later(quote: number) {
-		return api.post<Paid>("/pay/later", { quote })
-	}
-	function receipt(
-		paid: Paid | undefined,
-		later: Paid | undefined
-	) {
-		return paid ?? later
-	}
 	const checkout = flow<{ coupon?: string }>({ concurrency: 4 })
 		.add(get_cart)
 		.add(get_user)
@@ -390,12 +422,6 @@ async function flow_syntax() {
 	run.pending(get_cart)
 	run.pending("get_cart")
 	expect_type<typeof run.nodes, Record<string, NodeStatus>>(true)
-	function files() {
-		return [ "a.txt", "b.txt" ]
-	}
-	async function* rows() {
-		yield "a.txt"
-	}
 	flow()
 		.add(rows)
 		.add(
@@ -409,17 +435,8 @@ async function flow_syntax() {
 			files,
 			{ limit: 10, overlap: "queue" }
 		)
-	function upload(
-		file: string,
-		{ index }: NodeContext
-	) {
-		return file.length + (index ?? 0)
-	}
 	const upload_all = flow.each(upload)
 	expect_type<typeof upload_all, Each<string, [NodeContext], number>>(true)
-	function total(sizes: number[]) {
-		return sizes.length
-	}
 	const uploads = await flow()
 		.add(files)
 		.add(
@@ -501,12 +518,6 @@ async function flow_syntax() {
 	flow().add(files)
 		// @ts-expect-error: the state of the sub-flow does not match
 		.add(count_files, files, get_cart)
-	function then_names(
-		_: number[],
-		{ state }: NodeContext<string[]>
-	) {
-		return state
-	}
 	const counted = await flow<string[]>()
 		.add(upload_all)
 		.add(then_names, upload_all)
@@ -539,12 +550,6 @@ async function flow_syntax() {
 		}
 	)
 	const accept = flow.input<boolean | "timeout">("accept")
-	function accepted(value: boolean | "timeout") {
-		return value
-	}
-	function timed_out() {
-		return "timed out"
-	}
 	flow()
 		.add(
 			accept,
@@ -599,9 +604,6 @@ async function flow_syntax() {
 	expect_type<typeof lengths, number[]>(true)
 	expect_type<Extract<keyof typeof import("async-lube"), "each" | "input">, never>(true)
 	const draft = flow.input<string>("draft")
-	function save(text: string) {
-		return api.put("/drafts", text)
-	}
 	flow()
 		.add(draft)
 		.add(save, draft, { overlap: "rerun" })
@@ -625,22 +627,9 @@ async function flow_syntax() {
 			when: text => text.length > 0
 		}
 	)
-	// @ts-expect-error: the context sleeps, it does not wait
-	function waits({ wait }: NodeContext) {
-		return wait
-	}
 	void waits
 	// @ts-expect-error: an input has no overlap
 	flow().add(draft, { overlap: "queue" })
-	function heads() {
-		return "heads"
-	}
-	function tails() {
-		return "tails"
-	}
-	function toss() {
-		return Math.random() > 0.5
-	}
 	flow()
 		.add(toss)
 		.add(heads)
@@ -659,9 +648,6 @@ async function flow_syntax() {
 		)
 		.mermaid()
 		.trim()
-	function verdict(): "answer" | "ask" {
-		return Math.random() > 0.5 ? "answer" : "ask"
-	}
 	const verdicts = flow().add(verdict)
 		.add(heads)
 		.add(tails)
@@ -673,9 +659,6 @@ async function flow_syntax() {
 	verdicts.edge(verdict, { asks: tails })
 	// @ts-expect-error: "ask" has no key
 	verdicts.edge(verdict, { answer: heads })
-	function judge() {
-		return { verdict: verdict() }
-	}
 	const judges = flow().add(judge)
 		.add(heads)
 		.add(tails)
@@ -684,22 +667,13 @@ async function flow_syntax() {
 		{ answer: heads, ask: tails },
 		result => result.verdict
 	)
-	function typo() {
-		return "typo" as const
-	}
 	// @ts-expect-error: select returns a key of the map
 	judges.edge(judge, { answer: heads }, typo)
 	// @ts-expect-error: an object result has no keys to map
 	judges.edge(judge, { answer: heads })
-	function anything(): unknown {
-		return "answer"
-	}
 	flow().add(anything)
 		.add(heads)
 		.edge(anything, { answer: heads })
-	function charge() {
-		return Math.random() > 0.5 ? { id: "paid" } : "declined" as const
-	}
 	flow().add(charge)
 		.add(tails)
 		// @ts-expect-error: an object result has no key
@@ -730,12 +704,6 @@ async function flow_syntax() {
 	flow().add(toss)
 		// @ts-expect-error: timout is not an option
 		.add(heads, toss, { timout: 5 })
-	function greet(
-		who: User,
-		guest: { name: string }
-	) {
-		return who.name + guest.name
-	}
 	flow().add(get_user)
 		// @ts-expect-error: the context parameter is not a NodeContext, so a dependency is missing
 		.add(greet, get_user)
@@ -803,7 +771,123 @@ async function flow_syntax() {
 			error.timeout.toFixed()
 		}
 	}
+	/** @returns {boolean | "timeout"} */
+	function accepted(value: boolean | "timeout") {
+		return value
+	}
+	/** @returns {unknown} */
+	function anything(): unknown {
+		return "answer"
+	}
+	/** @returns {"declined" | { id: string; }} */
+	function charge() {
+		return Math.random() > 0.5 ? { id: "paid" } : "declined" as const
+	}
+	/** @returns {string[]} */
+	function files() {
+		return [ "a.txt", "b.txt" ]
+	}
+	/** @returns {LubeRequest<Cart>} */
+	function get_cart(
+		{ signal }: NodeContext<unknown>
+	) {
+		return api.get<Cart>("/cart", {}, { signal })
+	}
+	/** @returns {number} */
+	function get_quote(
+		cart: Cart,
+		user: User,
+		{ state }: NodeContext<{ coupon?: string }>
+	) {
+		return cart.total - (state.coupon ? user.id : 0)
+	}
+	/** @returns {LubeRequest<User>} */
+	function get_user() {
+		return api.get<User>("/me")
+	}
+	/** @returns {string} */
+	function greet(
+		who: User,
+		guest: { name: string }
+	) {
+		return who.name + guest.name
+	}
+	/** @returns {string} */
+	function heads() {
+		return "heads"
+	}
+	/** @returns {{ verdict: "answer" | "ask"; }} */
+	function judge() {
+		return { verdict: verdict() }
+	}
+	/** @returns {LubeRequest<Paid>} */
+	function pay(amount: number, code: string) {
+		return api.post<Paid>("/pay", { code, quote: amount })
+	}
+	/** @returns {LubeRequest<Paid>} */
+	function pay_later(amount: number) {
+		return api.post<Paid>("/pay/later", { quote: amount })
+	}
+	/** @returns {Paid | undefined} */
+	function receipt(
+		charged: Paid | undefined,
+		later: Paid | undefined
+	) {
+		return charged ?? later
+	}
+	/** @returns {AsyncGenerator<string, void, unknown>} */
+	async function* rows() {
+		yield "a.txt"
+	}
+	/** @returns {LubeRequest<unknown>} */
+	function save(text: string) {
+		return api.put("/drafts", text)
+	}
+	/** @returns {string} */
+	function tails() {
+		return "tails"
+	}
+	/** @returns {string[]} */
+	function then_names(
+		_: number[],
+		{ state }: NodeContext<string[]>
+	) {
+		return state
+	}
+	/** @returns {string} */
+	function timed_out() {
+		return "timed out"
+	}
+	/** @returns {boolean} */
+	function toss() {
+		return Math.random() > 0.5
+	}
+	/** @returns {number} */
+	function total(sizes: number[]) {
+		return sizes.length
+	}
+	/** @returns {"typo"} */
+	function typo() {
+		return "typo" as const
+	}
+	/** @returns {number} */
+	function upload(
+		file: string,
+		{ index }: NodeContext
+	) {
+		return file.length + (index ?? 0)
+	}
+	/** @returns {"answer" | "ask"} */
+	function verdict(): "answer" | "ask" {
+		return Math.random() > 0.5 ? "answer" : "ask"
+	}
+	/** @returns {unknown} */
+	// @ts-expect-error: the context sleeps, it does not wait
+	function waits({ wait }: NodeContext) {
+		return wait
+	}
 }
+/** @returns {Promise<void>} */
 async function http_syntax() {
 	const user = api.get<User>(
 		"/users/:id",
@@ -830,9 +914,6 @@ async function http_syntax() {
 	// @ts-expect-error: the annotation keeps the check of the path parameters
 	const unchecked: User = await api.get("/users/:id", { expand: true })
 	void unchecked
-	function name_of(data: User) {
-		return data.name
-	}
 	// @ts-expect-error: parse receives unknown data
 	api.get("/me", {}, { parse: name_of })
 	interface Filter {
@@ -942,7 +1023,7 @@ async function http_syntax() {
 	).safe()
 	if (error) {
 		if (isCancel(error)) {
- error satisfies CancelError
+			error satisfies CancelError
 		}
 		if (error instanceof HttpError) {
 			expect_type<typeof error.data, unknown>(true)
@@ -1246,7 +1327,12 @@ async function http_syntax() {
 			upload: progress => progress.loaded
 		}
 	)
+	/** @returns {string} */
+	function name_of(person: User) {
+		return person.name
+	}
 }
+/** @returns {Promise<void>} */
 async function stream_dependency_syntax() {
 	const model = channel({ initial: "small" })
 	expect_type<typeof model, Channel<string>>(true)
@@ -1263,9 +1349,6 @@ async function stream_dependency_syntax() {
 	expect_type<Awaited<ReturnType<typeof asked.run>>, string>(true)
 	const breads = channel<string>()
 	const patties = channel<number>()
-	function burger(b: string, p: number) {
-		return `${b}${p}`
-	}
 	const run = flow()
 		.add(
 			burger,
@@ -1275,9 +1358,6 @@ async function stream_dependency_syntax() {
 		)
 		.run()
 	expect_type<Awaited<typeof run>, string>(true)
-	function shout(made: string) {
-		return made.toUpperCase()
-	}
 	const piped = flow().add(shout, run.stream(burger))
 	expect_type<Awaited<ReturnType<typeof piped.run>>, string>(true)
 	flow().add(
@@ -1298,7 +1378,16 @@ async function stream_dependency_syntax() {
 	for await (const bread of breads) {
 		expect_type<typeof bread, string>(true)
 	}
+	/** @returns {string} */
+	function burger(b: string, p: number) {
+		return `${b}${p}`
+	}
+	/** @returns {string} */
+	function shout(made: string) {
+		return made.toUpperCase()
+	}
 }
+/** @returns {Promise<void>} */
 async function stream_syntax() {
 	const words: Channel<string> = channel<string>({ limit: 10 })
 	words.send("a")
@@ -1336,11 +1425,9 @@ function word_of(value: number) {
 }
 http_syntax()
 flow_syntax()
+/** @returns {void} */
 function limit_syntax() {
 	const tick = flow.input<number>("tick")
-	function step(value: number) {
-		return value
-	}
 	flow().add(tick)
 		.add(
 			step,
@@ -1378,6 +1465,10 @@ function limit_syntax() {
 		.run()
 	// @ts-expect-error: a stream is read by its node
 	run.stream("step")
+	/** @returns {number} */
+	function step(value: number) {
+		return value
+	}
 }
 void stream_syntax()
 void stream_dependency_syntax()

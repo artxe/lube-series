@@ -188,8 +188,8 @@ export function is_idempotent(method) {
  */
 export function is_retryable(error) {
 	return error instanceof NetworkError
-	|| error instanceof TimeoutError
-	|| error instanceof HttpError && retry_statuses.has(error.status)
+		|| error instanceof TimeoutError
+		|| error instanceof HttpError && retry_statuses.has(error.status)
 }
 /**
  * @param {unknown} error

@@ -112,9 +112,7 @@ export function is_stream(value) {
 		&& !/** @type {RefProbe} */(value)/**/?.[INPUT]
 		&& typeof /** @type {Partial<AsyncIterable<unknown>>} */(value)/**/[Symbol.asyncIterator] == "function"
 }
-/**
- * @returns {typeof SKIP}
- */
+/** @returns {typeof SKIP} */
 export function skip() {
 	return SKIP
 }

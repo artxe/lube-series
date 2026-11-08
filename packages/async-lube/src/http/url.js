@@ -72,6 +72,23 @@ export function build_url(
 	const rest = { ...source }
 	/** @type {string[]} */
 	const used = []
+	let url = fill(path)
+	if (base && !absolute_regex.test(url)) {
+		const split_index = base.search(/[?#]/)
+		const base_path = fill(
+			split_index < 0 ? base : base.slice(0, split_index)
+		)
+		const base_query = split_index < 0 || base[split_index] != "?"
+			? ""
+			: /** @type {string} */(base.slice(split_index + 1).split("#")[0])/**/
+		const trimmed = url.replace(leading_slash_regex, "")
+		url = base_path.replace(trailing_slash_regex, "") + (trimmed && !trimmed.startsWith("?") ? "/" : "") + trimmed
+		url = add_query(url, base_query, true)
+	}
+	for (const name of used) {
+		delete rest[name]
+	}
+	return add_query(url, serialize(rest), false)
 	/**
 	 * @param {string} text
 	 * @returns {string}
@@ -104,23 +121,6 @@ export function build_url(
 		)
 		return split_index < 0 ? filled : filled + text.slice(split_index)
 	}
-	let url = fill(path)
-	if (base && !absolute_regex.test(url)) {
-		const split_index = base.search(/[?#]/)
-		const base_path = fill(
-			split_index < 0 ? base : base.slice(0, split_index)
-		)
-		const base_query = split_index < 0 || base[split_index] != "?"
-			? ""
-			: /** @type {string} */(base.slice(split_index + 1).split("#")[0])/**/
-		const trimmed = url.replace(leading_slash_regex, "")
-		url = base_path.replace(trailing_slash_regex, "") + (trimmed && !trimmed.startsWith("?") ? "/" : "") + trimmed
-		url = add_query(url, base_query, true)
-	}
-	for (const name of used) {
-		delete rest[name]
-	}
-	return add_query(url, serialize(rest), false)
 }
 /**
  * @param {import("../../public.js").QueryParams} params

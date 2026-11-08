@@ -43,20 +43,6 @@ export async function serve(d, serve_options = {}) {
 	check_halted(d)
 	const controller = new AbortController()
 	const unlink = link_signal(controller, serve_options.signal)
-	/**
-	 * @param {unknown} error
-	 * @param {string=} key
-	 * @returns {void}
-	 */
-	function reporter(error, key) {
-		onError(error, key)
-	}
-	/**
-	 * @returns {void}
-	 */
-	function stop() {
-		controller.abort()
-	}
 	d.reporters.add(reporter)
 	d.stoppers.add(stop)
 	try {
@@ -74,5 +60,17 @@ export async function serve(d, serve_options = {}) {
 		d.reporters.delete(reporter)
 		d.stoppers.delete(stop)
 		unlink()
+	}
+	/**
+	 * @param {unknown} error
+	 * @param {string=} key
+	 * @returns {void}
+	 */
+	function reporter(error, key) {
+		onError(error, key)
+	}
+	/** @returns {void} */
+	function stop() {
+		controller.abort()
 	}
 }

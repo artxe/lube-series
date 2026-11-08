@@ -5,31 +5,6 @@ describe(
 	"WebSocket in a browser",
 	() => {
 		const base = inject("base")
-		/**
-		 * @param {number} ms
-		 * @returns {Promise<void>}
-		 */
-		function sleep(ms) {
-			return new Promise(
-				resolve => setTimeout(resolve, ms)
-			)
-		}
-		/**
-		 * @param {import("async-lube").Socket} socket
-		 * @param {number} count
-		 * @returns {Promise<unknown[]>}
-		 */
-		async function take(socket, count) {
-			/** @type {unknown[]} */
-			const messages = []
-			for await (const message of socket) {
-				messages.push(message)
-				if (messages.length == count) {
-					break
-				}
-			}
-			return messages
-		}
 		it(
 			"connects, sends and receives with the real WebSocket",
 			async () => {
@@ -205,5 +180,30 @@ describe(
 				assert.equal(reported[1], failure)
 			}
 		)
+		/**
+		 * @param {number} ms
+		 * @returns {Promise<void>}
+		 */
+		function sleep(ms) {
+			return new Promise(
+				resolve => setTimeout(resolve, ms)
+			)
+		}
+		/**
+		 * @param {import("async-lube").Socket} socket
+		 * @param {number} count
+		 * @returns {Promise<unknown[]>}
+		 */
+		async function take(socket, count) {
+			/** @type {unknown[]} */
+			const messages = []
+			for await (const message of socket) {
+				messages.push(message)
+				if (messages.length == count) {
+					break
+				}
+			}
+			return messages
+		}
 	}
 )

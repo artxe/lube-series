@@ -59,50 +59,12 @@ export async function simulate_durable(seed, options, unhandled) {
 	/** @type {string[]} */
 	const log = []
 	const start_time = time()
-	/**
-	 * @param {string} line
-	 * @returns {void}
-	 */
-	function say(line) {
-		log.push(
-			`[${time() - start_time}] ${line}`
-		)
-	}
-	/**
-	 * @param {number | undefined} at
-	 * @returns {string}
-	 */
-	function since(at) {
-		return at == null ? "-" : String(at - start_time)
-	}
 	const base = options.store == "memory"
 		? memory()
 		: sqlite(new DatabaseSync(":memory:"))
 	let fail_rate = 0
 	let fail_after = false
 	const latency = random.pick([ 0, 0, 1, 5 ])
-	/**
-	 * @returns {Promise<void>}
-	 */
-	async function delay() {
-		const ms = random.int(latency + 1)
-		if (ms) {
-			await new Promise(
-				resolve => setTimeout(resolve, ms)
-			)
-		}
-	}
-	/**
-	 * @param {string} what
-	 * @returns {void}
-	 */
-	function read_fault(what) {
-		if (!options.reads || !fail_rate || !random.chance(fail_rate)) {
-			return
-		}
-		say(`${what} failed`)
-		throw Error("disk busy")
-	}
 	/** @type {DurableStore} */
 	const store = {
 		async due(now, limit) {
@@ -189,171 +151,9 @@ export async function simulate_durable(seed, options, unhandled) {
 		}
 		programs.set(key, { ops })
 	}
-	/**
-	 * @param {string} worker
-	 * @returns {(input: DurableSimInput, context: DurableContext) => Promise<string[]>}
-	 */
-	function make_fn(worker) {
-		return async (
-			input,
-			{ key, sleep, step, wait }
-		) => {
-			/** @type {string[]} */
-			const out = []
-			for (const op of input.ops) {
-				if (op.t == "step") {
-					const { error: kind, fail, ms, n } = op
-					/**
-					 * @returns {Promise<string>}
-					 */
-					function body() {
-						return step(
-							n,
-							async ({ signal }) => {
-								const id = `${key}/${n}`
-								const attempt = (attempts.get(id) ?? 0) + 1
-								attempts.set(id, attempt)
-								const list = active.get(key) ?? []
-								active.set(key, list)
-								if (signal.aborted) {
-									zombies++
-								}
-								const live = signal.aborted ? [] : list.filter(other => !other.signal.aborted)
-								if (live.length) {
-									problems.push(
-										`two live step bodies for ${key}: ${live.map(other => `${other.worker}/${other.name}`).join(",")} and ${worker}/${n} at ${since(time())}`
-									)
-								}
-								/** @type {DurableSimBody} */
-								const running = { name: n, signal, worker }
-								list.push(running)
-								say(
-									`${worker} body ${key}/${n}#${attempt}${signal.aborted ? " aborted" : ""}`
-								)
-								try {
-									if (ms) {
-										await new Promise(
-											resolve => setTimeout(resolve, ms)
-										)
-									}
-									if (fail != "none" && attempt == 1) {
-										throw step_error(kind, n)
-									}
-									return `${n}#${attempt}`
-								} finally {
-									list.splice(list.indexOf(running), 1)
-								}
-							}
-						)
-					}
-					if (fail == "caught") {
-						try {
-							out.push(`step ${n} ${await body()}`)
-						} catch (error) {
-							const expected = error_shape(step_error(kind, n))
-							if (error instanceof Error && error.message == `fail ${n}` && error_shape(error) != expected) {
-								problems.push(
-									`${key}: ${worker} caught ${n} as ${error_shape(error)}, not ${expected}`
-								)
-							}
-							out.push(
-								`caught ${n} ${error instanceof Error ? error.message : String(error)}`
-							)
-							out.push(
-								await step(`comp-${n}`, () => `undo ${n}`)
-							)
-						}
-					} else {
-						out.push(`step ${n} ${await body()}`)
-					}
-				} else if (op.t == "sleep") {
-					await sleep(op.n, op.ms)
-					out.push(`slept ${op.n}`)
-				} else {
-					try {
-						/** @type {{ timeout?: number, until?: number }} */
-						const wait_options = {}
-						if (op.timeout != null) {
-							wait_options.timeout = op.timeout
-						}
-						if (op.until != null) {
-							wait_options.until = op.until
-						}
-						out.push(
-							`got ${op.n} ${await wait(op.name, wait_options)}`
-						)
-					} catch (error) {
-						if (!(error instanceof TimeoutError)) {
-							throw error
-						}
-						out.push(`timeout ${op.n}`)
-					}
-				}
-			}
-			return out
-		}
-	}
-	/**
-	 * @param {string} key
-	 * @returns {DurableSimInput}
-	 */
-	function program(key) {
-		return /** @type {DurableSimInput} */(programs.get(key))/**/
-	}
 	/** @type {DurableSimWorker[]} */
 	const workers = []
 	let last_worker = 0
-	/**
-	 * @param {boolean} serves
-	 * @returns {DurableSimWorker}
-	 */
-	function spawn(serves) {
-		const id = `w${last_worker++}`
-		const idle = random.pick([ 0, 5, 1000, 30000 ])
-		const lease = random.pick([ 3000, 30000 ])
-		const poll = random.pick([ 50, 500, 5000 ])
-		/** @type {Durable<DurableSimInput, string[]>} */
-		const worker = durable(
-			store,
-			make_fn(id),
-			{ idle, lease, owner: id, poll }
-		)
-		/** @type {DurableSimWorker} */
-		const created = {
-			alive: true,
-			durable: worker,
-			id,
-			serve: void 0
-		}
-		let serving = ""
-		if (serves || random.chance(0.8)) {
-			const controller = new AbortController()
-			created.serve = controller
-			const interval = random.pick([ 5000, 30000, 60000 ])
-			serving = ` serve=${interval}`
-			worker.serve(
-				{
-					interval,
-					onError: (error, key) => say(
-						`serve of ${id}: ${key ?? "-"} ${message_of(error)}`
-					),
-					signal: controller.signal
-				}
-			).catch(
-				error => {
-					if (created.alive) {
-						problems.push(
-							`serve of ${id} rejected ${message_of(error)}`
-						)
-					}
-				}
-			)
-		}
-		say(
-			`spawn ${id} idle=${idle} lease=${lease} poll=${poll}${serving}`
-		)
-		return created
-	}
 	const worker_count = 2 + random.int(2)
 	for (let i = 0; i < worker_count; i++) {
 		workers.push(spawn(false))
@@ -365,41 +165,6 @@ export async function simulate_durable(seed, options, unhandled) {
 	let last_value = 0
 	/** @type {Map<string, { how: string, ok: boolean, value: unknown }[]>} */
 	const outcomes = new Map()
-	/**
-	 * @returns {DurableSimWorker[]}
-	 */
-	function alive() {
-		return workers.filter(worker => worker.alive)
-	}
-	/**
-	 * @param {string} key
-	 * @param {string} how
-	 * @param {Promise<unknown>} promise
-	 * @returns {void}
-	 */
-	function record(key, how, promise) {
-		const list = outcomes.get(key) ?? []
-		outcomes.set(key, list)
-		promise.then(
-			value => void list.push({ how, ok: true, value }),
-			error => {
-				const failed = error instanceof Error ? /^fail (s\d+)$/.exec(error.message) : null
-				const op = failed && program(key).ops.find(item => item.n == failed[1])
-				if (op && op.t == "step" && error_shape(error) != error_shape(step_error(op.error, op.n))) {
-					problems.push(
-						`${key}: ${how} rejected ${error_shape(error)}, not ${error_shape(step_error(op.error, op.n))}`
-					)
-				}
-				list.push(
-					{
-						how,
-						ok: false,
-						value: message_of(error)
-					}
-				)
-			}
-		)
-	}
 	/** @type {Set<string>} */
 	const cancelled = new Set()
 	const moves = 30 + random.int(40)
@@ -787,6 +552,235 @@ export async function simulate_durable(seed, options, unhandled) {
 		),
 		log,
 		problems
+	}
+	/** @returns {DurableSimWorker[]} */
+	function alive() {
+		return workers.filter(worker => worker.alive)
+	}
+	/** @returns {Promise<void>} */
+	async function delay() {
+		const ms = random.int(latency + 1)
+		if (ms) {
+			await new Promise(
+				resolve => setTimeout(resolve, ms)
+			)
+		}
+	}
+	/**
+	 * @param {string} worker
+	 * @returns {(input: DurableSimInput, context: DurableContext) => Promise<string[]>}
+	 */
+	function make_fn(worker) {
+		return async (
+			input,
+			{ key, sleep, step, wait }
+		) => {
+			/** @type {string[]} */
+			const out = []
+			for (const op of input.ops) {
+				if (op.t == "step") {
+					const { error: kind, fail, ms, n } = op
+					/** @returns {Promise<string>} */
+					function body() {
+						return step(
+							n,
+							async ({ signal }) => {
+								const id = `${key}/${n}`
+								const attempt = (attempts.get(id) ?? 0) + 1
+								attempts.set(id, attempt)
+								const list = active.get(key) ?? []
+								active.set(key, list)
+								if (signal.aborted) {
+									zombies++
+								}
+								const live = signal.aborted ? [] : list.filter(other => !other.signal.aborted)
+								if (live.length) {
+									problems.push(
+										`two live step bodies for ${key}: ${live.map(other => `${other.worker}/${other.name}`).join(",")} and ${worker}/${n} at ${since(time())}`
+									)
+								}
+								/** @type {DurableSimBody} */
+								const running = { name: n, signal, worker }
+								list.push(running)
+								say(
+									`${worker} body ${key}/${n}#${attempt}${signal.aborted ? " aborted" : ""}`
+								)
+								try {
+									if (ms) {
+										await new Promise(
+											resolve => setTimeout(resolve, ms)
+										)
+									}
+									if (fail != "none" && attempt == 1) {
+										throw step_error(kind, n)
+									}
+									return `${n}#${attempt}`
+								} finally {
+									list.splice(list.indexOf(running), 1)
+								}
+							}
+						)
+					}
+					if (fail == "caught") {
+						try {
+							out.push(`step ${n} ${await body()}`)
+						} catch (error) {
+							const expected = error_shape(step_error(kind, n))
+							if (error instanceof Error && error.message == `fail ${n}` && error_shape(error) != expected) {
+								problems.push(
+									`${key}: ${worker} caught ${n} as ${error_shape(error)}, not ${expected}`
+								)
+							}
+							out.push(
+								`caught ${n} ${error instanceof Error ? error.message : String(error)}`
+							)
+							out.push(
+								await step(`comp-${n}`, () => `undo ${n}`)
+							)
+						}
+					} else {
+						out.push(`step ${n} ${await body()}`)
+					}
+				} else if (op.t == "sleep") {
+					await sleep(op.n, op.ms)
+					out.push(`slept ${op.n}`)
+				} else {
+					try {
+						/** @type {{ timeout?: number, until?: number }} */
+						const wait_options = {}
+						if (op.timeout != null) {
+							wait_options.timeout = op.timeout
+						}
+						if (op.until != null) {
+							wait_options.until = op.until
+						}
+						out.push(
+							`got ${op.n} ${await wait(op.name, wait_options)}`
+						)
+					} catch (error) {
+						if (!(error instanceof TimeoutError)) {
+							throw error
+						}
+						out.push(`timeout ${op.n}`)
+					}
+				}
+			}
+			return out
+		}
+	}
+	/**
+	 * @param {string} key
+	 * @returns {DurableSimInput}
+	 */
+	function program(key) {
+		return /** @type {DurableSimInput} */(programs.get(key))/**/
+	}
+	/**
+	 * @param {string} what
+	 * @returns {void}
+	 */
+	function read_fault(what) {
+		if (!options.reads || !fail_rate || !random.chance(fail_rate)) {
+			return
+		}
+		say(`${what} failed`)
+		throw Error("disk busy")
+	}
+	/**
+	 * @param {string} key
+	 * @param {string} how
+	 * @param {Promise<unknown>} promise
+	 * @returns {void}
+	 */
+	function record(key, how, promise) {
+		const list = outcomes.get(key) ?? []
+		outcomes.set(key, list)
+		promise.then(
+			value => void list.push({ how, ok: true, value }),
+			error => {
+				const failed = error instanceof Error ? /^fail (s\d+)$/.exec(error.message) : null
+				const op = failed && program(key).ops.find(item => item.n == failed[1])
+				if (op && op.t == "step" && error_shape(error) != error_shape(step_error(op.error, op.n))) {
+					problems.push(
+						`${key}: ${how} rejected ${error_shape(error)}, not ${error_shape(step_error(op.error, op.n))}`
+					)
+				}
+				list.push(
+					{
+						how,
+						ok: false,
+						value: message_of(error)
+					}
+				)
+			}
+		)
+	}
+	/**
+	 * @param {string} line
+	 * @returns {void}
+	 */
+	function say(line) {
+		log.push(
+			`[${time() - start_time}] ${line}`
+		)
+	}
+	/**
+	 * @param {number | undefined} at
+	 * @returns {string}
+	 */
+	function since(at) {
+		return at == null ? "-" : String(at - start_time)
+	}
+	/**
+	 * @param {boolean} serves
+	 * @returns {DurableSimWorker}
+	 */
+	function spawn(serves) {
+		const id = `w${last_worker++}`
+		const idle = random.pick([ 0, 5, 1000, 30000 ])
+		const lease = random.pick([ 3000, 30000 ])
+		const poll = random.pick([ 50, 500, 5000 ])
+		/** @type {Durable<DurableSimInput, string[]>} */
+		const worker = durable(
+			store,
+			make_fn(id),
+			{ idle, lease, owner: id, poll }
+		)
+		/** @type {DurableSimWorker} */
+		const created = {
+			alive: true,
+			durable: worker,
+			id,
+			serve: void 0
+		}
+		let serving = ""
+		if (serves || random.chance(0.8)) {
+			const controller = new AbortController()
+			created.serve = controller
+			const interval = random.pick([ 5000, 30000, 60000 ])
+			serving = ` serve=${interval}`
+			worker.serve(
+				{
+					interval,
+					onError: (error, key) => say(
+						`serve of ${id}: ${key ?? "-"} ${message_of(error)}`
+					),
+					signal: controller.signal
+				}
+			).catch(
+				error => {
+					if (created.alive) {
+						problems.push(
+							`serve of ${id} rejected ${message_of(error)}`
+						)
+					}
+				}
+			)
+		}
+		say(
+			`spawn ${id} idle=${idle} lease=${lease} poll=${poll}${serving}`
+		)
+		return created
 	}
 }
 /**

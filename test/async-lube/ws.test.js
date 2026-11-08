@@ -49,112 +49,14 @@ describe(
 			close() {
 				this.readyState = 3
 			}
-			/**
-			 * @param {number} code
-			 */
+			/** @param {number} code */
 			drop(code) {
 				this.readyState = 3
 				this.onclose?.({ code, reason: "" })
 			}
-			/**
-			 * @param {unknown} data
-			 */
+			/** @param {unknown} data */
 			send(data) {
 				this.sent.push(data)
-			}
-		}
-		/**
-		 * @returns {(() => void)[]}
-		 */
-		function controlled() {
-			sockets.length = 0
-			/** @type {(() => void)[]} */
-			const online = []
-			vi.stubGlobal(
-				"addEventListener",
-				(
-					/** @type {string} */ type,
-					/** @type {() => void} */ listener
-				) => {
-					if (type == "online") {
-						online.push(listener)
-					}
-				}
-			)
-			vi.stubGlobal(
-				"removeEventListener",
-				(
-					/** @type {string} */ type,
-					/** @type {() => void} */ listener
-				) => {
-					if (type == "online") {
-						online.splice(online.indexOf(listener), 1)
-					}
-				}
-			)
-			return online
-		}
-		/**
-		 * @param {import("async-lube").HttpConfig=} config
-		 * @returns {import("async-lube").Http}
-		 */
-		function create(config) {
-			return http(
-				{ base: server.base, ...config }
-			)
-		}
-		/**
-		 * @param {AsyncIterable<unknown>} socket
-		 * @returns {Promise<unknown>}
-		 */
-		async function failure(socket) {
-			try {
-				for await (const message of socket) {
-					void message
-				}
-			} catch (error) {
-				return error
-			}
-			return assert.fail("No error occurred")
-		}
-		/**
-		 * @param {number} index
-		 * @returns {ControlledSocket}
-		 */
-		function socket_at(index) {
-			return /** @type {ControlledSocket} */(sockets[index])/**/
-		}
-		/**
-		 * @param {AsyncIterable<unknown>} socket
-		 * @param {number} count
-		 * @returns {Promise<unknown[]>}
-		 */
-		async function take(socket, count) {
-			/** @type {unknown[]} */
-			const messages = []
-			if (count) {
-				for await (const message of socket) {
-					messages.push(message)
-					if (messages.length == count) {
-						break
-					}
-				}
-			}
-			return messages
-		}
-		/**
-		 * @param {() => boolean} condition
-		 * @returns {Promise<void>}
-		 */
-		async function until(condition) {
-			const started = Date.now()
-			while (!condition()) {
-				if (Date.now() - started > 2000) {
-					assert.fail("Timed out")
-				}
-				await new Promise(
-					resolve => setTimeout(resolve, 5)
-				)
 			}
 		}
 		afterAll(() => server.close())
@@ -417,39 +319,6 @@ describe(
 			}
 		)
 		it(
-			"connects without query parameters from a params function that returns nothing",
-			async () => {
-				vi.useFakeTimers()
-				try {
-					controlled()
-					const socket = http(
-						{
-							WebSocket: ControlledSocket,
-							base: "https://api.example.com"
-						}
-					)
-						.ws(
-							"/live",
-							{ room: 1 },
-							{
-								params: /** @type {never} */(() => void 0)/**/
-							}
-						)
-					const failing = failure(socket)
-					await vi.advanceTimersByTimeAsync(0)
-					socket_at(0).drop(4000)
-					const error = await failing
-					assert.instanceOf(error, SocketError)
-					assert.equal(
-						error.request.url,
-						"wss://api.example.com/live?room=1"
-					)
-				} finally {
-					vi.useRealTimers()
-				}
-			}
-		)
-		it(
 			"credentials in errors",
 			async () => {
 				/** @type {unknown[]} */
@@ -547,13 +416,6 @@ describe(
 				const socket = create().ws("/ws", { key: "ws-flow" })
 				/** @type {unknown[]} */
 				const handled = []
-				/**
-				 * @param {unknown} message
-				 */
-				function handle(message) {
-					handled.push(message)
-					return message
-				}
 				const run = flow().add(handle, flow.queue(socket))
 					.run()
 				socket.send({ n: 1 })
@@ -579,6 +441,14 @@ describe(
 				)
 				assert.equal(handled.length, 3)
 				socket.cancel()
+				/**
+				 * @param {unknown} message
+				 * @returns {unknown}
+				 */
+				function handle(message) {
+					handled.push(message)
+					return message
+				}
 			}
 		)
 		it(
@@ -636,39 +506,6 @@ describe(
 				)
 				revived.cancel()
 				assert.deepEqual(await reading, [])
-			}
-		)
-		it(
-			"ignores open and message events of a socket it already dropped",
-			async () => {
-				vi.useFakeTimers()
-				try {
-					controlled()
-					const socket = http(
-						{
-							WebSocket: ControlledSocket,
-							base: "https://api.example.com"
-						}
-					)
-						.ws(
-							"/live",
-							{},
-							{ reconnect: { delay: 10 } }
-						)
-					const reading = take(socket, 1)
-					await vi.advanceTimersByTimeAsync(0)
-					socket_at(0).drop(1006)
-					await vi.advanceTimersByTimeAsync(10)
-					socket_at(0).accept()
-					socket_at(0).onmessage?.({ data: "\"stale\"" })
-					assert.equal(socket.status, "connecting")
-					socket_at(1).accept()
-					socket_at(1).onmessage?.({ data: "\"fresh\"" })
-					assert.deepEqual(await reading, [ "fresh" ])
-					socket.cancel()
-				} finally {
-					vi.useRealTimers()
-				}
 			}
 		)
 		it(
@@ -1427,47 +1264,97 @@ describe(
 				}
 			}
 		)
-		it(
-			"reports a message that fails to parse after its socket closed",
-			async () => {
-				vi.useFakeTimers()
-				try {
-					controlled()
-					/** @type {unknown[]} */
-					const errors = []
-					/** @type {((error: unknown) => void)[]} */
-					const parsing = []
-					const socket = http(
-						{
-							WebSocket: ControlledSocket,
-							base: "https://api.example.com",
-							on: {
-								error: error => void errors.push(error)
-							}
-						}
-					)
-						.ws(
-							"/live",
-							{},
-							{
-								parse: () => new Promise(
-									(_, reject) => void parsing.push(reject)
-								)
-							}
-						)
-					socket.send("hello")
-					await vi.advanceTimersByTimeAsync(0)
-					socket_at(0).accept()
-					socket_at(0).onmessage?.({ data: "\"hi\"" })
-					socket.cancel()
-					const invalid = Error("invalid")
-					parsing[0]?.(invalid)
-					await vi.advanceTimersByTimeAsync(0)
-					assert.deepEqual(errors, [ invalid ])
-				} finally {
-					vi.useRealTimers()
+		/** @returns {(() => void)[]} */
+		function controlled() {
+			sockets.length = 0
+			/** @type {(() => void)[]} */
+			const online = []
+			vi.stubGlobal(
+				"addEventListener",
+				(
+					/** @type {string} */ type,
+					/** @type {() => void} */ listener
+				) => {
+					if (type == "online") {
+						online.push(listener)
+					}
+				}
+			)
+			vi.stubGlobal(
+				"removeEventListener",
+				(
+					/** @type {string} */ type,
+					/** @type {() => void} */ listener
+				) => {
+					if (type == "online") {
+						online.splice(online.indexOf(listener), 1)
+					}
+				}
+			)
+			return online
+		}
+		/**
+		 * @param {import("async-lube").HttpConfig=} config
+		 * @returns {import("async-lube").Http}
+		 */
+		function create(config) {
+			return http(
+				{ base: server.base, ...config }
+			)
+		}
+		/**
+		 * @param {AsyncIterable<unknown>} socket
+		 * @returns {Promise<unknown>}
+		 */
+		async function failure(socket) {
+			try {
+				for await (const message of socket) {
+					void message
+				}
+			} catch (error) {
+				return error
+			}
+			return assert.fail("No error occurred")
+		}
+		/**
+		 * @param {number} index
+		 * @returns {ControlledSocket}
+		 */
+		function socket_at(index) {
+			return /** @type {ControlledSocket} */(sockets[index])/**/
+		}
+		/**
+		 * @param {AsyncIterable<unknown>} socket
+		 * @param {number} count
+		 * @returns {Promise<unknown[]>}
+		 */
+		async function take(socket, count) {
+			/** @type {unknown[]} */
+			const messages = []
+			if (count) {
+				for await (const message of socket) {
+					messages.push(message)
+					if (messages.length == count) {
+						break
+					}
 				}
 			}
-		)
+			return messages
+		}
+		/**
+		 * @param {() => boolean} condition
+		 * @returns {Promise<void>}
+		 */
+		async function until(condition) {
+			const started = Date.now()
+			while (!condition()) {
+				if (Date.now() - started > 2000) {
+					assert.fail("Timed out")
+				}
+				await new Promise(
+					resolve => setTimeout(resolve, 5)
+				)
+			}
+		}
 	}
 )

@@ -212,18 +212,6 @@ export async function run_sub(
 	const index = key ? Number(key) : c.item_index
 	/** @type {FlowStatus} */
 	let reported = "running"
-	/**
-	 * @param {FlowStatus} status
-	 * @returns {void}
-	 */
-	function on_change(status) {
-		count_sub(record, reported, -1)
-		count_sub(record, status, 1)
-		reported = status
-		c.version++
-		report(c)
-		schedule(c)
-	}
 	count_sub(record, reported, 1)
 	const sub_run = start_run(
 		compile(
@@ -268,6 +256,18 @@ export async function run_sub(
 		return value
 	} finally {
 		sub_run[STOP]()
+	}
+	/**
+	 * @param {FlowStatus} status
+	 * @returns {void}
+	 */
+	function on_change(status) {
+		count_sub(record, reported, -1)
+		count_sub(record, status, 1)
+		reported = status
+		c.version++
+		report(c)
+		schedule(c)
 	}
 }
 /**

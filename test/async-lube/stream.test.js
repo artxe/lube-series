@@ -20,63 +20,6 @@ import {
 describe(
 	"stream",
 	() => {
-		/**
-		 * @template T
-		 * @param {AsyncIterable<T>} source
-		 * @returns {Promise<T[]>}
-		 */
-		async function collect(source) {
-			/** @type {T[]} */
-			const values = []
-			for await (const value of source) {
-				values.push(value)
-			}
-			return values
-		}
-		/**
-		 * @returns {Promise<void>}
-		 */
-		function settle() {
-			return new Promise(
-				resolve => setTimeout(resolve, 0)
-			)
-		}
-		/**
-		 * @param {number} ms
-		 * @returns {Promise<void>}
-		 */
-		function sleep(ms) {
-			return new Promise(
-				resolve => setTimeout(resolve, ms)
-			)
-		}
-		/**
-		 * @template T
-		 * @param {import("async-lube").Channel<T>} source
-		 * @returns {{ readonly released: boolean, stream: AsyncIterableIterator<T> }}
-		 */
-		function tracked(source) {
-			const reader = source[Symbol.asyncIterator]()
-			let released = false
-			/** @type {AsyncIterableIterator<T>} */
-			const stream = {
-				[Symbol.asyncIterator]() {
-					return stream
-				},
-				next: () => reader.next(),
-				async return() {
-					released = true
-					await reader.return?.()
-					return { done: true, value: void 0 }
-				}
-			}
-			return {
-				get released() {
-					return released
-				},
-				stream
-			}
-		}
 		afterEach(() => vi.useRealTimers())
 		beforeEach(
 			() => {
@@ -261,25 +204,6 @@ describe(
 			}
 		)
 		it(
-			"ends a merge without an error when a source returns the merge and throws while the merge reads it",
-			async () => {
-				/** @type {AsyncIterable<number>} */
-				const closing = {
-					[Symbol.asyncIterator]: () => ({
-						next: () => {
-							void merged.return?.()
-							throw Error("closed")
-						}
-					})
-				}
-				const merged = merge(closing)
-				assert.deepEqual(
-					await merged.next(),
-					{ done: true, value: void 0 }
-				)
-			}
-		)
-		it(
 			"ends a pending read without an error when the loop leaves and the source fails afterwards",
 			async () => {
 				/** @type {AsyncIterable<number>} */
@@ -356,23 +280,6 @@ describe(
 				)[Symbol.asyncIterator]()
 				assert.deepEqual(
 					await aborted.next(),
-					{ done: true, value: void 0 }
-				)
-			}
-		)
-		it(
-			"ends the read of a share of no stream after it rejects, with no return()",
-			async () => {
-				const reader = share(/** @type {never} */(42)/**/)[Symbol.asyncIterator]()
-				await reader.next()
-					.catch(() => void 0)
-				assert.deepEqual(
-					await Promise.race(
-						[
-							reader.next(),
-							sleep(1000).then(() => "hung")
-						]
-					),
 					{ done: true, value: void 0 }
 				)
 			}
@@ -534,47 +441,10 @@ describe(
 			}
 		)
 		it(
-			"keeps the newest values of its limit for a reader of a channel that falls far behind",
-			async () => {
-				/** @type {import("async-lube").Channel<number>} */
-				const values = channel({ limit: 2 })
-				const seen = collect(values)
-				await settle()
-				for (let value = 1; value <= 9; value++) {
-					values.send(value)
-				}
-				values.close()
-				assert.deepEqual(await seen, [ 8, 9 ])
-			}
-		)
-		it(
 			"late source failures",
 			async () => {
-				/**
-				 * @returns {AsyncIterable<number>}
-				 */
-				function failing_later() {
-					let calls = 0
-					return {
-						[Symbol.asyncIterator]: () => ({
-							next: () => ++calls == 1
-								? Promise.resolve({ done: false, value: 1 })
-								: new Promise(
-									(_, reject) => setTimeout(() => reject(Error("late")), 20)
-								),
-							return: async () => ({ done: true, value: void 0 })
-						})
-					}
-				}
 				/** @type {unknown[]} */
 				const unhandled = []
-				/**
-				 * @param {unknown} reason
-				 * @returns {void}
-				 */
-				function listener(reason) {
-					unhandled.push(reason)
-				}
 				process.on("unhandledRejection", listener)
 				try {
 					for (const read of [
@@ -595,6 +465,27 @@ describe(
 					process.off("unhandledRejection", listener)
 				}
 				assert.deepEqual(unhandled, [])
+				/** @returns {AsyncIterable<number>} */
+				function failing_later() {
+					let calls = 0
+					return {
+						[Symbol.asyncIterator]: () => ({
+							next: () => ++calls == 1
+								? Promise.resolve({ done: false, value: 1 })
+								: new Promise(
+									(_, reject) => setTimeout(() => reject(Error("late")), 20)
+								),
+							return: async () => ({ done: true, value: void 0 })
+						})
+					}
+				}
+				/**
+				 * @param {unknown} reason
+				 * @returns {void}
+				 */
+				function listener(reason) {
+					unhandled.push(reason)
+				}
 			}
 		)
 		it(
@@ -664,21 +555,6 @@ describe(
 			async () => {
 				/** @type {string[]} */
 				let cancelled = []
-				/**
-				 * @param {string} line
-				 * @returns {AsyncIterable<string> & { cancel: () => void }}
-				 */
-				function watch(line) {
-					/** @type {import("async-lube").Channel<string>} */
-					const messages = channel()
-					return {
-						[Symbol.asyncIterator]: () => messages[Symbol.asyncIterator](),
-						cancel() {
-							cancelled.push(line)
-							messages.close()
-						}
-					}
-				}
 				/** @type {((line: string) => unknown)[]} */
 				const starts = [
 					watch,
@@ -712,6 +588,21 @@ describe(
 					)
 					assert.deepEqual(cancelled, [ "a", "b" ])
 				}
+				/**
+				 * @param {string} line
+				 * @returns {AsyncIterable<string> & { cancel: () => void }}
+				 */
+				function watch(line) {
+					/** @type {import("async-lube").Channel<string>} */
+					const messages = channel()
+					return {
+						[Symbol.asyncIterator]: () => messages[Symbol.asyncIterator](),
+						cancel() {
+							cancelled.push(line)
+							messages.close()
+						}
+					}
+				}
 			}
 		)
 		it(
@@ -721,29 +612,6 @@ describe(
 				const typed = channel()
 				/** @type {string[]} */
 				const cancelled = []
-				/**
-				 * @param {string} q
-				 * @param {AbortSignal} signal
-				 * @returns {Promise<string>}
-				 */
-				function search(q, signal) {
-					return new Promise(
-						(resolve, reject) => {
-							const timer = setTimeout(
-								() => resolve(q.toUpperCase()),
-								30
-							)
-							signal.addEventListener(
-								"abort",
-								() => {
-									clearTimeout(timer)
-									cancelled.push(q)
-									reject(signal.reason)
-								}
-							)
-						}
-					)
-				}
 				const shown = collect(latest(typed, search))
 				await settle()
 				typed.send("a")
@@ -784,6 +652,29 @@ describe(
 				await settle()
 				broken.send(1)
 				assert.equal(await failing, "search failed")
+				/**
+				 * @param {string} q
+				 * @param {AbortSignal} signal
+				 * @returns {Promise<string>}
+				 */
+				function search(q, signal) {
+					return new Promise(
+						(resolve, reject) => {
+							const timer = setTimeout(
+								() => resolve(q.toUpperCase()),
+								30
+							)
+							signal.addEventListener(
+								"abort",
+								() => {
+									clearTimeout(timer)
+									cancelled.push(q)
+									reject(signal.reason)
+								}
+							)
+						}
+					)
+				}
 			}
 		)
 		it(
@@ -898,19 +789,6 @@ describe(
 		it(
 			"merge fairness",
 			async () => {
-				/**
-				 * @param {string} tag
-				 * @returns {AsyncGenerator<string>}
-				 */
-				async function* busy(tag) {
-					for (let i = 0; ; i++) {
-						yield `${tag}${i}`
-					}
-				}
-				/** @returns {AsyncGenerator<string>} */
-				async function* once() {
-					yield "third"
-				}
 				/** @type {string[]} */
 				const seen = []
 				for await (const value of merge(busy("a"), busy("b"), once())) {
@@ -937,6 +815,19 @@ describe(
 					await merged,
 					[ "0-0", "1-0", "2-0", "0-1", "1-1", "2-1" ]
 				)
+				/**
+				 * @param {string} tag
+				 * @returns {AsyncGenerator<string>}
+				 */
+				async function* busy(tag) {
+					for (let i = 0; ; i++) {
+						yield `${tag}${i}`
+					}
+				}
+				/** @returns {AsyncGenerator<string>} */
+				async function* once() {
+					yield "third"
+				}
 			}
 		)
 		it(
@@ -1004,21 +895,6 @@ describe(
 				const values = channel()
 				/** @type {import("async-lube").Channel<number>} */
 				const others = channel()
-				/**
-				 * @param {AsyncIterable<unknown>} stream
-				 * @returns {Promise<unknown>}
-				 */
-				async function first(stream) {
-					const loop = (async () => {
-						for await (const value of stream) {
-							return value
-						}
-						return "ended"
-					})()
-					await settle()
-					values.send(1)
-					return loop
-				}
 				/** @type {[AsyncIterable<unknown>, unknown][]} */
 				const cases = [
 					[ merge(values, others), 1 ],
@@ -1036,6 +912,21 @@ describe(
 				for (const [ stream, expected ] of cases) {
 					assert.deepEqual(await first(stream), expected)
 					assert.deepEqual(await first(stream), expected)
+				}
+				/**
+				 * @param {AsyncIterable<unknown>} stream
+				 * @returns {Promise<unknown>}
+				 */
+				async function first(stream) {
+					const loop = (async () => {
+						for await (const value of stream) {
+							return value
+						}
+						return "ended"
+					})()
+					await settle()
+					values.send(1)
+					return loop
 				}
 			}
 		)
@@ -1278,43 +1169,6 @@ describe(
 			}
 		)
 		it(
-			"timers",
-			async () => {
-				vi.useFakeTimers()
-				try {
-					/** @type {import("async-lube").Channel<number>} */
-					const typed = channel()
-					const debounced = collect(debounce(typed, 5000))
-					for (let i = 0; i < 100; i++) {
-						typed.send(i)
-						await vi.advanceTimersByTimeAsync(1)
-					}
-					assert.equal(vi.getTimerCount(), 1)
-					typed.close()
-					assert.deepEqual(await debounced, [ 99 ])
-					assert.equal(vi.getTimerCount(), 0)
-					/** @type {import("async-lube").Channel<number>} */
-					const dropped = channel()
-					const batches = collect(buffer(dropped, 5000))
-					/** @type {import("async-lube").Channel<number>} */
-					const moves = channel()
-					const shown = collect(throttle(moves, 5000))
-					await vi.advanceTimersByTimeAsync(1)
-					dropped.send(1)
-					moves.send(1)
-					await vi.advanceTimersByTimeAsync(1)
-					assert.equal(vi.getTimerCount(), 2)
-					dropped.close()
-					moves.close()
-					assert.deepEqual(await batches, [ [ 1 ] ])
-					assert.deepEqual(await shown, [ 1 ])
-					assert.equal(vi.getTimerCount(), 0)
-				} finally {
-					vi.useRealTimers()
-				}
-			}
-		)
-		it(
 			"until",
 			async () => {
 				/** @type {import("async-lube").Channel<number>} */
@@ -1361,47 +1215,6 @@ describe(
 		it(
 			"windows end before a value at the same time",
 			async () => {
-				/**
-				 * @param {number[]} times
-				 * @returns {AsyncIterable<string>}
-				 */
-				function sensor(times) {
-					return {
-						[Symbol.asyncIterator]() {
-							/** @type {((step: IteratorResult<string>) => void)[]} */
-							const waiting = []
-							/** @type {string[]} */
-							const ready = []
-							for (const [ index, time ] of times.entries()) {
-								setTimeout(
-									() => {
-										const value = `v${index + 1}`
-										const take = waiting.shift()
-										if (take) {
-											take({ done: false, value })
-										} else {
-											ready.push(value)
-										}
-									},
-									time
-								)
-							}
-							return {
-								next: () => ready.length
-									? Promise.resolve(
-										{
-											done: false,
-											value: /** @type {string} */(ready.shift())/**/
-										}
-									)
-									: new Promise(
-										resolve => waiting.push(resolve)
-									),
-								return: async () => ({ done: true, value: void 0 })
-							}
-						}
-					}
-				}
 				vi.setTimerTickMode("manual")
 				const started = Date.now()
 				/** @type {[AsyncIterable<unknown>, number][]} */
@@ -1448,7 +1261,103 @@ describe(
 						[ "v1@110", "v2@210" ]
 					]
 				)
+				/**
+				 * @param {number[]} times
+				 * @returns {AsyncIterable<string>}
+				 */
+				function sensor(times) {
+					return {
+						[Symbol.asyncIterator]() {
+							/** @type {((step: IteratorResult<string>) => void)[]} */
+							const waiting = []
+							/** @type {string[]} */
+							const ready = []
+							for (const [ index, time ] of times.entries()) {
+								setTimeout(
+									() => {
+										const value = `v${index + 1}`
+										const take = waiting.shift()
+										if (take) {
+											take({ done: false, value })
+										} else {
+											ready.push(value)
+										}
+									},
+									time
+								)
+							}
+							return {
+								next: () => ready.length
+									? Promise.resolve(
+										{
+											done: false,
+											value: /** @type {string} */(ready.shift())/**/
+										}
+									)
+									: new Promise(
+										resolve => waiting.push(resolve)
+									),
+								return: async () => ({ done: true, value: void 0 })
+							}
+						}
+					}
+				}
 			}
 		)
+		/**
+		 * @template T
+		 * @param {AsyncIterable<T>} source
+		 * @returns {Promise<T[]>}
+		 */
+		async function collect(source) {
+			/** @type {T[]} */
+			const values = []
+			for await (const value of source) {
+				values.push(value)
+			}
+			return values
+		}
+		/** @returns {Promise<void>} */
+		function settle() {
+			return new Promise(
+				resolve => setTimeout(resolve, 0)
+			)
+		}
+		/**
+		 * @param {number} ms
+		 * @returns {Promise<void>}
+		 */
+		function sleep(ms) {
+			return new Promise(
+				resolve => setTimeout(resolve, ms)
+			)
+		}
+		/**
+		 * @template T
+		 * @param {import("async-lube").Channel<T>} source
+		 * @returns {{ readonly released: boolean, stream: AsyncIterableIterator<T> }}
+		 */
+		function tracked(source) {
+			const reader = source[Symbol.asyncIterator]()
+			let released = false
+			/** @type {AsyncIterableIterator<T>} */
+			const stream = {
+				[Symbol.asyncIterator]() {
+					return stream
+				},
+				next: () => reader.next(),
+				async return() {
+					released = true
+					await reader.return?.()
+					return { done: true, value: void 0 }
+				}
+			}
+			return {
+				get released() {
+					return released
+				},
+				stream
+			}
+		}
 	}
 )

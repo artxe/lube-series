@@ -33,15 +33,6 @@ export async function simulate_flow(seed, mode, unhandled) {
 	/** @type {string[]} */
 	const log = []
 	const start_time = time()
-	/**
-	 * @param {string} line
-	 * @returns {void}
-	 */
-	function say(line) {
-		log.push(
-			`[${time() - start_time}] ${line}`
-		)
-	}
 	/** @type {SimCall[]} */
 	const calls = []
 	/** @type {Set<SimCall>} */
@@ -190,56 +181,6 @@ export async function simulate_flow(seed, mode, unhandled) {
 	}
 	/** @type {Input<unknown>[]} */
 	const inputs = []
-	/**
-	 * @param {SimSpec} spec
-	 * @param {string} label
-	 * @returns {(...values: unknown[]) => Promise<unknown>}
-	 */
-	function body(spec, label) {
-		return async (...values) => {
-			const context = /** @type {NodeContext} */(values[values.length - 1])/**/
-			const args = values.slice(0, -1)
-			calls.push(
-				{
-					args: stringify(args),
-					attempt: context.attempt,
-					epoch,
-					index: context.index,
-					key: context.key,
-					node: label
-				}
-			)
-			say(
-				`call ${label} ${context.key}${context.index == null ? "" : "#" + context.index} a${context.attempt} ${stringify(args)}`
-			)
-			const delay = random.pick(spec.delay)
-			if (delay) {
-				if (spec.coop) {
-					await context.sleep(delay)
-				} else {
-					await new Promise(
-						resolve => setTimeout(resolve, delay)
-					)
-				}
-			}
-			if (spec.fail && random.chance(spec.fail)) {
-				throw Error("fail " + label)
-			}
-			const value = label + ":" + hash(args)
-			if (!spec.release) {
-				return value
-			}
-			/** @type {SimToken} */
-			const token = {
-				node: label,
-				released: [],
-				token: last_token++,
-				value
-			}
-			tokens.push(token)
-			return token
-		}
-	}
 	/** @type {SimFlow} */
 	let definition = flow(
 		{
@@ -300,7 +241,7 @@ export async function simulate_flow(seed, mode, unhandled) {
 				...forward < 0
 					? []
 					: [
-					/** @type {Ref} */(refs[forward])/**/
+						/** @type {Ref} */(refs[forward])/**/
 					]
 			]
 			movable.add("n" + back)
@@ -349,36 +290,9 @@ export async function simulate_flow(seed, mode, unhandled) {
 			problems: [ "run threw " + String(error) ]
 		}
 	}
-	/**
-	 * @param {FlowRun<unknown, unknown>} target
-	 * @returns {void}
-	 */
-	function watch(target) {
-		target.then(
-			() => say("settled done"),
-			error => say(
-				`settled ${/** @type {Error} */(error)/**/.name}: ${/** @type {Error} */(error)/**/.message}`
-			)
-		)
-	}
 	watch(run)
 	/** @type {Set<string> | undefined} */
 	let guard
-	function check_guard() {
-		if (!guard) {
-			return
-		}
-		for (const call of calls) {
-			const name = /** @type {string} */(call.node.split(".")[0])/**/
-			if (call.epoch != epoch || checked.has(call) || !guard.has(name) || movable.has(name)) {
-				continue
-			}
-			checked.add(call)
-			problems.push(
-				`resumed run re-ran done node ${call.node} (epoch ${epoch})`
-			)
-		}
-	}
 	const operations = 3 + random.int(12)
 	for (let i = 0; i < operations; i++) {
 		await advance(
@@ -574,6 +488,93 @@ export async function simulate_flow(seed, mode, unhandled) {
 		)
 	}
 	return { describe, log, problems }
+	/**
+	 * @param {SimSpec} spec
+	 * @param {string} label
+	 * @returns {(...values: unknown[]) => Promise<unknown>}
+	 */
+	function body(spec, label) {
+		return async (...values) => {
+			const context = /** @type {NodeContext} */(values[values.length - 1])/**/
+			const args = values.slice(0, -1)
+			calls.push(
+				{
+					args: stringify(args),
+					attempt: context.attempt,
+					epoch,
+					index: context.index,
+					key: context.key,
+					node: label
+				}
+			)
+			say(
+				`call ${label} ${context.key}${context.index == null ? "" : "#" + context.index} a${context.attempt} ${stringify(args)}`
+			)
+			const delay = random.pick(spec.delay)
+			if (delay) {
+				if (spec.coop) {
+					await context.sleep(delay)
+				} else {
+					await new Promise(
+						resolve => setTimeout(resolve, delay)
+					)
+				}
+			}
+			if (spec.fail && random.chance(spec.fail)) {
+				throw Error("fail " + label)
+			}
+			const value = label + ":" + hash(args)
+			if (!spec.release) {
+				return value
+			}
+			/** @type {SimToken} */
+			const token = {
+				node: label,
+				released: [],
+				token: last_token++,
+				value
+			}
+			tokens.push(token)
+			return token
+		}
+	}
+	/** @returns {void} */
+	function check_guard() {
+		if (!guard) {
+			return
+		}
+		for (const call of calls) {
+			const name = /** @type {string} */(call.node.split(".")[0])/**/
+			if (call.epoch != epoch || checked.has(call) || !guard.has(name) || movable.has(name)) {
+				continue
+			}
+			checked.add(call)
+			problems.push(
+				`resumed run re-ran done node ${call.node} (epoch ${epoch})`
+			)
+		}
+	}
+	/**
+	 * @param {string} line
+	 * @returns {void}
+	 */
+	function say(line) {
+		log.push(
+			`[${time() - start_time}] ${line}`
+		)
+	}
+	/**
+	 * @param {FlowRun<unknown, unknown>} target
+	 * @returns {void}
+	 */
+	function watch(target) {
+		target.then(
+			() => say("settled done"),
+			error => say(
+				`settled ${/** @type {Error} */(error)/**/.name}: ${/** @type {Error} */(error)/**/.message}`
+			)
+		)
+	}
 }
 /**
  * @param {unknown} value

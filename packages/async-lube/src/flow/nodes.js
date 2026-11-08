@@ -369,9 +369,7 @@ function launch(c, record, args) {
 			const deadline = record.resume_deadline ?? Date.now() + timeout
 			record.deadline = deadline
 			record.resume_deadline = void 0
-			/**
-			 * @returns {void}
-			 */
+			/** @returns {void} */
 			function expire() {
 				const left = deadline - Date.now()
 				if (left > 0) {

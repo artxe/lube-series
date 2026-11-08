@@ -1,6 +1,30 @@
 # Changelog
 
-## Unreleased
+## 2.1.0
+
+### Added
+
+- `offload(url, { data, delay, onBatch })` loads a module file, a `URL` or a URL string, in one stateful worker and
+  returns `{ ready, call(request), close() }`. The module default-exports a setup function that gets `data` and
+  returns `{ call, batch?, close? }` (type it with `OffloadSetup`). Replies are matched by id, calls made in one tick
+  travel in one message, and the worker runs the requests that arrived together, gathered for `delay` milliseconds
+  (0: the next macrotask), as one batch, never two at once. `batch(run)` wraps a batch, e.g. in a transaction; if it
+  throws every call of the batch rejects, and a value it returns reaches `onBatch` in the calling thread, after which
+  the calls of the batch settle (they reject if `onBatch` rejects). A failing setup rejects `ready` and every call,
+  and a crashed worker rejects its calls and every later one. `close()` lets the sent calls finish, runs the module's
+  `close`, ends the thread and resolves after it exited; later calls reject with `CancelError`.
+  `offload("not a url")` throws a `TypeError`.
+- `redial(connect, { signal, base, most })` keeps one connection up: it calls `connect({ attempt, signal, open, close })`
+  at once and again after each `close()`, waiting `base` milliseconds (default 1000) after a connection that
+  called `open()` and doubling the wait up to `most` (default 30000) after each one that closed without
+  opening. A `connect` that throws or rejects counts as a close. When `signal` aborts it stops the wait, aborts the
+  signal of the connection in hand and resolves once that connection has closed.
+- `limiter(...).take(key?)` answers at once, without waiting, whether a start is free in the rate window:
+  it returns `0` and counts the start, or the milliseconds until the next start is accepted and counts
+  nothing. It ignores `concurrency` and the queue but shares the window with calls and `acquire()`, uses
+  the state of `key`, and throws a `TypeError` without a `rate`.
+- `limiter({ rate: { window: "fixed" } })` opens a window at the first start after the last one ended and
+  allows `count` starts in it, for calls, `acquire()` and `take()`. The default `"sliding"` is unchanged.
 
 ### Fixed
 

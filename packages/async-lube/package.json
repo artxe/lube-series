@@ -30,6 +30,7 @@
 		"types/index.*",
 		"types/limiter.*",
 		"types/offload.*",
+		"types/redial.*",
 		"types/stream.*"
 	],
 	"homepage": "https://github.com/artxe/lube-series/tree/master/packages/async-lube#readme",
@@ -45,6 +46,7 @@
 		"http",
 		"lube",
 		"rate limit",
+		"reconnect",
 		"retry",
 		"server-sent events",
 		"stream",
@@ -65,7 +67,7 @@
 		"lint": "pnpm -w lint",
 		"prepack": "pnpm dts",
 		"prepublishOnly": "pnpm -w lint && pnpm test",
-		"test": "pnpm -w exec vitest run --coverage --coverage.include=packages/async-lube/src/** test/async-lube test/browser"
+		"test": "pnpm -w exec vitest run test/async-lube test/browser"
 	},
 	"sideEffects": false,
 	"type": "module",
@@ -76,5 +78,5 @@
 			"durable": [ "types/durable/index.d.ts" ]
 		}
 	},
-	"version": "2.0.0"
+	"version": "2.1.0"
 }

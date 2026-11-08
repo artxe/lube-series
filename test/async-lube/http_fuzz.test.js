@@ -1,5 +1,5 @@
 /** @import { HttpConfig, RequestOptions } from "async-lube" */
-/** @import { HttpFuzzAction, HttpFuzzConfig, HttpFuzzExpect, HttpFuzzHooks, SimRng } from "./private.js" */
+/** @import { HttpFuzzAction, HttpFuzzConfig, HttpFuzzExpect, HttpFuzzHooks, HttpFuzzTimer, SimRng } from "./private.js" */
 import { rng } from "./sim/clock.js"
 import { sim_seeds } from "./sim/seeds.js"
 import {
@@ -20,6 +20,15 @@ import {
 const retry_statuses = new Set(
 	[ 408, 425, 429, 500, 502, 503, 504 ]
 )
+const real_timers = {
+	clear: globalThis.clearTimeout,
+	set: globalThis.setTimeout
+}
+/** @type {Map<number, string>} */
+const timeout_owners = new Map()
+/** @type {Map<unknown, HttpFuzzTimer>} */
+const held_timers = new Map()
+let last_timeout = 600000
 /**
  * @param {HttpFuzzAction} action
  * @param {HttpFuzzConfig} config
@@ -55,6 +64,66 @@ function classify(action, config) {
 			status: action.status
 		}
 	}
+}
+/**
+ * @param {unknown} handle
+ * @returns {void}
+ */
+function clear_held(handle) {
+	const timer = held_timers.get(handle)
+	if (!timer) {
+		real_timers.clear(
+			/** @type {ReturnType<typeof setTimeout> | undefined} */(handle)/**/
+		)
+		return
+	}
+	held_timers.delete(handle)
+	real_timers.clear(timer.real)
+}
+/**
+ * @param {string} owner
+ * @returns {void}
+ */
+function expire(owner) {
+	for (const [ handle, timer ] of held_timers) {
+		if (timer.owner == owner && !timer.real) {
+			timer.real = real_timers.set(
+				() => {
+					held_timers.delete(handle)
+					timer.fn()
+				},
+				0
+			)
+		}
+	}
+}
+/**
+ * @param {string} owner
+ * @returns {number}
+ */
+function held_timeout(owner) {
+	timeout_owners.set(++last_timeout, owner)
+	return last_timeout
+}
+/**
+ * @param {(...args: unknown[]) => void} fn
+ * @param {number=} ms
+ * @param {unknown[]} args
+ * @returns {unknown}
+ */
+function hold(fn, ms, ...args) {
+	const owner = timeout_owners.get(Number(ms))
+	if (owner == null) {
+		return real_timers.set(fn, ms, ...args)
+	}
+	/** @type {HttpFuzzTimer} */
+	const timer = {
+		fn: () => fn(...args),
+		owner,
+		real: void 0
+	}
+	held_timers.set(timer, timer)
+	return timer
 }
 /**
  * @param {unknown} error
@@ -103,17 +172,6 @@ function model(plan, refreshes, config) {
 	let attempt = 0
 	let index = 0
 	let refreshed = false
-	/**
-	 * @param {string} outcome
-	 * @param {number | undefined} status
-	 * @returns {HttpFuzzExpect}
-	 */
-	function fail(outcome, status) {
-		expected.outcome = outcome
-		expected.status = status
-		expected.error_hook = 1
-		return expected
-	}
 	for (;;) {
 		attempt++
 		/** @type {HttpFuzzAction} */
@@ -169,6 +227,17 @@ function model(plan, refreshes, config) {
 		}
 		expected.delays++
 	}
+	/**
+	 * @param {string} outcome
+	 * @param {number | undefined} status
+	 * @returns {HttpFuzzExpect}
+	 */
+	function fail(outcome, status) {
+		expected.outcome = outcome
+		expected.status = status
+		expected.error_hook = 1
+		return expected
+	}
 }
 /**
  * @param {number} ms
@@ -221,92 +290,6 @@ describe(
 		const open = new Set()
 		/** @type {unknown[]} */
 		const unhandled = []
-		/**
-		 * @param {unknown} reason
-		 * @returns {void}
-		 */
-		function on_unhandled(reason) {
-			unhandled.push(reason)
-		}
-		/**
-		 * @param {import("node:http").ServerResponse} response
-		 * @param {HttpFuzzAction} action
-		 * @param {string} id
-		 * @returns {void}
-		 */
-		function respond(response, action, id) {
-			switch (action.k) {
-			case "drop":
-				if (action.when == "before") {
-					response.socket?.destroy()
-					return
-				}
-				response.writeHead(
-					200,
-					{
-						"Content-Length": "100",
-						"Content-Type": "application/json"
-					}
-				)
-				response.write("{\"partial\":")
-				setTimeout(
-					() => response.socket?.destroy(),
-					5
-				)
-				return
-			case "hang":
-				open.add(response)
-				return
-			case "ok":
-				if (action.status == 204 || action.body == "empty") {
-					response.writeHead(action.status)
-					response.end()
-				} else if (action.body == "text") {
-					response.writeHead(
-						action.status,
-						{ "Content-Type": "text/plain" }
-					)
-					response.end("text " + id)
-				} else {
-					response.writeHead(
-						action.status,
-						{
-							"Content-Type": "application/json"
-						}
-					)
-					response.end(
-						action.body == "json" ? JSON.stringify({ id }) : "{\"id\": "
-					)
-				}
-				return
-			case "slow-body":
-				response.writeHead(
-					200,
-					{
-						"Content-Length": "20",
-						"Content-Type": "application/json"
-					}
-				)
-				response.write("{\"slow\":")
-				open.add(response)
-				return
-			case "status":
-				response.writeHead(
-					action.status,
-					{
-						"Content-Type": "application/json",
-						...action.retry_after == null
-							? {}
-							: {
-								"Retry-After": action.retry_after
-							}
-					}
-				)
-				response.end(
-					JSON.stringify({ error: action.status })
-				)
-			}
-		}
 		const server = createServer(
 			async (request, response) => {
 				for await (const chunk of request) {
@@ -336,6 +319,7 @@ describe(
 					const plan = refresh_plans.get(owner)?.[count] ?? "ok"
 					if (plan == "hang") {
 						open.add(response)
+						expire(owner)
 						return
 					}
 					await sleep(3)
@@ -375,6 +359,8 @@ describe(
 					"unhandledRejection",
 					on_unhandled
 				)
+				globalThis.clearTimeout = real_timers.clear
+				globalThis.setTimeout = real_timers.set
 				for (const response of open) {
 					response.destroy()
 				}
@@ -390,6 +376,10 @@ describe(
 					"unhandledRejection",
 					on_unhandled
 				)
+				/** @type {Record<string, unknown>} */
+				const target = globalThis
+				target["clearTimeout"] = clear_held
+				target["setTimeout"] = hold
 				await new Promise(
 					resolve => server.listen(
 						0,
@@ -400,6 +390,61 @@ describe(
 				origin = `http://127.0.0.1:${/** @type {import("node:net").AddressInfo} */(server.address())/**/.port}`
 			}
 		)
+		for (const [ mode, count ] of /** @type {const} */([
+			[ "single", 60 ],
+			[ "dedupe", 15 ],
+			[ "lock", 8 ],
+			[ "latest", 8 ],
+			[ "debounce", 8 ],
+			[ "throttle", 8 ],
+			[ "refresh", 8 ]
+		])/**/) {
+			it(
+				mode,
+				async () => {
+					/** @type {string[]} */
+					const failures = []
+					const seeds = sim_seeds("http-" + mode, count)
+					let next = 0
+					await Promise.all(
+						Array.from(
+							{ length: 16 },
+							async () => {
+								while (next < seeds.length) {
+									const seed = /** @type {number} */(seeds[next++])/**/
+									const problems = mode == "single"
+										? await single(seed)
+										: mode == "dedupe"
+											? await deduplicated(seed)
+											: mode == "lock"
+												? await locked(seed)
+												: mode == "refresh"
+													? await refreshing(seed)
+													: await superseded(seed, mode)
+									if (problems.length) {
+										failures.push(
+											[
+												`SIM_MODE=http-${mode} SIM_SEED=${seed}`,
+												...problems
+											].join("\n")
+										)
+									}
+								}
+							}
+						)
+					)
+					assert.deepEqual(
+						{
+							count: failures.length,
+							first: failures.slice(0, 3),
+							unhandled: unhandled.map(String)
+						},
+						{ count: 0, first: [], unhandled: [] }
+					)
+				},
+				600000
+			)
+		}
 		/**
 		 * @param {SimRng} random
 		 * @param {HttpFuzzConfig} config
@@ -411,7 +456,7 @@ describe(
 			if (roll < 0.35) {
 				return {
 					body: random.pick(
-					/** @type {const} */([
+						/** @type {const} */([
 							"json",
 							"json",
 							"text",
@@ -422,7 +467,7 @@ describe(
 					delay: random.int(6),
 					k: "ok",
 					status: random.pick(
-					/** @type {const} */([ 200, 200, 201, 204 ])/**/
+						/** @type {const} */([ 200, 200, 201, 204 ])/**/
 					)
 				}
 			}
@@ -462,7 +507,7 @@ describe(
 				return {
 					k: "drop",
 					when: random.pick(
-					/** @type {const} */([ "before", "mid-body" ])/**/
+						/** @type {const} */([ "before", "mid-body" ])/**/
 					)
 				}
 			}
@@ -539,9 +584,10 @@ describe(
 		}
 		/**
 		 * @param {SimRng} random
+		 * @param {string} id
 		 * @returns {HttpFuzzConfig}
 		 */
-		function config_of(random) {
+		function config_of(random, id) {
 			const method = random.pick(
 				/** @type {const} */([
 					"GET",
@@ -565,7 +611,7 @@ describe(
 					/** @type {const} */([ "client", "request", "none" ])/**/
 				),
 				stream: (method == "POST" || method == "PUT" || method == "PATCH") && random.chance(0.15),
-				timeout: random.chance(0.5) ? 600 : void 0,
+				timeout: random.chance(0.5) ? held_timeout(id) : void 0,
 				when: random.chance(0.2)
 			}
 		}
@@ -586,7 +632,7 @@ describe(
 				refresh: random.chance(0.5),
 				retry_at: "client",
 				stream: false,
-				timeout: random.chance(0.5) ? 600 : void 0,
+				timeout: random.chance(0.5) ? held_timeout(id) : void 0,
 				when: false
 			}
 			const plan = Array.from(
@@ -681,9 +727,7 @@ describe(
 			}
 			return problems.length ? [ ...problems, trace ] : []
 		}
-		/**
-		 * @returns {HttpFuzzHooks}
-		 */
+		/** @returns {HttpFuzzHooks} */
 		function hooks() {
 			return {
 				delay: 0,
@@ -749,6 +793,13 @@ describe(
 					`lock sent ${counts.get(id)} requests`
 				]
 				: []
+		}
+		/**
+		 * @param {unknown} reason
+		 * @returns {void}
+		 */
+		function on_unhandled(reason) {
+			unhandled.push(reason)
 		}
 		/**
 		 * @param {number} seed
@@ -852,13 +903,94 @@ describe(
 			return problems.length ? [ ...problems, trace ] : []
 		}
 		/**
+		 * @param {import("node:http").ServerResponse} response
+		 * @param {HttpFuzzAction} action
+		 * @param {string} id
+		 * @returns {void}
+		 */
+		function respond(response, action, id) {
+			switch (action.k) {
+			case "drop":
+				if (action.when == "before") {
+					response.socket?.destroy()
+					return
+				}
+				response.writeHead(
+					200,
+					{
+						"Content-Length": "100",
+						"Content-Type": "application/json"
+					}
+				)
+				response.write("{\"partial\":")
+				setTimeout(
+					() => response.socket?.destroy(),
+					5
+				)
+				return
+			case "hang":
+				open.add(response)
+				expire(id)
+				return
+			case "ok":
+				if (action.status == 204 || action.body == "empty") {
+					response.writeHead(action.status)
+					response.end()
+				} else if (action.body == "text") {
+					response.writeHead(
+						action.status,
+						{ "Content-Type": "text/plain" }
+					)
+					response.end("text " + id)
+				} else {
+					response.writeHead(
+						action.status,
+						{
+							"Content-Type": "application/json"
+						}
+					)
+					response.end(
+						action.body == "json" ? JSON.stringify({ id }) : "{\"id\": "
+					)
+				}
+				return
+			case "slow-body":
+				response.writeHead(
+					200,
+					{
+						"Content-Length": "20",
+						"Content-Type": "application/json"
+					}
+				)
+				response.write("{\"slow\":")
+				open.add(response)
+				expire(id)
+				return
+			case "status":
+				response.writeHead(
+					action.status,
+					{
+						"Content-Type": "application/json",
+						...action.retry_after == null
+							? {}
+							: {
+								"Retry-After": action.retry_after
+							}
+					}
+				)
+				response.end(
+					JSON.stringify({ error: action.status })
+				)
+			}
+		}
+		/**
 		 * @param {number} seed
 		 * @returns {Promise<string[]>}
 		 */
 		async function single(seed) {
 			const random = rng(seed)
-			const config = config_of(random)
 			const id = "c" + seed
+			const config = config_of(random, id)
 			const plan = Array.from(
 				{ length: 6 },
 				() => action_of(
@@ -929,9 +1061,6 @@ describe(
 				)
 			}
 			const settled = await within(request.safe(), 8000)
-			function server_count() {
-				return counts.get(id) ?? 0
-			}
 			/** @type {string[]} */
 			const problems = []
 			const trace = [
@@ -1018,6 +1147,10 @@ describe(
 				)
 			}
 			return problems.length ? [ ...problems, ...trace ] : []
+			/** @returns {number} */
+			function server_count() {
+				return counts.get(id) ?? 0
+			}
 		}
 		/**
 		 * @param {number} seed
@@ -1064,7 +1197,7 @@ describe(
 				)
 				if (i < calls - 1) {
 					await sleep(
-					/** @type {number} */(gaps[i])/**/
+						/** @type {number} */(gaps[i])/**/
 					)
 				}
 			}
@@ -1116,61 +1249,6 @@ describe(
 				hook.when++
 				return error instanceof NetworkError || error instanceof HttpError && error.status == 503
 			}
-		}
-		for (const [ mode, count ] of /** @type {const} */([
-			[ "single", 60 ],
-			[ "dedupe", 15 ],
-			[ "lock", 8 ],
-			[ "latest", 8 ],
-			[ "debounce", 8 ],
-			[ "throttle", 8 ],
-			[ "refresh", 8 ]
-		])/**/) {
-			it(
-				mode,
-				async () => {
-					/** @type {string[]} */
-					const failures = []
-					const seeds = sim_seeds("http-" + mode, count)
-					let next = 0
-					await Promise.all(
-						Array.from(
-							{ length: 16 },
-							async () => {
-								while (next < seeds.length) {
-									const seed = /** @type {number} */(seeds[next++])/**/
-									const problems = mode == "single"
-										? await single(seed)
-										: mode == "dedupe"
-											? await deduplicated(seed)
-											: mode == "lock"
-												? await locked(seed)
-												: mode == "refresh"
-													? await refreshing(seed)
-													: await superseded(seed, mode)
-									if (problems.length) {
-										failures.push(
-											[
-												`SIM_MODE=http-${mode} SIM_SEED=${seed}`,
-												...problems
-											].join("\n")
-										)
-									}
-								}
-							}
-						)
-					)
-					assert.deepEqual(
-						{
-							count: failures.length,
-							first: failures.slice(0, 3),
-							unhandled: unhandled.map(String)
-						},
-						{ count: 0, first: [], unhandled: [] }
-					)
-				},
-				600000
-			)
 		}
 	}
 )

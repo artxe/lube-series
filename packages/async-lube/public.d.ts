@@ -39,6 +39,25 @@ export type AttemptOptions = {
 	/** Milliseconds for each attempt, which aborts its `signal` and fails with TimeoutError. */
 	timeout?: number | undefined
 }
+export interface RedialOptions {
+	/** Milliseconds to wait before connecting again after a connection that opened, and after the first one that failed. Default: 1000. */
+	base?: number | undefined
+	/** Most milliseconds to wait: the wait doubles after each connection that closed without opening, up to this. Not less than `base`. Default: 30000. */
+	most?: number | undefined
+	/** Cancels the waiting and the connection in hand, and stops reconnecting. Required. */
+	signal: AbortSignal
+}
+/** What `redial` gives `connect` for one connection. */
+export interface RedialContext {
+	/** Counts every call of `connect` from 1, e.g. to rotate addresses. */
+	attempt: number
+	/** Ends this connection, so `redial` connects again after the wait. Only the first call counts. */
+	close(): void
+	/** Marks this connection as up and resets the wait. Calling it again, or after the connection closed, does nothing. */
+	open(): void
+	/** Aborts, with the reason of the signal of `redial`, when that signal aborts while this connection is in hand. */
+	signal: AbortSignal
+}
 /** A slot of a limiter, held until `release()`, e.g. by a transaction across several flow nodes. */
 export type Lease = {
 	/** Gives the slot back. Calling it again does nothing. */
@@ -59,6 +78,19 @@ export interface Limiter {
 	readonly pending: number
 	/** The calls that run. */
 	readonly running: number
+	/**
+	 * Answers at once, without waiting, whether a start is free in the rate window: `0` and the start is counted,
+	 * or the milliseconds until the next start is accepted, and nothing is counted.
+	 * It ignores `concurrency` and the queue, and counts against the same window as the calls and `acquire()`, so a queued call waits for it.
+	 * With a key it uses the state of that key, as `key(key)` would, without making a limiter. Throws a TypeError without a `rate`.
+	 * @example
+	 * const packets = limiter({ rate: { count: 20, per: 1000, window: "fixed" } })
+	 * socket.on("message", () => {
+	 *   const retry_after = packets.take(socket.id)
+	 *   if (retry_after > 0) return socket.send(`slow down, retry in ${retry_after} ms`)
+	 * })
+	 */
+	take(key?: unknown): number
 }
 /** A call of an `offload()` function: its result, with `cancel()` to stop it. */
 export type OffloadCall<T> = Promise<T> & { cancel(reason?: unknown): void }
@@ -68,6 +100,86 @@ export interface Offloaded<A extends unknown[], R> {
 	(...args: [...A, AbortSignal]): OffloadCall<Awaited<R>>
 	/** Terminates the workers and cancels the calls. A later call starts a worker again. */
 	close(): void
+}
+/** What a worker module returns from its setup function, see `offload(url)`. */
+export interface OffloadHandlers<Q, R, B = unknown> {
+	/**
+	 * Wraps one batch of requests, e.g. in a transaction. `run()` calls `call` for every request of the batch, in order, before it returns,
+	 * and its promise settles when every result has settled. If `batch` throws or rejects, every call of the batch rejects with that error.
+	 * A value other than `undefined` that it returns travels with the replies to the `onBatch` option of the caller.
+	 */
+	batch?(run: () => Promise<void>): B | undefined | Promise<B | undefined>
+	/** Runs one request and returns its result or a promise of it. A throw or a rejection rejects that call only. */
+	call(request: Q): R | Promise<R>
+	/** Runs when the module is closed, after the last batch. */
+	close?(): void | Promise<void>
+}
+/**
+ * The default export of a worker module for `offload(url)`: it gets the `data` option and returns the handlers, possibly after an async setup.
+ * @example
+ * const setup: OffloadSetup<string, number, Row> = path => {
+ *   const db = open(path)
+ *   return { call: id => db.get(id), batch: async run => { db.exec("BEGIN"); await run(); db.exec("COMMIT") } }
+ * }
+ * export default setup
+ */
+export type OffloadSetup<D, Q, R, B = unknown> = (data: D) => OffloadHandlers<Q, R, B> | Promise<OffloadHandlers<Q, R, B>>
+export interface OffloadModuleOptions<D = unknown, B = unknown> {
+	/** Copied as `postMessage` copies it, and passed to the setup function of the module. */
+	data?: D | undefined
+	/** Milliseconds the worker gathers requests before it runs a batch, 0 by default: until the next macrotask. */
+	delay?: number | undefined
+	/** Gets the value that `batch` returned, in the thread that called `offload`. The calls of the batch settle after it resolves, and reject with its error if it rejects. */
+	onBatch?: ((value: B) => unknown) | undefined
+}
+/** A worker that loaded a module, see `offload(url)`. */
+export interface OffloadModule<Q, R> {
+	/** Sends the request to the worker. Requests made in the same tick travel in one message. Rejects with the error of the module or of a crashed worker. */
+	call(request: Q): Promise<R>
+	/**
+	 * Lets the calls already sent finish, runs the `close` of the module, then ends the thread. Calls made afterwards reject with a `CancelError`.
+	 * Rejects with the error of the `close` of the module, but the thread ends anyway. Returns the same promise every time.
+	 */
+	close(): Promise<void>
+	/** Resolves when the setup of the module has finished, and rejects with its error, which every call rejects with too. */
+	readonly ready: Promise<void>
+}
+export interface OffloadFunction {
+	/**
+	 * Runs a function in a Worker, or a worker thread in Node.js 20.16 or later, so that heavy work does not block the page or the server.
+	 * The function travels as its source, so it may use only its arguments and globals: an arrow function or a function expression,
+	 * not a method or a closure. Arguments and results are copied as `postMessage` copies them. `concurrency` workers run at once, 1 by default.
+	 * @example
+	 * const resize = offload(async (bytes: ArrayBuffer, width: number) => shrink(bytes, width))
+	 * const thumbnail = await resize(bytes, 200, signal) // the signal terminates the worker
+	 */
+	<A extends unknown[], R>(fn: (...args: A) => R, options?: { concurrency?: number | undefined }): Offloaded<A, R>
+	/**
+	 * Loads a module file in one stateful worker, for work that keeps a state, e.g. a database. The module default-exports a setup function
+	 * that gets `data` and returns `{ call, batch?, close? }`, see `OffloadSetup`. Replies are matched by id, calls made in the same tick
+	 * travel in one message, and the worker runs the requests that arrived together as one batch, never two at once: `batch(run)` can
+	 * wrap them in a transaction, and a value it returns reaches `onBatch` before the calls of the batch settle. A crashed worker rejects
+	 * its calls and every later one, and is not started again. Idle, it does not keep a Node.js process running.
+	 * @example
+	 * // main thread
+	 * const store = offload<Request, Result>(new URL("./store.js", import.meta.url), {
+	 *   data: { path: "game.db" },
+	 *   onBatch: changes => socket.send(changes) // the calls settle after this resolves
+	 * })
+	 * await store.ready
+	 * const [ a, b ] = await Promise.all([ store.call({ get: 1 }), store.call({ put: 2 }) ]) // one batch
+	 * await store.close()
+	 * // store.js
+	 * export default function({ path }) {
+	 *   const db = open(path)
+	 *   return {
+	 *     call: request => run(db, request),
+	 *     batch: async run => { db.exec("BEGIN"); await run(); db.exec("COMMIT"); return db.changes() },
+	 *     close: () => db.close()
+	 *   }
+	 * }
+	 */
+	<Q, R, D = unknown, B = unknown>(url: string | URL, options?: OffloadModuleOptions<D, B>): OffloadModule<Q, R>
 }
 export interface ChannelFunction {
 	/**

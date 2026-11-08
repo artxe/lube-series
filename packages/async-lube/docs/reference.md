@@ -97,7 +97,9 @@ The stream functions are listed in [Operators](https://github.com/artxe/lube-ser
 | API | |
 | --- | --- |
 | `attempt(fn, { retry, signal, timeout })` | Runs `fn({ attempt, signal })` again after it fails, with a timeout for each attempt |
-| `limiter({ concurrency, rate: { count, per } })` | A function `(fn, signal?)` that runs the calls within the limits, in order, with `acquire(signal?)`, `key(id)`, `pending` and `running` |
+| `redial(connect, { signal, base, most })` | Calls `connect({ attempt, signal, open, close })` at once and again after each `close()`, waiting `base` ms (default 1000) after a connection that opened and doubling up to `most` ms (default 30000) after each that closed without opening, until `signal` aborts; resolves once the connection in hand has closed |
+| `limiter({ concurrency, rate: { count, per, window } })` | A function `(fn, signal?)` that runs the calls within the limits, in order, with `acquire(signal?)`, `key(id)`, `take(id?)` (`0` or the milliseconds until a start is free, at once), `pending` and `running`; `window` is `"sliding"` (default) or `"fixed"` |
 | `durable(store, fn, { idle, lease, migrate, owner, poll, revision })` | From `async-lube/durable`: `run(key, input)`, `join(key)`, `start(key, input)`, `send(key, name, value)`, `cancel(key, reason?)`, `get(key)`, `serve({ batch, interval, onError, signal }?)`, `stop()` and `running`, with `step`, `sleep` and `wait(name, { timeout, until })` in `fn(input, context)` |
 | `memory()`, `sqlite(db, table?)`, `dueAt(run)` | From `async-lube/durable`: the stores, and when a run is due, for a store of your own |
 | `offload(fn, { concurrency })` | A function that runs `fn` in a worker, with `close()`. Its calls have `cancel()`, and an `AbortSignal` as the last argument cancels them |
+| `offload(url, { data, delay, onBatch })` | A stateful worker that loads the module at `url`: `{ ready, call(request), close() }`. The requests of one tick travel in one message and run in one batch of the module's `batch(run)`, and a value it returns reaches `onBatch` before the calls settle |

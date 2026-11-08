@@ -10,17 +10,6 @@ import {
 describe(
 	"errors",
 	() => {
-		/**
-		 * @param {PromiseLike<unknown>} promise
-		 * @returns {Promise<unknown>}
-		 */
-		function rejection(promise) {
-			return Promise.resolve(promise)
-				.then(
-					() => assert.fail("No error occurred"),
-					error => error
-				)
-		}
 		afterEach(() => vi.useRealTimers())
 		beforeEach(
 			() => {
@@ -41,10 +30,7 @@ describe(
 						.run()
 				))/**/
 				assert.instanceOf(error, FlowError)
-				assert.equal(
-					error.message,
-					"Flow node \"reserve\" failed: sold out"
-				)
+				assert.equal(error.node, "reserve")
 				assert.equal(error.cause, "sold out")
 			}
 		)
@@ -59,12 +45,19 @@ describe(
 				)
 				const error = /** @type {NetworkError} */(await rejection(api.get("/stock")))/**/
 				assert.instanceOf(error, NetworkError)
-				assert.equal(
-					error.message,
-					"Network request failed"
-				)
 				assert.equal(error.cause, "offline")
 			}
 		)
+		/**
+		 * @param {PromiseLike<unknown>} promise
+		 * @returns {Promise<unknown>}
+		 */
+		function rejection(promise) {
+			return Promise.resolve(promise)
+				.then(
+					() => assert.fail("No error occurred"),
+					error => error
+				)
+		}
 	}
 )

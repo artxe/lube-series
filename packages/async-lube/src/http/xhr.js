@@ -12,23 +12,6 @@ export function send_with_xhr(url, init, on_upload) {
 		(resolve, reject) => {
 			const xhr = new XMLHttpRequest()
 			const signal = init.signal
-			function abort() {
-				return xhr.abort()
-			}
-			/**
-			 * @param {() => void} settle
-			 * @returns {() => void}
-			 */
-			function finish(settle) {
-				return () => {
-					signal?.removeEventListener("abort", abort)
-					try {
-						settle()
-					} catch (error) {
-						reject(error)
-					}
-				}
-			}
 			xhr.open(init.method, url)
 			init.headers.forEach(
 				(value, key) => xhr.setRequestHeader(key, value)
@@ -85,6 +68,24 @@ export function send_with_xhr(url, init, on_upload) {
 			xhr.send(
 				/** @type {XMLHttpRequestBodyInit | null} */(init.body ?? null)/**/
 			)
+			/** @returns {void} */
+			function abort() {
+				return xhr.abort()
+			}
+			/**
+			 * @param {() => void} settle
+			 * @returns {() => void}
+			 */
+			function finish(settle) {
+				return () => {
+					signal?.removeEventListener("abort", abort)
+					try {
+						settle()
+					} catch (error) {
+						reject(error)
+					}
+				}
+			}
 		}
 	)
 }

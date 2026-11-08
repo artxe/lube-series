@@ -61,15 +61,6 @@ const overlaps = new Set(
  */
 export function create_builder(definition) {
 	const { count, list, names, refs } = definition
-	/**
-	 * @param {string} name
-	 * @param {number=} except
-	 * @returns {boolean}
-	 */
-	function is_taken(name, except) {
-		const index = names.get(name)
-		return index != null && index < count && index !== except
-	}
 	return {
 		[DEFINITION]: definition,
 		/**
@@ -326,9 +317,7 @@ export function create_builder(definition) {
 				}
 			)
 		},
-		/**
-		 * @returns {string[]}
-		 */
+		/** @returns {string[]} */
 		check() {
 			/** @type {Program} */
 			let program
@@ -504,13 +493,6 @@ export function create_builder(definition) {
 					(node, i) => [ node.name, "n" + i ]
 				)
 			)
-			/**
-			 * @param {string} text
-			 * @returns {string}
-			 */
-			function escape(text) {
-				return text.replace(/"/g, "#quot;")
-			}
 			const lines = [ "flowchart TD" ]
 			for (const node of program.nodes) {
 				const id = ids.get(node.name)
@@ -575,6 +557,13 @@ export function create_builder(definition) {
 				)
 			}
 			return lines.join("\n")
+			/**
+			 * @param {string} text
+			 * @returns {string}
+			 */
+			function escape(text) {
+				return text.replace(/"/g, "#quot;")
+			}
 		},
 		/**
 		 * @param {unknown} state
@@ -592,6 +581,15 @@ export function create_builder(definition) {
 				options ?? {}
 			)
 		}
+	}
+	/**
+	 * @param {string} name
+	 * @param {number=} except
+	 * @returns {boolean}
+	 */
+	function is_taken(name, except) {
+		const index = names.get(name)
+		return index != null && index < count && index !== except
 	}
 }
 /**

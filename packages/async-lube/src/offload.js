@@ -1,21 +1,40 @@
 /** @import { NodeWorker, OffloadJob, OffloadWorker } from "../private.js" */
 import { CancelError } from "./errors.js"
+import { offload_module, to_error } from "./offload_module.js"
 import { check_options } from "./options.js"
 import { noop, on_abort } from "./signal.js"
 /**
- * Runs a function in a Worker, or a worker thread in Node.js 20.16 or later, so that heavy work does not block the page or the server.
- * The function travels as its source, so it may use only its arguments and globals: an arrow function or a function expression,
- * not a method or a closure. Arguments and results are copied as `postMessage` copies them. `concurrency` workers run at once, 1 by default.
- * @example
- * const resize = offload(async (bytes: ArrayBuffer, width: number) => shrink(bytes, width))
- * const thumbnail = await resize(bytes, 200, signal) // the signal terminates the worker
+ * @param {unknown} target
+ * @param {unknown=} options
+ * @returns {never}
+ */
+function create_offload(target, options) {
+	if (typeof target == "function") {
+		return /** @type {never} */(offload_function(
+			/** @type {(...args: never[]) => unknown} */(target)/**/,
+			/** @type {{ concurrency?: number | undefined } | undefined} */(options)/**/
+		))/**/
+	}
+	if (typeof target == "string" || target instanceof URL) {
+		return /** @type {never} */(offload_module(
+			target,
+			/** @type {import("../public.js").OffloadModuleOptions | undefined} */(options)/**/
+		))/**/
+	}
+	throw TypeError(
+		"offload() needs a function, or the URL of a worker module"
+	)
+}
+/** @type {import("../public.js").OffloadFunction} */
+export const offload = create_offload
+/**
  * @template {unknown[]} A
  * @template R
  * @param {(...args: A) => R} fn
  * @param {{ concurrency?: number | undefined }=} options
  * @returns {import("../public.js").Offloaded<A, R>}
  */
-export function offload(fn, options = {}) {
+function offload_function(fn, options = {}) {
 	if (typeof fn != "function") {
 		throw TypeError("offload() needs a function")
 	}
@@ -38,6 +57,26 @@ export function offload(fn, options = {}) {
 	/** @type {string | undefined} */
 	let url
 	let count = 0
+	const run = /** @type {import("../public.js").Offloaded<never[], unknown>} */(/** @type {unknown} */(call))/**/
+	run.close = () => {
+		for (const job of queue.splice(0)) {
+			job.reject(
+				new CancelError("The offload was closed")
+			)
+		}
+		for (const worker of workers) {
+			worker.job?.reject(
+				new CancelError("The offload was closed")
+			)
+			worker.stop()
+		}
+		workers.clear()
+		if (url) {
+			URL.revokeObjectURL(url)
+		}
+		url = void 0
+	}
+	return /** @type {import("../public.js").Offloaded<A, R>} */(/** @type {unknown} */(run))/**/
 	/**
 	 * @param {...unknown} args
 	 * @returns {import("../public.js").OffloadCall<unknown>}
@@ -111,9 +150,7 @@ export function offload(fn, options = {}) {
 		)
 		dispatch()
 	}
-	/**
-	 * @returns {void}
-	 */
+	/** @returns {void} */
 	function dispatch() {
 		while (queue.length) {
 			let worker = [ ...workers ].find(item => !item.job)
@@ -149,9 +186,7 @@ export function offload(fn, options = {}) {
 		worker.idle?.()
 		dispatch()
 	}
-	/**
-	 * @returns {OffloadWorker}
-	 */
+	/** @returns {OffloadWorker} */
 	function spawn() {
 		const threads = /** @type {{ process?: { getBuiltinModule?: (name: string) => unknown } }} */(globalThis)/**/.process?.getBuiltinModule?.("node:worker_threads")
 		/** @type {OffloadWorker} */
@@ -159,35 +194,6 @@ export function offload(fn, options = {}) {
 			job: void 0,
 			send: noop,
 			stop: noop
-		}
-		/**
-		 * @param {unknown} error
-		 * @returns {void}
-		 */
-		function crash(error) {
-			const { job } = worker
-			worker.job = void 0
-			worker.stop()
-			workers.delete(worker)
-			job?.reject(to_error(error))
-			dispatch()
-		}
-		/**
-		 * @param {[number, boolean, unknown]} message
-		 * @returns {void}
-		 */
-		function receive([ id, ok, value ]) {
-			const { job } = worker
-			if (!job || job.id != id) {
-				return
-			}
-			worker.job = void 0
-			if (ok) {
-				job.resolve(value)
-			} else {
-				job.reject(to_error(value))
-			}
-			finish(worker)
 		}
 		if (threads) {
 			const { Worker } = /** @type {{ Worker: new (code: string, options: { eval: true }) => NodeWorker }} */(threads)/**/
@@ -230,27 +236,36 @@ export function offload(fn, options = {}) {
 		}
 		workers.add(worker)
 		return worker
-	}
-	const run = /** @type {import("../public.js").Offloaded<never[], unknown>} */(/** @type {unknown} */(call))/**/
-	run.close = () => {
-		for (const job of queue.splice(0)) {
-			job.reject(
-				new CancelError("The offload was closed")
-			)
-		}
-		for (const worker of workers) {
-			worker.job?.reject(
-				new CancelError("The offload was closed")
-			)
+		/**
+		 * @param {unknown} error
+		 * @returns {void}
+		 */
+		function crash(error) {
+			const { job } = worker
+			worker.job = void 0
 			worker.stop()
+			workers.delete(worker)
+			job?.reject(to_error(error))
+			dispatch()
 		}
-		workers.clear()
-		if (url) {
-			URL.revokeObjectURL(url)
+		/**
+		 * @param {[number, boolean, unknown]} message
+		 * @returns {void}
+		 */
+		function receive([ id, ok, value ]) {
+			const { job } = worker
+			if (!job || job.id != id) {
+				return
+			}
+			worker.job = void 0
+			if (ok) {
+				job.resolve(value)
+			} else {
+				job.reject(to_error(value))
+			}
+			finish(worker)
 		}
-		url = void 0
 	}
-	return /** @type {import("../public.js").Offloaded<A, R>} */(/** @type {unknown} */(run))/**/
 }
 /**
  * @param {string} post
@@ -268,18 +283,4 @@ function reply(post) {
 		}
 	}
 }`
-}
-/**
- * @param {unknown} value
- * @returns {unknown}
- */
-function to_error(value) {
-	if (value instanceof Error || value == null || typeof value != "object" || !("message" in value)) {
-		return value
-	}
-	const error = Error(String(value.message))
-	error.name = String(
-		/** @type {{ name?: unknown }} */(value)/**/.name ?? "Error"
-	)
-	return error
 }

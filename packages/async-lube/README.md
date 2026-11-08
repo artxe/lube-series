@@ -249,7 +249,7 @@ const thumbnail = await resize(bytes, 200, signal) // the signal terminates the 
 ```
 - `attempt` takes the same `retry` options as a request and a flow node.
 - `limiter` starts the calls in order, and `key(id)` gives each user or tenant the same limits.
-- `offload` sends the function as its source, so it uses only its arguments and globals.
+- `offload` sends the function as its source, so it uses only its arguments and globals. `offload(url, { data, delay, onBatch })` loads a module file in one stateful worker instead, and `call(request)` sends requests that run in batches.
 
 [docs/tasks.md](https://github.com/artxe/lube-series/blob/master/packages/async-lube/docs/tasks.md): leases, keys and workers.
 

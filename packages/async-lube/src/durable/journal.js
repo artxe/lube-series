@@ -71,7 +71,8 @@ export function rewind(execution, error) {
 					continue
 				}
 				const events = saved.events ??= {}
-				;(events[later.name] ??= []).unshift({ at: 0, value: later.value })
+				const queue = events[later.name] ??= []
+				queue.unshift({ at: 0, value: later.value })
 			}
 			return
 		}

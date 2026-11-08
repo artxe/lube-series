@@ -28,13 +28,6 @@ export function buffer(source, ms) {
 	let failure
 	let finished = false
 	const due = create_due(ms)
-	function finish() {
-		finished = true
-		due.clear()
-		if (reader) {
-			release(reader)
-		}
-	}
 	return {
 		[Symbol.asyncIterator]() {
 			return reader || finished ? buffer(source, ms) : this
@@ -98,6 +91,14 @@ export function buffer(source, ms) {
 			return { done: true, value: void 0 }
 		}
 	}
+	/** @returns {void} */
+	function finish() {
+		finished = true
+		due.clear()
+		if (reader) {
+			release(reader)
+		}
+	}
 }
 /**
  * @param {unknown} value
@@ -111,7 +112,8 @@ function cancel_result(value) {
 	try {
 		const cancelled = /** @type {{ cancel: () => unknown }} */(result)/**/.cancel()
 		if (typeof /** @type {Partial<PromiseLike<unknown>>} */(cancelled)/**/?.then == "function") {
-			/** @type {PromiseLike<unknown>} */(cancelled)/**/.then(noop, noop)
+			const pending = /** @type {PromiseLike<unknown>} */(cancelled)/**/
+			pending.then(noop, noop)
 		}
 	} catch {}
 }
@@ -177,6 +179,7 @@ function create_channel(options = {}) {
 export const channel = create_channel
 /**
  * @param {number} ms
+ * @returns {{ clear(): void; fired: boolean; promise: Promise<"due"> | undefined; start(): void; }}
  */
 function create_due(ms) {
 	const delay = clamp_delay(ms)
@@ -184,12 +187,6 @@ function create_due(ms) {
 	let resolve
 	/** @type {ReturnType<typeof setTimeout> | undefined} */
 	let timer
-	function fire() {
-		const settle = /** @type {(value: "due") => void} */(resolve)/**/
-		due.clear()
-		due.fired = true
-		settle("due")
-	}
 	const due = {
 		clear() {
 			clearTimeout(timer)
@@ -212,6 +209,13 @@ function create_due(ms) {
 		}
 	}
 	return due
+	/** @returns {void} */
+	function fire() {
+		const settle = /** @type {(value: "due") => void} */(resolve)/**/
+		due.clear()
+		due.fired = true
+		settle("due")
+	}
 }
 /**
  * @param {number=} limit
@@ -227,22 +231,6 @@ function create_source(
 	let ended = false
 	/** @type {{ value: unknown } | undefined} */
 	let failure
-	/**
-	 * @param {{ value: unknown }=} error
-	 * @returns {void}
-	 */
-	function finish(error) {
-		if (ended) {
-			return
-		}
-		ended = true
-		failure = error
-		for (const loop of loops) {
-			loop.ended = true
-			loop.error = error
-			loop.wake?.()
-		}
-	}
 	return {
 		close: () => finish(void 0),
 		get ended() {
@@ -260,18 +248,6 @@ function create_source(
 			}
 			let finished = false
 			let started = false
-			/** @returns {IteratorResult<unknown>} */
-			function stop() {
-				if (!finished) {
-					finished = true
-					const left = loops.delete(loop)
-					loop.wake?.()
-					if (left && !loops.size) {
-						on_last?.()
-					}
-				}
-				return { done: true, value: void 0 }
-			}
 			return {
 				[Symbol.asyncIterator]() {
 					return this
@@ -332,6 +308,18 @@ function create_source(
 					return stop()
 				}
 			}
+			/** @returns {IteratorResult<unknown>} */
+			function stop() {
+				if (!finished) {
+					finished = true
+					const left = loops.delete(loop)
+					loop.wake?.()
+					if (left && !loops.size) {
+						on_last?.()
+					}
+				}
+				return { done: true, value: void 0 }
+			}
 		},
 		write(value) {
 			if (ended) {
@@ -351,6 +339,22 @@ function create_source(
 				}
 				loop.wake?.()
 			}
+		}
+	}
+	/**
+	 * @param {{ value: unknown }=} error
+	 * @returns {void}
+	 */
+	function finish(error) {
+		if (ended) {
+			return
+		}
+		ended = true
+		failure = error
+		for (const loop of loops) {
+			loop.ended = true
+			loop.error = error
+			loop.wake?.()
 		}
 	}
 }
@@ -374,13 +378,6 @@ export function debounce(source, ms) {
 	let held
 	let finished = false
 	const due = create_due(ms)
-	function finish() {
-		finished = true
-		due.clear()
-		if (reader) {
-			release(reader)
-		}
-	}
 	return {
 		[Symbol.asyncIterator]() {
 			return reader || finished ? debounce(source, ms) : this
@@ -442,6 +439,14 @@ export function debounce(source, ms) {
 			return { done: true, value: void 0 }
 		}
 	}
+	/** @returns {void} */
+	function finish() {
+		finished = true
+		due.clear()
+		if (reader) {
+			release(reader)
+		}
+	}
 }
 /**
  * Counts every period of the milliseconds, 1, 2, 3, for polling and jobs. A loop that takes longer than a period gets
@@ -472,15 +477,6 @@ export function every(ms, options = {}) {
 			let finished = false
 			const controller = new AbortController()
 			const unlink = link_signal(controller, signal)
-			/** @returns {IteratorResult<number>} */
-			function finish() {
-				if (!finished) {
-					finished = true
-					controller.abort()
-					unlink()
-				}
-				return { done: true, value: void 0 }
-			}
 			return {
 				[Symbol.asyncIterator]() {
 					return this
@@ -507,6 +503,15 @@ export function every(ms, options = {}) {
 					return finish()
 				}
 			}
+			/** @returns {IteratorResult<number>} */
+			function finish() {
+				if (!finished) {
+					finished = true
+					controller.abort()
+					unlink()
+				}
+				return { done: true, value: void 0 }
+			}
 		}
 	}
 }
@@ -526,48 +531,6 @@ function switch_latest(source, start) {
 	let inner
 	let outer_done = false
 	let finished = false
-	/**
-	 * @returns {void}
-	 */
-	function close_inner() {
-		if (!inner) {
-			return
-		}
-		inner.controller.abort(
-			new CancelError("Superseded by a newer value")
-		)
-		inner.next?.catch(noop)
-		release(inner.reader)
-		cancel_result(inner.made)
-		inner = void 0
-	}
-	function finish() {
-		finished = true
-		close_inner()
-		if (outer) {
-			release(outer)
-		}
-	}
-	/**
-	 * @param {T} value
-	 * @returns {void}
-	 */
-	function open_inner(value) {
-		next_outer = /** @type {AsyncIterator<T>} */(outer)/**/.next()
-		next_outer.catch(noop)
-		const controller = new AbortController()
-		const made = start(value, controller.signal)
-		const iterable = typeof /** @type {Partial<AsyncIterable<unknown>>} */(made)/**/?.[Symbol.asyncIterator] == "function"
-		const reader = /** @type {AsyncIterator<R>} */(iterable ? to_reader(made) : once_reader(made))/**/
-		inner = {
-			controller,
-			made: iterable || typeof /** @type {Partial<PromiseLike<unknown>>} */(made)/**/?.then == "function"
-				? made
-				: void 0,
-			next: void 0,
-			reader
-		}
-	}
 	return {
 		[Symbol.asyncIterator]() {
 			return outer || finished ? switch_latest(source, start) : this
@@ -651,6 +614,47 @@ function switch_latest(source, start) {
 			return { done: true, value: void 0 }
 		}
 	}
+	/** @returns {void} */
+	function close_inner() {
+		if (!inner) {
+			return
+		}
+		inner.controller.abort(
+			new CancelError("Superseded by a newer value")
+		)
+		inner.next?.catch(noop)
+		release(inner.reader)
+		cancel_result(inner.made)
+		inner = void 0
+	}
+	/** @returns {void} */
+	function finish() {
+		finished = true
+		close_inner()
+		if (outer) {
+			release(outer)
+		}
+	}
+	/**
+	 * @param {T} value
+	 * @returns {void}
+	 */
+	function open_inner(value) {
+		next_outer = /** @type {AsyncIterator<T>} */(outer)/**/.next()
+		next_outer.catch(noop)
+		const controller = new AbortController()
+		const made = start(value, controller.signal)
+		const iterable = typeof /** @type {Partial<AsyncIterable<unknown>>} */(made)/**/?.[Symbol.asyncIterator] == "function"
+		const reader = /** @type {AsyncIterator<R>} */(iterable ? to_reader(made) : once_reader(made))/**/
+		inner = {
+			controller,
+			made: iterable || typeof /** @type {Partial<PromiseLike<unknown>>} */(made)/**/?.then == "function"
+				? made
+				: void 0,
+			next: void 0,
+			reader
+		}
+	}
 }
 /** @type {import("../public.js").LatestFunction} */
 export const latest = switch_latest
@@ -671,46 +675,6 @@ function merge_streams(...sources) {
 	/** @type {(() => void) | undefined} */
 	let wake
 	let finished = false
-	function finish() {
-		finished = true
-		if (readers) {
-			for (const reader of readers) {
-				release(reader)
-			}
-		}
-		wake?.()
-	}
-	/**
-	 * @param {AsyncIterator<T>} reader
-	 * @returns {void}
-	 */
-	function read(reader) {
-		reader.next()
-			.then(
-				step => {
-					if (finished) {
-						return
-					}
-					ready.push(
-						{ error: void 0, reader, step }
-					)
-					wake?.()
-				},
-				error => {
-					if (finished) {
-						return
-					}
-					ready.push(
-						{
-							error: { value: error },
-							reader,
-							step: void 0
-						}
-					)
-					wake?.()
-				}
-			)
-	}
 	return {
 		[Symbol.asyncIterator]() {
 			return readers || finished ? merge_streams(...sources) : this
@@ -784,6 +748,47 @@ function merge_streams(...sources) {
 			}
 			return { done: true, value: void 0 }
 		}
+	}
+	/** @returns {void} */
+	function finish() {
+		finished = true
+		if (readers) {
+			for (const reader of readers) {
+				release(reader)
+			}
+		}
+		wake?.()
+	}
+	/**
+	 * @param {AsyncIterator<T>} reader
+	 * @returns {void}
+	 */
+	function read(reader) {
+		reader.next()
+			.then(
+				step => {
+					if (finished) {
+						return
+					}
+					ready.push(
+						{ error: void 0, reader, step }
+					)
+					wake?.()
+				},
+				error => {
+					if (finished) {
+						return
+					}
+					ready.push(
+						{
+							error: { value: error },
+							reader,
+							step: void 0
+						}
+					)
+					wake?.()
+				}
+			)
 	}
 }
 export const merge = /** @type {import("../public.js").MergeFunction} */(merge_streams)/**/
@@ -867,11 +872,17 @@ export function share(source, options = {}) {
 /**
  * @param {AsyncIterable<unknown>} source
  * @param {number | undefined} limit
+ * @returns {{ read: () => AsyncIterableIterator<unknown>; source: StreamSource; }}
  */
 function share_source(source, limit) {
 	const shared = create_source(limit)
 	/** @type {AsyncIterator<unknown> | undefined} */
 	let reader
+	return {
+		read: () => shared.read(start, stop),
+		source: shared
+	}
+	/** @returns {void} */
 	function start() {
 		const current = to_reader(source)
 		reader = current
@@ -895,16 +906,13 @@ function share_source(source, limit) {
 			}
 		})()
 	}
+	/** @returns {void} */
 	function stop() {
 		const current = reader
 		reader = void 0
 		if (current) {
 			release(current)
 		}
-	}
-	return {
-		read: () => shared.read(start, stop),
-		source: shared
 	}
 }
 /**
@@ -928,13 +936,6 @@ export function throttle(source, ms) {
 	let held
 	let finished = false
 	const window = create_due(ms)
-	function finish() {
-		finished = true
-		window.clear()
-		if (reader) {
-			release(reader)
-		}
-	}
 	return {
 		[Symbol.asyncIterator]() {
 			return reader || finished ? throttle(source, ms) : this
@@ -1004,6 +1005,14 @@ export function throttle(source, ms) {
 			return { done: true, value: void 0 }
 		}
 	}
+	/** @returns {void} */
+	function finish() {
+		finished = true
+		window.clear()
+		if (reader) {
+			release(reader)
+		}
+	}
 }
 /**
  * @param {unknown} source
@@ -1033,15 +1042,6 @@ export function until(source, stop) {
 	/** @type {Promise<"stop"> | undefined} */
 	let ended
 	let finished = false
-	function finish() {
-		finished = true
-		if (reader) {
-			release(reader)
-		}
-		if (ender) {
-			release(ender)
-		}
-	}
 	return {
 		[Symbol.asyncIterator]() {
 			return reader || finished ? until(source, stop) : this
@@ -1084,6 +1084,16 @@ export function until(source, stop) {
 				finish()
 			}
 			return { done: true, value: void 0 }
+		}
+	}
+	/** @returns {void} */
+	function finish() {
+		finished = true
+		if (reader) {
+			release(reader)
+		}
+		if (ender) {
+			release(ender)
 		}
 	}
 }

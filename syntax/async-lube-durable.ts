@@ -12,10 +12,12 @@ import { DatabaseSync } from "node:sqlite"
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2)
 	? true
 	: false
+/** @returns {void} */
 function expect_type<A, B>(_: Equal<A, B>) {}
 type Cart = { amount: number, email: string }
 interface StoredOrder { id: number, items: { sku: string }[], note?: string, parent?: StoredOrder }
 declare const stored_order: StoredOrder
+/** @returns {Promise<void>} */
 async function durable_syntax() {
 	const checkout = durable(
 		sqlite(new DatabaseSync(":memory:")),
@@ -214,6 +216,7 @@ async function durable_syntax() {
 	)
 }
 type Pool = { query<R>(sql: string, params: unknown[]): Promise<{ rowCount: number | null, rows: R[] }> }
+/** @returns {DurableStore} */
 function postgres_store(pool: Pool): DurableStore {
 	return {
 		async due(now, limit) {

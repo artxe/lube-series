@@ -14,15 +14,6 @@ export async function simulate_queue(seed, unhandled) {
 	/** @type {string[]} */
 	const log = []
 	const start_time = time()
-	/**
-	 * @param {string} line
-	 * @returns {void}
-	 */
-	function say(line) {
-		log.push(
-			`[${time() - start_time}] ${line}`
-		)
-	}
 	const mode = random.pick(
 		/** @type {const} */([
 			"input-queue",
@@ -70,53 +61,6 @@ export async function simulate_queue(seed, unhandled) {
 	/** @type {{ attempt: number, key: string, value: string }[]} */
 	const calls = []
 	let epoch = 0
-	/**
-	 * @param {unknown} _
-	 * @param {string} value
-	 * @param {NodeContext} context
-	 * @returns {string}
-	 */
-	function caught(_, value, context) {
-		done.push(
-			{
-				how: "caught",
-				key: context.key,
-				value
-			}
-		)
-		return `caught(${value})`
-	}
-	/**
-	 * @param {string} value
-	 * @param {NodeContext} context
-	 * @returns {Promise<string>}
-	 */
-	async function handle_body(value, context) {
-		calls.push(
-			{
-				attempt: context.attempt,
-				key: context.key,
-				value
-			}
-		)
-		say(
-			`call ${value} key=${context.key} attempt=${context.attempt} epoch=${epoch}`
-		)
-		const delay = random.pick(delays)
-		if (delay) {
-			await context.sleep(delay)
-		}
-		if (fail && random.chance(fail)) {
-			throw Error("fail " + value)
-		}
-		if (context.signal.aborted) {
-			throw context.signal.reason
-		}
-		done.push(
-			{ how: "ok", key: context.key, value }
-		)
-		return `h(${value})`
-	}
 	const message = flow.input("msg")
 	const source = channel()
 	/** @type {SimOptions} */
@@ -185,7 +129,7 @@ export async function simulate_queue(seed, unhandled) {
 	if (with_after) {
 		definition = definition.add(
 			(
-			/** @type {string} */ value,
+				/** @type {string} */ value,
 				/** @type {NodeContext} */ context
 			) => {
 				if (!context.signal.aborted && value !== void 0) {
@@ -198,18 +142,6 @@ export async function simulate_queue(seed, unhandled) {
 		)
 	}
 	let run = definition.run(void 0, { id: "q" + seed })
-	/**
-	 * @param {FlowRun<unknown, unknown>} target
-	 * @returns {void}
-	 */
-	function watch(target) {
-		target.then(
-			() => {},
-			error => say(
-				"settled " + /** @type {Error} */(error)/**/.message
-			)
-		)
-	}
 	watch(run)
 	/** @type {string[]} */
 	const sent = []
@@ -377,4 +309,72 @@ export async function simulate_queue(seed, unhandled) {
 		)
 	}
 	return { config, describe, log, problems }
+	/**
+	 * @param {unknown} _
+	 * @param {string} value
+	 * @param {NodeContext} context
+	 * @returns {string}
+	 */
+	function caught(_, value, context) {
+		done.push(
+			{
+				how: "caught",
+				key: context.key,
+				value
+			}
+		)
+		return `caught(${value})`
+	}
+	/**
+	 * @param {string} value
+	 * @param {NodeContext} context
+	 * @returns {Promise<string>}
+	 */
+	async function handle_body(value, context) {
+		calls.push(
+			{
+				attempt: context.attempt,
+				key: context.key,
+				value
+			}
+		)
+		say(
+			`call ${value} key=${context.key} attempt=${context.attempt} epoch=${epoch}`
+		)
+		const delay = random.pick(delays)
+		if (delay) {
+			await context.sleep(delay)
+		}
+		if (fail && random.chance(fail)) {
+			throw Error("fail " + value)
+		}
+		if (context.signal.aborted) {
+			throw context.signal.reason
+		}
+		done.push(
+			{ how: "ok", key: context.key, value }
+		)
+		return `h(${value})`
+	}
+	/**
+	 * @param {string} line
+	 * @returns {void}
+	 */
+	function say(line) {
+		log.push(
+			`[${time() - start_time}] ${line}`
+		)
+	}
+	/**
+	 * @param {FlowRun<unknown, unknown>} target
+	 * @returns {void}
+	 */
+	function watch(target) {
+		target.then(
+			() => {},
+			error => say(
+				"settled " + /** @type {Error} */(error)/**/.message
+			)
+		)
+	}
 }

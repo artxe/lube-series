@@ -6,72 +6,6 @@ import { assert, describe, it } from "vitest"
 describe(
 	"flow scale",
 	() => {
-		/**
-		 * @param {((value: number | undefined) => number)[]} nodes
-		 * @param {boolean} reverse
-		 * @returns {import("async-lube").Flow<unknown, number>}
-		 */
-		function chain(nodes, reverse) {
-			/** @type {DynamicFlow} */
-			let definition = flow()
-			const order = reverse ? [ ...nodes.keys() ].reverse() : [ ...nodes.keys() ]
-			for (const i of order) {
-				definition = i
-					? definition.add(
-					/** @type {Ref} */(nodes[i])/**/,
-						/** @type {Ref} */(nodes[i - 1])/**/
-					)
-					: definition.add(
-					/** @type {Ref} */(nodes[i])/**/
-					)
-			}
-			return /** @type {import("async-lube").Flow<unknown, number>} */(/** @type {unknown} */(definition))/**/
-		}
-		/**
-		 * @param {(size: number) => Promise<number[]>} work
-		 * @param {number} small
-		 * @param {number} large
-		 * @returns {Promise<number[]>}
-		 */
-		async function growth(work, small, large) {
-			/**
-			 * @param {number} size
-			 * @returns {Promise<number[]>}
-			 */
-			async function best(size) {
-				/** @type {number[]} */
-				const least = []
-				for (let round = 0; round < 3; round++) {
-					for (const [ phase, ms ] of (await work(size)).entries()) {
-						least[phase] = Math.min(least[phase] ?? Infinity, ms)
-					}
-				}
-				return least
-			}
-			const low = await best(small)
-			return (await best(large)).map(
-				(ms, phase) => ms / Math.max(low[phase] ?? 0, 1)
-			)
-		}
-		/**
-		 * @param {number} count
-		 * @returns {((value: number | undefined) => number)[]}
-		 */
-		function steps(count) {
-			return Array.from(
-				{ length: count },
-				(_, i) => {
-					/**
-					 * @param {number | undefined} value
-					 */
-					function step(value) {
-						return (typeof value == "number" ? value : 0) + 1
-					}
-					Object.defineProperty(step, "name", { value: "s" + i })
-					return step
-				}
-			)
-		}
 		it(
 			"cancelling a batch on a shared signal",
 			async () => {
@@ -138,12 +72,13 @@ describe(
 				await run
 				assert.equal(run.get(last), 20000)
 				assert.equal(run.nodes["s0"], "done")
-				function fall_back() {
-					return 0
-				}
 				const with_fallback = chain(nodes, false)
 					.add(fall_back, { fallback: first })
 				assert.equal(await with_fallback.run(), 0)
+				/** @returns {number} */
+				function fall_back() {
+					return 0
+				}
 			},
 			30000
 		)
@@ -165,9 +100,6 @@ describe(
 						assert.equal(await run, size)
 						const reloaded = performance.now() - at
 						const controller = new AbortController()
-						function root() {
-							return 1
-						}
 						/** @type {DynamicFlow} */
 						let wide = flow().add(root)
 						for (const node of steps(size)) {
@@ -189,6 +121,10 @@ describe(
 							0
 						)
 						return [ built, ran, reloaded, spread ]
+						/** @returns {number} */
+						function root() {
+							return 1
+						}
 					},
 					2500,
 					20000
@@ -207,12 +143,6 @@ describe(
 				const queues = await growth(
 					async size => {
 						const message = flow.input("message")
-						/**
-						 * @param {unknown} value
-						 */
-						async function handle(value) {
-							return value
-						}
 						const queued = flow()
 							.add(message)
 							.add(
@@ -227,6 +157,13 @@ describe(
 						}
 						assert.equal(await queued, size - 1)
 						return [ performance.now() - started ]
+						/**
+						 * @param {unknown} value
+						 * @returns {Promise<unknown>}
+						 */
+						async function handle(value) {
+							return value
+						}
 					},
 					5000,
 					40000
@@ -239,13 +176,6 @@ describe(
 				const batches = await growth(
 					async size => {
 						const approve = flow.input("approve")
-						/**
-						 * @param {import("async-lube").NodeContext} context
-						 */
-						async function summarize({ state }) {
-							await null
-							return state
-						}
 						const review = flow()
 							.add(summarize)
 							.add(approve, summarize)
@@ -269,6 +199,14 @@ describe(
 						}
 						await nested
 						return [ performance.now() - sending ]
+						/**
+						 * @param {import("async-lube").NodeContext} context
+						 * @returns {Promise<unknown>}
+						 */
+						async function summarize({ state }) {
+							await null
+							return state
+						}
 					},
 					500,
 					4000
@@ -278,9 +216,6 @@ describe(
 					32,
 					batches.join(" ")
 				)
-				function root() {
-					return 1
-				}
 				/** @type {DynamicFlow} */
 				let wide = flow().add(root)
 				for (const node of steps(200000)) {
@@ -290,8 +225,79 @@ describe(
 				await fanned
 				fanned.reload(root)
 				assert.equal(await fanned, 2)
+				/** @returns {number} */
+				function root() {
+					return 1
+				}
 			},
 			120000
 		)
+		/**
+		 * @param {((value: number | undefined) => number)[]} nodes
+		 * @param {boolean} reverse
+		 * @returns {import("async-lube").Flow<unknown, number>}
+		 */
+		function chain(nodes, reverse) {
+			/** @type {DynamicFlow} */
+			let definition = flow()
+			const order = reverse ? [ ...nodes.keys() ].reverse() : [ ...nodes.keys() ]
+			for (const i of order) {
+				definition = i
+					? definition.add(
+						/** @type {Ref} */(nodes[i])/**/,
+						/** @type {Ref} */(nodes[i - 1])/**/
+					)
+					: definition.add(
+						/** @type {Ref} */(nodes[i])/**/
+					)
+			}
+			return /** @type {import("async-lube").Flow<unknown, number>} */(/** @type {unknown} */(definition))/**/
+		}
+		/**
+		 * @param {(size: number) => Promise<number[]>} work
+		 * @param {number} small
+		 * @param {number} large
+		 * @returns {Promise<number[]>}
+		 */
+		async function growth(work, small, large) {
+			const low = await best(small)
+			return (await best(large)).map(
+				(ms, phase) => ms / Math.max(low[phase] ?? 0, 1)
+			)
+			/**
+			 * @param {number} size
+			 * @returns {Promise<number[]>}
+			 */
+			async function best(size) {
+				/** @type {number[]} */
+				const least = []
+				for (let round = 0; round < 3; round++) {
+					for (const [ phase, ms ] of (await work(size)).entries()) {
+						least[phase] = Math.min(least[phase] ?? Infinity, ms)
+					}
+				}
+				return least
+			}
+		}
+		/**
+		 * @param {number} count
+		 * @returns {((value: number | undefined) => number)[]}
+		 */
+		function steps(count) {
+			return Array.from(
+				{ length: count },
+				(_, i) => {
+					Object.defineProperty(step, "name", { value: "s" + i })
+					return step
+					/**
+					 * @param {number | undefined} value
+					 * @returns {number}
+					 */
+					function step(value) {
+						return (typeof value == "number" ? value : 0) + 1
+					}
+				}
+			)
+		}
 	}
 )

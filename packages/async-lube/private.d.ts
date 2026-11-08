@@ -289,9 +289,10 @@ export type LimiterState = {
 	queue: LimiterJob[]
 	running: number
 	schedule: () => void
+	take: () => number
 }
 export type NodeWorker = {
-	on(event: "error" | "message", listener: (value: never) => void): void
+	on(event: "error" | "exit" | "message", listener: (value: never) => void): void
 	postMessage(message: unknown): void
 	ref(): void
 	terminate(): Promise<number>
@@ -302,6 +303,12 @@ export type OffloadJob = {
 	id: number
 	reject: (error: unknown) => void
 	resolve: (value: unknown) => void
+}
+export type OffloadReply = [number, boolean, unknown]
+export type OffloadTransport = {
+	post: (message: unknown[]) => void
+	ref: (on: boolean) => void
+	stop: () => Promise<void>
 }
 export type OffloadWorker = {
 	idle?: () => void

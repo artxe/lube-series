@@ -12,15 +12,6 @@ import {
 describe(
 	"flow fuzz",
 	() => {
-		/**
-		 * @param {number} ms
-		 * @returns {Promise<void>}
-		 */
-		function sleep(ms) {
-			return new Promise(
-				resolve => setTimeout(resolve, ms)
-			)
-		}
 		afterEach(() => vi.useRealTimers())
 		beforeEach(
 			() => {
@@ -32,18 +23,6 @@ describe(
 			"random flows settle consistently",
 			async () => {
 				let seed = 7
-				/**
-				 * @template T
-				 * @param {T[]} list
-				 * @returns {T}
-				 */
-				function pick(list) {
-					return /** @type {T} */(list[Math.floor(random() * list.length)])/**/
-				}/**/
-				function random() {
-					seed = (Math.imul(seed, 1103515245) + 12345) >>> 0
-					return seed / 4294967296
-				}
 				/** @type {string[]} */
 				const problems = []
 				for (let iteration = 0; iteration < 40; iteration++) {
@@ -70,7 +49,7 @@ describe(
 							options["retry"] = { count: 1, delay: 1 }
 						} else if (roll < 0.25) {
 							options["catch"] = (
-							/** @type {unknown[]} */ ...args
+								/** @type {unknown[]} */ ...args
 							) => /** @type {NodeContext} */(args[args.length - 1])/**/.skip()
 						}
 						if (deps.length && random() < 0.15) {
@@ -184,8 +163,30 @@ describe(
 					run.cancel()
 				}
 				assert.deepEqual(problems, [])
+				/**
+				 * @template T
+				 * @param {T[]} list
+				 * @returns {T}
+				 */
+				function pick(list) {
+					return /** @type {T} */(list[Math.floor(random() * list.length)])/**/
+				}/**/
+				/** @returns {number} */
+				function random() {
+					seed = (Math.imul(seed, 1103515245) + 12345) >>> 0
+					return seed / 4294967296
+				}
 			},
 			60000
 		)
+		/**
+		 * @param {number} ms
+		 * @returns {Promise<void>}
+		 */
+		function sleep(ms) {
+			return new Promise(
+				resolve => setTimeout(resolve, ms)
+			)
+		}
 	}
 )

@@ -120,13 +120,6 @@ describe(
 		const upgrades = new Set()
 		/** @type {unknown[]} */
 		const unhandled = []
-		/**
-		 * @param {unknown} reason
-		 * @returns {void}
-		 */
-		function on_unhandled(reason) {
-			unhandled.push(reason)
-		}
 		const server = createServer(
 			(request, response) => {
 				request.socket.on("error", () => {})
@@ -193,6 +186,8 @@ describe(
 				const stream = state
 				const events = connection
 				let sent = 0
+				setTimeout(tick, 1)
+				/** @returns {void} */
 				function tick() {
 					if (response.destroyed) {
 						return
@@ -210,7 +205,6 @@ describe(
 						response.socket?.destroy()
 					}
 				}
-				setTimeout(tick, 1)
 			}
 		)
 		server.on(
@@ -280,6 +274,8 @@ describe(
 				const known = state
 				const accepted = connection
 				let sent = 0
+				setTimeout(tick, 1)
+				/** @returns {void} */
 				function tick() {
 					if (socket.destroyed || !socket.writable) {
 						return
@@ -302,7 +298,6 @@ describe(
 						close_frame(socket, accepted.then, "")
 					}
 				}
-				setTimeout(tick, 1)
 			}
 		)
 		let origin = ""
@@ -337,6 +332,48 @@ describe(
 				origin = `http://127.0.0.1:${/** @type {import("node:net").AddressInfo} */(server.address())/**/.port}`
 			}
 		)
+		for (const [ mode, fuzz, count ] of /** @type {const} */([
+			[ "ws", fuzz_ws, 24 ],
+			[ "sse", fuzz_sse, 24 ]
+		])/**/) {
+			it(
+				mode,
+				async () => {
+					/** @type {string[]} */
+					const failures = []
+					const seeds = sim_seeds(mode, count)
+					let next = 0
+					await Promise.all(
+						Array.from(
+							{ length: 16 },
+							async () => {
+								while (next < seeds.length) {
+									const seed = /** @type {number} */(seeds[next++])/**/
+									const problems = await fuzz(seed)
+									if (problems.length) {
+										failures.push(
+											[
+												`SIM_MODE=${mode} SIM_SEED=${seed}`,
+												...problems
+											].join("\n")
+										)
+									}
+								}
+							}
+						)
+					)
+					assert.deepEqual(
+						{
+							count: failures.length,
+							first: failures.slice(0, 3),
+							unhandled: unhandled.map(String)
+						},
+						{ count: 0, first: [], unhandled: [] }
+					)
+				},
+				600000
+			)
+		}
 		/**
 		 * @param {number} seed
 		 * @returns {Promise<string[]>}
@@ -843,47 +880,12 @@ describe(
 				]
 				: []
 		}
-		for (const [ mode, fuzz, count ] of /** @type {const} */([
-			[ "ws", fuzz_ws, 24 ],
-			[ "sse", fuzz_sse, 24 ]
-		])/**/) {
-			it(
-				mode,
-				async () => {
-					/** @type {string[]} */
-					const failures = []
-					const seeds = sim_seeds(mode, count)
-					let next = 0
-					await Promise.all(
-						Array.from(
-							{ length: 16 },
-							async () => {
-								while (next < seeds.length) {
-									const seed = /** @type {number} */(seeds[next++])/**/
-									const problems = await fuzz(seed)
-									if (problems.length) {
-										failures.push(
-											[
-												`SIM_MODE=${mode} SIM_SEED=${seed}`,
-												...problems
-											].join("\n")
-										)
-									}
-								}
-							}
-						)
-					)
-					assert.deepEqual(
-						{
-							count: failures.length,
-							first: failures.slice(0, 3),
-							unhandled: unhandled.map(String)
-						},
-						{ count: 0, first: [], unhandled: [] }
-					)
-				},
-				600000
-			)
+		/**
+		 * @param {unknown} reason
+		 * @returns {void}
+		 */
+		function on_unhandled(reason) {
+			unhandled.push(reason)
 		}
 	}
 )

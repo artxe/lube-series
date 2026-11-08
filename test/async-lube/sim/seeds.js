@@ -9,19 +9,19 @@ const real = {
 export function catch_unhandled(list) {
 	const listeners = process.listeners("unhandledRejection")
 	process.removeAllListeners("unhandledRejection")
-	/**
-	 * @param {unknown} error
-	 * @returns {void}
-	 */
-	function collect(error) {
-		list.push(error)
-	}
 	process.on("unhandledRejection", collect)
 	return () => {
 		process.off("unhandledRejection", collect)
 		for (const listener of listeners) {
 			process.on("unhandledRejection", listener)
 		}
+	}
+	/**
+	 * @param {unknown} error
+	 * @returns {void}
+	 */
+	function collect(error) {
+		list.push(error)
 	}
 }
 /**

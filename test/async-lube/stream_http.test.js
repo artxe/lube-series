@@ -123,50 +123,6 @@ describe(
 		)
 		/** @type {string} */
 		let base
-		/**
-		 * @param {string} key
-		 * @returns {Promise<boolean>}
-		 */
-		async function closes(key) {
-			const started = Date.now()
-			while (!closed.has(key) && Date.now() - started < 2000) {
-				await sleep(5)
-			}
-			return closed.has(key)
-		}
-		/**
-		 * @param {() => boolean} condition
-		 * @returns {Promise<void>}
-		 */
-		async function eventually(condition) {
-			const started = Date.now()
-			while (!condition()) {
-				if (Date.now() - started > 2000) {
-					assert.fail("Timed out")
-				}
-				await sleep(5)
-			}
-		}
-		/**
-		 * @param {PromiseLike<unknown>} promise
-		 * @returns {Promise<unknown>}
-		 */
-		function rejection(promise) {
-			return Promise.resolve(promise)
-				.then(
-					() => assert.fail("No error occurred"),
-					error => error
-				)
-		}
-		/**
-		 * @param {number} ms
-		 * @returns {Promise<void>}
-		 */
-		function sleep(ms) {
-			return new Promise(
-				resolve => setTimeout(resolve, ms)
-			)
-		}
 		afterAll(
 			() => {
 				server.closeAllConnections()
@@ -311,15 +267,6 @@ describe(
 						}
 					}
 				)
-				/**
-				 * @param {AsyncIterable<unknown>} lines
-				 * @returns {Promise<void>}
-				 */
-				async function read(lines) {
-					for await (const line of lines) {
-						void line
-					}
-				}
 				const dropped = await rejection(
 					read(
 						/** @type {AsyncIterable<unknown>} */(await api.get(
@@ -429,6 +376,15 @@ describe(
 				} finally {
 					vi.useRealTimers()
 				}
+				/**
+				 * @param {AsyncIterable<unknown>} lines
+				 * @returns {Promise<void>}
+				 */
+				async function read(lines) {
+					for await (const line of lines) {
+						void line
+					}
+				}
 			}
 		)
 		it(
@@ -518,17 +474,6 @@ describe(
 						}
 					}
 				)
-				/**
-				 * @param {unknown} data
-				 * @returns {number}
-				 */
-				function parse(data) {
-					const n = /** @type {{ n: unknown }} */(data)/**/.n
-					if (typeof n != "number") {
-						throw TypeError("Not a number")
-					}
-					return n * 10
-				}
 				/** @type {unknown[]} */
 				const values = []
 				const events = api.sse(
@@ -629,6 +574,17 @@ describe(
 					last_event_ids.get("json-poison"),
 					"1"
 				)
+				/**
+				 * @param {unknown} data
+				 * @returns {number}
+				 */
+				function parse(data) {
+					const n = /** @type {{ n: unknown }} */(data)/**/.n
+					if (typeof n != "number") {
+						throw TypeError("Not a number")
+					}
+					return n * 10
+				}
 			}
 		)
 		it(
@@ -865,5 +821,49 @@ describe(
 				assert.isFalse(hits.has("status-cancel"))
 			}
 		)
+		/**
+		 * @param {string} key
+		 * @returns {Promise<boolean>}
+		 */
+		async function closes(key) {
+			const started = Date.now()
+			while (!closed.has(key) && Date.now() - started < 2000) {
+				await sleep(5)
+			}
+			return closed.has(key)
+		}
+		/**
+		 * @param {() => boolean} condition
+		 * @returns {Promise<void>}
+		 */
+		async function eventually(condition) {
+			const started = Date.now()
+			while (!condition()) {
+				if (Date.now() - started > 2000) {
+					assert.fail("Timed out")
+				}
+				await sleep(5)
+			}
+		}
+		/**
+		 * @param {PromiseLike<unknown>} promise
+		 * @returns {Promise<unknown>}
+		 */
+		function rejection(promise) {
+			return Promise.resolve(promise)
+				.then(
+					() => assert.fail("No error occurred"),
+					error => error
+				)
+		}
+		/**
+		 * @param {number} ms
+		 * @returns {Promise<void>}
+		 */
+		function sleep(ms) {
+			return new Promise(
+				resolve => setTimeout(resolve, ms)
+			)
+		}
 	}
 )

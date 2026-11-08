@@ -134,19 +134,6 @@ export function context_of(d, execution) {
 					)
 			}
 			execution.flights++
-			/**
-			 * @param {unknown} error
-			 * @returns {Promise<never>}
-			 */
-			function failed(error) {
-				if (signal.aborted || execution.lost || execution.finished) {
-					throw error
-				}
-				entry.done = true
-				entry.error = saved_error(error)
-				void persist(d, execution)
-				return fail(execution, entry, error)
-			}
 			return Promise.resolve()
 				.then(
 					() => refuse(execution) ?? work(
@@ -179,6 +166,19 @@ export function context_of(d, execution) {
 						check_idle(d, execution)
 					}
 				)
+			/**
+			 * @param {unknown} error
+			 * @returns {Promise<never>}
+			 */
+			function failed(error) {
+				if (signal.aborted || execution.lost || execution.finished) {
+					throw error
+				}
+				entry.done = true
+				entry.error = saved_error(error)
+				void persist(d, execution)
+				return fail(execution, entry, error)
+			}
 		},
 		wait(name, wait_options = {}) {
 			try {
@@ -262,9 +262,21 @@ export function context_of(d, execution) {
 					watch_inbox(d, execution)
 					/** @type {ReturnType<typeof setTimeout>} */
 					let timer
-					/**
-					 * @returns {void}
-					 */
+					if (until != null && until <= Date.now()) {
+						expire()
+					} else {
+						timer = setTimeout(
+							expire,
+							clamp_delay(
+								Math.min(
+									d.idle_ms,
+									until == null ? Infinity : until - Date.now()
+								)
+							)
+						)
+					}
+					waiter.clear = () => clearTimeout(timer)
+					/** @returns {void} */
 					function expire() {
 						if (execution.finished || execution.lost || !list.includes(waiter)) {
 							return
@@ -317,20 +329,6 @@ export function context_of(d, execution) {
 						)
 						reject(error)
 					}
-					if (until != null && until <= Date.now()) {
-						expire()
-					} else {
-						timer = setTimeout(
-							expire,
-							clamp_delay(
-								Math.min(
-									d.idle_ms,
-									until == null ? Infinity : until - Date.now()
-								)
-							)
-						)
-					}
-					waiter.clear = () => clearTimeout(timer)
 				}
 			)
 		}

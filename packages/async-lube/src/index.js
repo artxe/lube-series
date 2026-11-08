@@ -12,6 +12,7 @@ export { default as flow } from "./flow/index.js"
 export { offload } from "./offload.js"
 export { attempt } from "./attempt.js"
 export { limiter } from "./limiter.js"
+export { redial } from "./redial.js"
 export {
 	buffer,
 	channel,

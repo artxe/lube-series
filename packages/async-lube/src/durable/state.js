@@ -44,7 +44,8 @@ export function dueAt(saved) {
 export function push_event(saved, name, at, value) {
 	const event = { at, value }
 	const events = saved.events ??= {}
-	;(events[name] ??= []).push(event)
+	const queue = events[name] ??= []
+	queue.push(event)
 	return event
 }
 /**

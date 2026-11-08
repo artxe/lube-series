@@ -80,9 +80,7 @@ function clear(handle) {
 			: /** @type {{ id: number }} */(handle)/**/.id
 	)
 }
-/**
- * @returns {SimTimer | undefined}
- */
+/** @returns {SimTimer | undefined} */
 function earliest() {
 	/** @type {SimTimer | undefined} */
 	let best
@@ -104,9 +102,7 @@ export async function flush(rounds) {
 		)
 	}
 }
-/**
- * @returns {void}
- */
+/** @returns {void} */
 export function install() {
 	/** @type {Record<string, unknown>} */
 	const target = globalThis
@@ -122,9 +118,7 @@ export function install() {
 	) => add(fn, ms, false)
 	Date.now = () => now
 }
-/**
- * @returns {number}
- */
+/** @returns {number} */
 export function pending_timers() {
 	return timers.size
 }
@@ -134,6 +128,13 @@ export function pending_timers() {
  */
 export function rng(seed) {
 	let state = (Math.imul(seed ^ 0x9e3779b9, 0x85ebca6b) ^ 0xc2b2ae35) >>> 0 || 1
+	return {
+		chance: p => next() < p,
+		int: n => Math.floor(next() * n),
+		next,
+		pick: list => /** @type {(typeof list)[number]} */(list[Math.floor(next() * list.length)])/**/
+	}
+	/** @returns {number} */
 	function next() {
 		state ^= state << 13
 		state >>>= 0
@@ -142,22 +143,12 @@ export function rng(seed) {
 		state >>>= 0
 		return state / 4294967296
 	}
-	return {
-		chance: p => next() < p,
-		int: n => Math.floor(next() * n),
-		next,
-		pick: list => /** @type {(typeof list)[number]} */(list[Math.floor(next() * list.length)])/**/
-	}
 }
-/**
- * @returns {number}
- */
+/** @returns {number} */
 export function time() {
 	return now
 }
-/**
- * @returns {void}
- */
+/** @returns {void} */
 export function uninstall() {
 	timers.clear()
 	globalThis.clearInterval = real.clear_interval

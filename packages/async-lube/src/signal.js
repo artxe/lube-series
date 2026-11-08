@@ -26,6 +26,7 @@ export function link_signal(controller, signal) {
 		() => controller.abort(signal.reason)
 	)
 }
+/** @returns {void} */
 export function noop() {}
 /**
  * @param {AbortSignal} signal
@@ -38,6 +39,7 @@ export function on_abort(signal, callback) {
 	if (!entry) {
 		/** @type {Set<() => void>} */
 		const callbacks = new Set()
+		/** @returns {void} */
 		function listener() {
 			abort_entries.delete(signal)
 			for (const call of [ ...callbacks ]) {

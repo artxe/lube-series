@@ -77,13 +77,6 @@ describe(
 			async () => {
 				vi.useFakeTimers()
 				let calls = 0
-				function poll() {
-					calls++
-					if (calls < 3) {
-						throw Error("pending")
-					}
-					return calls
-				}
 				const approve = flow.input("approve")
 				const run = flow().add(
 					poll,
@@ -123,6 +116,14 @@ describe(
 				)
 				await vi.advanceTimersByTimeAsync(10 * day)
 				assert.equal(await approval, "expired \"\"")
+				/** @returns {number} */
+				function poll() {
+					calls++
+					if (calls < 3) {
+						throw Error("pending")
+					}
+					return calls
+				}
 			}
 		)
 		it(

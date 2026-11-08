@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import { readFileSync } from "node:fs"
 import { createServer } from "node:http"
 import { gzipSync } from "node:zlib"
 /**
@@ -61,9 +62,7 @@ export function read_frames(socket, on_frame) {
 		}
 	)
 }
-/**
- * @returns {Promise<{ base: string, close: () => Promise<void>, hits: Map<string, number> }>}
- */
+/** @returns {Promise<{ base: string, close: () => Promise<void>, hits: Map<string, number> }>} */
 export async function start_server() {
 	/** @type {Map<string, number>} */
 	const hits = new Map()
@@ -71,15 +70,6 @@ export async function start_server() {
 	const releases = new Map()
 	/** @type {Set<import("node:stream").Duplex>} */
 	const upgrades = new Set()
-	/**
-	 * @param {string} key
-	 * @returns {number}
-	 */
-	function hit(key) {
-		const count = (hits.get(key) ?? 0) + 1
-		hits.set(key, count)
-		return count
-	}
 	const server = createServer(
 		async (request, response) => {
 			const url = new URL(
@@ -121,21 +111,6 @@ export async function start_server() {
 			}
 			const body = Buffer.concat(chunks)
 			const key = url.searchParams.get("key") ?? url.pathname
-			/**
-			 * @param {number} status
-			 * @param {unknown} data
-			 * @param {Record<string, string>=} headers
-			 */
-			function json(status, data, headers = {}) {
-				response.writeHead(
-					status,
-					{
-						"Content-Type": "application/json",
-						...headers
-					}
-				)
-				response.end(JSON.stringify(data))
-			}
 			switch (url.pathname) {
 			case "/auth": {
 				hit(key)
@@ -146,6 +121,22 @@ export async function start_server() {
 				}
 				return
 			}
+			case "/worker-module.js":
+				response.writeHead(
+					200,
+					{
+						"Content-Type": "text/javascript"
+					}
+				)
+				response.end(
+					readFileSync(
+						new URL(
+							"./fixtures/store.js",
+							import.meta.url
+						)
+					)
+				)
+				return
 			case "/bad-json":
 				response.writeHead(
 					500,
@@ -393,7 +384,7 @@ export async function start_server() {
 				)
 				response.end(
 					`retry: 5\nid: ${count}\n`
-					+ `data: ${request.method} ${count} ${request.headers.accept} ${last_event_id} ${body}\n\n`
+						+ `data: ${request.method} ${count} ${request.headers.accept} ${last_event_id} ${body}\n\n`
 				)
 				return
 			}
@@ -570,6 +561,22 @@ export async function start_server() {
 			default:
 				json(404, { message: "Not found" })
 			}
+			/**
+			 * @param {number} status
+			 * @param {unknown} data
+			 * @param {Record<string, string>=} headers
+			 * @returns {void}
+			 */
+			function json(status, data, headers = {}) {
+				response.writeHead(
+					status,
+					{
+						"Content-Type": "application/json",
+						...headers
+					}
+				)
+				response.end(JSON.stringify(data))
+			}
 		}
 	)
 	server.on(
@@ -608,9 +615,9 @@ export async function start_server() {
 				?.trim()
 			socket.write(
 				"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
-				+ `Sec-WebSocket-Accept: ${accept}\r\n`
-				+ (protocol ? `Sec-WebSocket-Protocol: ${protocol}\r\n` : "")
-				+ "\r\n"
+					+ `Sec-WebSocket-Accept: ${accept}\r\n`
+					+ (protocol ? `Sec-WebSocket-Protocol: ${protocol}\r\n` : "")
+					+ "\r\n"
 			)
 			socket.on(
 				"close",
@@ -682,6 +689,15 @@ export async function start_server() {
 			}
 		),
 		hits
+	}
+	/**
+	 * @param {string} key
+	 * @returns {number}
+	 */
+	function hit(key) {
+		const count = (hits.get(key) ?? 0) + 1
+		hits.set(key, count)
+		return count
 	}
 }
 /**

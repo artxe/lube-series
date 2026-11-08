@@ -107,6 +107,35 @@ export async function run_each(c, record, token) {
 	/** @type {{ error: unknown, index: number | undefined } | undefined} */
 	let failure
 	let next = 0
+	const workers = Math.min(
+		options.concurrency ?? Infinity,
+		items.length
+	)
+	try {
+		await Promise.all(
+			Array.from({ length: workers }, worker)
+		)
+	} finally {
+		unlink()
+	}
+	if (token != record.token) {
+		return { kind: "stale" }
+	}
+	if (failure) {
+		return {
+			index: failure.index,
+			items: true,
+			kind: "error",
+			value: failure.error
+		}
+	}
+	const values = items.map(
+		(_, index) => done[index]?.value
+	)
+	if (!done.some(item => item?.failed) && !failed_sub_keys(record).length) {
+		record.items = void 0
+	}
+	return { kind: "done", value: values }
 	/**
 	 * @param {unknown} error
 	 * @param {number | undefined} index
@@ -118,6 +147,7 @@ export async function run_each(c, record, token) {
 			new CancelError("Another item failed")
 		)
 	}
+	/** @returns {Promise<void>} */
 	async function worker() {
 		while (!failure && next < items.length) {
 			const index = next++
@@ -211,35 +241,6 @@ export async function run_each(c, record, token) {
 			}
 		}
 	}
-	const workers = Math.min(
-		options.concurrency ?? Infinity,
-		items.length
-	)
-	try {
-		await Promise.all(
-			Array.from({ length: workers }, worker)
-		)
-	} finally {
-		unlink()
-	}
-	if (token != record.token) {
-		return { kind: "stale" }
-	}
-	if (failure) {
-		return {
-			index: failure.index,
-			items: true,
-			kind: "error",
-			value: failure.error
-		}
-	}
-	const values = items.map(
-		(_, index) => done[index]?.value
-	)
-	if (!done.some(item => item?.failed) && !failed_sub_keys(record).length) {
-		record.items = void 0
-	}
-	return { kind: "done", value: values }
 }
 /**
  * @param {unknown} source
@@ -252,7 +253,7 @@ export function to_items(source, signal) {
 	}
 	if (typeof /** @type {Partial<Iterable<unknown>>} */(source)/**/[Symbol.iterator] == "function") {
 		return Array.from(
-		/** @type {Iterable<unknown>} */(source)/**/
+			/** @type {Iterable<unknown>} */(source)/**/
 		)
 	}
 	if (typeof /** @type {Partial<AsyncIterable<unknown>>} */(source)/**/[Symbol.asyncIterator] != "function") {

@@ -74,7 +74,8 @@ export async function send(d, key, name, value) {
 				version: 1
 			}
 		if (next.status == "running" && next.owner && next.owner != d.owner) {
-			(next.inbox ??= []).push({ at, name, value: kept })
+			const inbox = next.inbox ??= []
+			inbox.push({ at, name, value: kept })
 			if (await d.store.put(key, next, saved?.version)) {
 				if (is_due(d, next)) {
 					void resume(d, key).catch(noop)
