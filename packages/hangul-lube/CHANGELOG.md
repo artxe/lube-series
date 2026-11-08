@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.1.0
+
+- **`typeLetter(text, letter)` and `eraseLetter(text)` type and erase one key of a two-set keyboard.**
+  `typeLetter` composes a compatibility jamo into the last character of `text`: a consonant and a
+  vowel make a syllable, two vowels join (`ㅗ` and `ㅏ` into `ㅘ`), a consonant becomes the final
+  and may join the final before it (`ㄹ` and `ㄱ` into `ㄺ`), and a vowel after a final moves it
+  to a new syllable (`값` and `ㅏ` give `갑사`). Two lone consonants join too (`ㄱ` and `ㅅ` into
+  `ㄳ`), and the same key twice never makes a double consonant. `eraseLetter` is one backspace
+  that undoes the last key (`갉` into `갈`, `과` into `고`, `가` into `ㄱ`).
+- **`particle(word, notation)` gives the Korean particle that follows a word.** The notation is
+  `"은(는)"`, `"이(가)"`, `"을(를)"`, `"과(와)"`, `"아(야)"`, `"(이)"` or `"(으)"`, and any other
+  throws a `TypeError`. The form follows the final consonant of the last Hangul syllable, the
+  Korean reading of a number (`3` is 삼), the Korean names of the letters of a Latin capital word
+  (`URL` ends in ㄹ) or the spelling of a lower-case one, and marks at the end are passed over.
+  `"(으)"` gives `""` after ㄹ too, as `(으)로` needs: `"서울" + particle("서울", "(으)") + "로"` is `서울로`.
+
 ## 2.0.0
 
 ### Breaking

@@ -65,6 +65,39 @@ pattern("1+1") //=> "1\\+1"
 
 `searcher(query)?.source` is the source a database can run case-insensitively: `~*` in PostgreSQL, `REGEXP_LIKE(column, searcher_source, 'i')` in MySQL or `$regex` with `$options: "i"` in MongoDB. Use it, not `pattern(query)`, wherever the search box is what the row must match: `pattern` keeps the white space and the invisible characters of the query and lets nothing stand between its letters, so `"도쿄하네다"` misses `"도쿄 하네다"` and a pasted byte order mark makes it match nothing. Such a query reads every row, since a regular expression cannot use an index.
 
+### Particle
+```ts
+import { particle } from "hangul-lube"
+
+"사과" + particle("사과", "이(가)") //=> "사과가"
+"밤" + particle("밤", "은(는)") //=> "밤은"
+"HP" + particle("HP", "을(를)") //=> "HP를"
+"서울" + particle("서울", "(으)") + "로" //=> "서울로"
+"3" + particle("3", "과(와)") //=> "3과"
+particle("밤", "(으)") //=> "으"
+```
+- The notation is one of `"은(는)"`, `"이(가)"`, `"을(를)"`, `"과(와)"`, `"아(야)"`, `"(이)"` and `"(으)"`; any other throws a `TypeError`. `"(이)"` and `"(으)"` give the syllable that goes before the next word (`이에요`, `으로`) and `""` after a vowel; `"(으)"` gives `""` after ㄹ too.
+- The final consonant comes from the last Hangul syllable. A number is read in Korean (`1` is 일, `3` is 삼, `10` is 십, `1,000` is 천), a Latin capital word by the Korean names of its letters (`URL` ends in ㄹ, `HP` in a vowel), and a lower-case word by its spelling (`l` is ㄹ, `m`, `n` and `ng` a consonant).
+- Marks at the end, such as quotes and `!`, are passed over, and anything else reads as ending in a vowel.
+
+### Typing automaton
+```ts
+import { eraseLetter, typeLetter } from "hangul-lube"
+
+typeLetter("ㄱ", "ㅏ") //=> "가"
+typeLetter("가", "ㄱ") //=> "각"
+typeLetter("각", "ㅏ") //=> "가가"
+typeLetter("갑", "ㅅ") //=> "값"
+typeLetter("값", "ㅏ") //=> "갑사"
+eraseLetter("값") //=> "갑"
+eraseLetter("각") //=> "가"
+eraseLetter("가") //=> "ㄱ"
+```
+- `typeLetter(text, letter)` types one key of a two-set (dubeolsik) keyboard into the last character of `text`. `letter` is a compatibility jamo (`ㄱ`, `ㅏ`, and `ㄲ`, `ㅒ` from the shift key); anything else is appended as it is.
+- Two vowels join (`ㅗ` and `ㅏ` into `ㅘ`), a consonant after a syllable becomes its final and joins the final before it into a compound one (`ㄹ` and `ㄱ` into `ㄺ`), and a vowel after a final moves it to a new syllable, a compound final moving only its second consonant. Two lone consonants join the same way (`ㄱ` and `ㅅ` into `ㄳ`) and a vowel splits them again.
+- The same key never makes a double consonant: `ㄱ` after `각` is appended, since `ㄲ` needs the shift key.
+- `eraseLetter(text)` is one backspace: it takes back the last key, so a compound final loses its second consonant, a joined vowel splits back, and a syllable with a simple vowel and no final leaves its initial. Anything else loses its last code point, and `""` stays `""`.
+
 ### Typing rules
 - A consonant matches itself and every syllable it starts, and the last syllable matches the syllables it grows into while typing: `된자` matches `된장찌개` and `도` matches `돼지국밥`. A lone letter grows the same way: `ㄱ` matches `ㄳ` and `ㅗ` matches `ㅘ`.
 - Every earlier syllable is finished and matches only itself: `오리` matches `오리털` but not `올리브`, while `ㅇ리` and `ㅇㄹ` match both.

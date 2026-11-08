@@ -1,2 +1,5 @@
+export { default as eraseLetter } from "./erase_letter.js"
+export { default as particle } from "./particle.js"
 export { default as pattern } from "./pattern.js"
 export { default as searcher } from "./searcher.js"
+export { default as typeLetter } from "./type_letter.js"

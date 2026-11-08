@@ -58,15 +58,76 @@ const final_growths = {
 }
 /**
  * @param {number} seed
+ * @returns {void}
  */
 function check_word(seed) {
 	const random = create_random(seed)
+	const word = random_word()
+	const latin = random() < 0.2
+		? pick(
+			[ "CNC-3", "cnc3", "A-", "no.7 " ]
+		)
+		: ""
+	const by_initials = random() < 0.3
+	const states = type(
+		[
+			...latin,
+			...by_initials
+				? [ ...word ].map(
+					letter => /** @type {string} */(jamo(letter)?.[0])/**/
+				)
+				: keys_of(word)
+		]
+	)
+	if (!by_initials) {
+		assert.equal(
+			states.at(-1),
+			latin + word,
+			`seed ${seed}`
+		)
+	}
+	const text = `${pick([ "", "CNC-3호기 ", "(주)", "A라인/" ])}${latin.toUpperCase()}${word}${pick([ "", " 정비", "#2" ])}`
+	const spaced = [ ...text ].join(random() < 0.5 ? " " : "-")
+	for (const state of states) {
+		const at = `seed ${seed}: ${JSON.stringify(state)} in ${JSON.stringify(text)}`
+		assert.isTrue(
+			RegExp(pattern(state), "i").test(text),
+			`pattern ${at}`
+		)
+		const compiled = searcher(state)
+		assert.isTrue(
+			compiled?.test(text),
+			`searcher ${at}`
+		)
+		assert.isTrue(
+			compiled?.test(spaced),
+			`searcher ${at} ${spaced}`
+		)
+		assert.equal(
+			searcher(
+				state.replace(
+					/(?<=.)./gu,
+					letter => random() < 0.2 ? `​${letter}` : letter
+				)
+			)?.source,
+			compiled?.source,
+			at
+		)
+		for (let count = 0; count < 4; count++) {
+			const other = latin + (random() < 0.2 ? random_word() : near(word))
+			assert.equal(
+				RegExp(pattern(state), "i").test(other),
+				reference_matches(state, other),
+				`seed ${seed}: ${JSON.stringify(state)} on ${JSON.stringify(other)}`
+			)
+		}
+	}
 	/**
-	 * @param {string} word
+	 * @param {string} candidate
 	 * @returns {string}
 	 */
-	function near(word) {
-		const letters = [ ...word ]
+	function near(candidate) {
+		const letters = [ ...candidate ]
 		const index = Math.floor(random() * letters.length)
 		const [ initial, medial, final ] = /** @type {[string, string, string]} */(jamo(letters[index]))/**/
 		const change = Math.floor(random() * 5)
@@ -148,71 +209,11 @@ function check_word(seed) {
 	/** @returns {string} */
 	function random_word() {
 		const rich = random() < 0.5
-		let word = ""
+		let built = ""
 		for (let count = 1 + Math.floor(random() * 4); count > 0; count--) {
-			word += random_syllable(rich)
+			built += random_syllable(rich)
 		}
-		return word
-	}
-	const word = random_word()
-	const latin = random() < 0.2
-		? pick(
-			[ "CNC-3", "cnc3", "A-", "no.7 " ]
-		)
-		: ""
-	const by_initials = random() < 0.3
-	const states = type(
-		[
-			...latin,
-			...by_initials
-				? [ ...word ].map(
-					letter => /** @type {string} */(jamo(letter)?.[0])/**/
-				)
-				: keys_of(word)
-		]
-	)
-	if (!by_initials) {
-		assert.equal(
-			states.at(-1),
-			latin + word,
-			`seed ${seed}`
-		)
-	}
-	const text = `${pick([ "", "CNC-3호기 ", "(주)", "A라인/" ])}${latin.toUpperCase()}${word}${pick([ "", " 정비", "#2" ])}`
-	const spaced = [ ...text ].join(random() < 0.5 ? " " : "-")
-	for (const state of states) {
-		const at = `seed ${seed}: ${JSON.stringify(state)} in ${JSON.stringify(text)}`
-		assert.isTrue(
-			RegExp(pattern(state), "i").test(text),
-			`pattern ${at}`
-		)
-		const compiled = searcher(state)
-		assert.isTrue(
-			compiled?.test(text),
-			`searcher ${at}`
-		)
-		assert.isTrue(
-			compiled?.test(spaced),
-			`searcher ${at} ${spaced}`
-		)
-		assert.equal(
-			searcher(
-				state.replace(
-					/(?<=.)./gu,
-					letter => random() < 0.2 ? `​${letter}` : letter
-				)
-			)?.source,
-			compiled?.source,
-			at
-		)
-		for (let count = 0; count < 4; count++) {
-			const other = latin + (random() < 0.2 ? random_word() : near(word))
-			assert.equal(
-				RegExp(pattern(state), "i").test(other),
-				reference_matches(state, other),
-				`seed ${seed}: ${JSON.stringify(state)} on ${JSON.stringify(other)}`
-			)
-		}
+		return built
 	}
 }
 /**
@@ -270,6 +271,7 @@ function keys_of(word) {
 function reference_matches(query, text) {
 	const letters = [ ...text ]
 	const last = [ ...query ].length - 1
+	return last < 0 || letters.some((_, index) => match_at(index))
 	/**
 	 * @param {number} start
 	 * @returns {boolean}
@@ -340,7 +342,6 @@ function reference_matches(query, text) {
 		}
 		return true
 	}
-	return last < 0 || letters.some((_, index) => match_at(index))
 }
 /**
  * @param {string | undefined} letter
@@ -372,20 +373,6 @@ function type(typed) {
 	let final = ""
 	/** @type {string[]} */
 	const states = []
-	/**
-	 * @param {string} next_initial
-	 * @param {string} next_medial
-	 */
-	function commit(next_initial, next_medial) {
-		done += composing()
-		initial = next_initial
-		medial = next_medial
-		final = ""
-	}
-	/** @returns {string} */
-	function composing() {
-		return initial && medial ? syllable(initial, medial, final || " ") : initial || medial
-	}
 	for (const key of typed) {
 		if (!initials.includes(key) && !medials.includes(key)) {
 			done += composing() + key
@@ -421,6 +408,21 @@ function type(typed) {
 		states.push(done + composing())
 	}
 	return states
+	/**
+	 * @param {string} next_initial
+	 * @param {string} next_medial
+	 * @returns {void}
+	 */
+	function commit(next_initial, next_medial) {
+		done += composing()
+		initial = next_initial
+		medial = next_medial
+		final = ""
+	}
+	/** @returns {string} */
+	function composing() {
+		return initial && medial ? syllable(initial, medial, final || " ") : initial || medial
+	}
 }
 describe(
 	"typing",

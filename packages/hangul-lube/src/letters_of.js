@@ -1,5 +1,4 @@
-const final_letters = "ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ"
-const initial_letters = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ"
+import { final_letters, initial_letters } from "./jamo.js"
 /**
  * @param {string} text
  * @returns {string[]}

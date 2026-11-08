@@ -259,23 +259,6 @@ describe(
 					"\uD83D"
 				]
 				let seed = 7
-				/**
-				 * @param {number} length
-				 * @returns {string}
-				 */
-				function make(length) {
-					return Array.from(
-						{ length },
-						() => /** @type {string} */(alphabet[Math.floor(random() * alphabet.length)])/**/
-					).join("")
-				}
-				/** @returns {number} */
-				function random() {
-					seed = seed + 0x6d2b79f5 | 0
-					let value = Math.imul(seed ^ seed >>> 15, 1 | seed)
-					value = value + Math.imul(value ^ value >>> 7, 61 | value) ^ value
-					return ((value ^ value >>> 14) >>> 0) / 4294967296
-				}
 				for (let index = 0; index < 3000; index++) {
 					const query = make(1 + Math.floor(random() * 4))
 					const text = make(Math.floor(random() * 10))
@@ -298,6 +281,23 @@ describe(
 						[ expected?.index, expected?.[0] ],
 						`${query} ${text}`
 					)
+				}
+				/**
+				 * @param {number} length
+				 * @returns {string}
+				 */
+				function make(length) {
+					return Array.from(
+						{ length },
+						() => /** @type {string} */(alphabet[Math.floor(random() * alphabet.length)])/**/
+					).join("")
+				}
+				/** @returns {number} */
+				function random() {
+					seed = seed + 0x6d2b79f5 | 0
+					let value = Math.imul(seed ^ seed >>> 15, 1 | seed)
+					value = value + Math.imul(value ^ value >>> 7, 61 | value) ^ value
+					return ((value ^ value >>> 14) >>> 0) / 4294967296
 				}
 			}
 		)
