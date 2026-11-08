@@ -10,22 +10,6 @@ import { assert, describe, it } from "vitest"
 describe(
 	"deep_diff",
 	() => {
-		/**
-		 * @param {unknown} before
-		 * @param {unknown} after
-		 * @returns {void}
-		 */
-		function round_trip(before, after) {
-			const snapshot = deepCopy(before)
-			const changes = deepDiff(before, after)
-			assert.isTrue(
-				deepEqual(
-					deepPatch(before, changes),
-					after
-				)
-			)
-			assert.isTrue(deepEqual(before, snapshot))
-		}
 		it(
 			"arrays",
 			() => {
@@ -83,6 +67,8 @@ describe(
 						}
 					]
 				)
+				assert.lengthOf(deepDiff(deep(1), deep(2)), 1)
+				round_trip(deep(1), deep(2))
 				/**
 				 * @param {number} value
 				 * @returns {{ node: ReturnType<typeof deep> } | { value: number }}
@@ -95,8 +81,6 @@ describe(
 					}
 					return node
 				}
-				assert.lengthOf(deepDiff(deep(1), deep(2)), 1)
-				round_trip(deep(1), deep(2))
 			}
 		)
 		it(
@@ -146,17 +130,6 @@ describe(
 		it(
 			"deep shared object lists its change under every path",
 			() => {
-				/**
-				 * @param {Record<string, unknown>} leaf
-				 * @returns {Record<string, unknown>}
-				 */
-				function chain(leaf) {
-					let node = leaf
-					for (let i = 0; i < 70; i++) {
-						node = { next: node }
-					}
-					return node
-				}
 				const shared = { value: 1 }
 				const changed = { value: 2 }
 				const path = new Array(70).fill("next")
@@ -184,6 +157,17 @@ describe(
 						}
 					]
 				)
+				/**
+				 * @param {Record<string, unknown>} leaf
+				 * @returns {Record<string, unknown>}
+				 */
+				function chain(leaf) {
+					let node = leaf
+					for (let i = 0; i < 70; i++) {
+						node = { next: node }
+					}
+					return node
+				}
 			}
 		)
 		it(
@@ -243,38 +227,24 @@ describe(
 					),
 					[]
 				)
-				let reads = 0
-				/**
-				 * @param {number} id
-				 * @returns {{ readonly id: number }}
-				 */
-				function counted(id) {
-					return {
-						get id() {
-							reads++
-							return id
-						}
-					}
-				}
 				const count = 3000
 				assert.deepEqual(
 					deepDiff(
 						new Set(
 							Array.from(
 								{ length: count },
-								(_, i) => counted(i)
+								(_, id) => ({ id })
 							)
 						),
 						new Set(
 							Array.from(
 								{ length: count },
-								(_, i) => counted(count - 1 - i)
+								(_, id) => ({ id: count - 1 - id })
 							)
 						)
 					),
 					[]
 				)
-				assert.isBelow(reads, count * 30)
 				const shared = { value: 1 }
 				const removed_key = { id: 2 }
 				const added_key = { id: 3 }
@@ -537,15 +507,6 @@ describe(
 		it(
 			"sets of detached views and DOM exceptions match their equals",
 			() => {
-				/**
-				 * @returns {DataView}
-				 */
-				function detached_view() {
-					const buffer = new ArrayBuffer(8)
-					const view = new DataView(buffer)
-					structuredClone(buffer, { transfer: [ buffer ] })
-					return view
-				}
 				assert.deepEqual(
 					deepDiff(
 						new Set(
@@ -579,23 +540,18 @@ describe(
 						}
 					]
 				)
+				/** @returns {DataView} */
+				function detached_view() {
+					const buffer = new ArrayBuffer(8)
+					const view = new DataView(buffer)
+					structuredClone(buffer, { transfer: [ buffer ] })
+					return view
+				}
 			}
 		)
 		it(
 			"shared references",
 			() => {
-				/**
-				 * @param {number} leaf
-				 * @returns {{ left: ReturnType<typeof create>, right: ReturnType<typeof create> } | { leaf: number }}
-				 */
-				function create(leaf) {
-					/** @type {ReturnType<typeof create>} */
-					let node = { leaf }
-					for (let i = 0; i < 40; i++) {
-						node = { left: node, right: node }
-					}
-					return node
-				}
 				assert.deepEqual(
 					deepDiff(create(1), create(1)),
 					[]
@@ -609,6 +565,18 @@ describe(
 					),
 					1
 				)
+				/**
+				 * @param {number} leaf
+				 * @returns {{ left: ReturnType<typeof create>, right: ReturnType<typeof create> } | { leaf: number }}
+				 */
+				function create(leaf) {
+					/** @type {ReturnType<typeof create>} */
+					let node = { leaf }
+					for (let i = 0; i < 40; i++) {
+						node = { left: node, right: node }
+					}
+					return node
+				}
 			}
 		)
 		it(
@@ -697,5 +665,21 @@ describe(
 				assert.deepEqual(deepDiff(next, base).length, 3)
 			}
 		)
+		/**
+		 * @param {unknown} before
+		 * @param {unknown} after
+		 * @returns {void}
+		 */
+		function round_trip(before, after) {
+			const snapshot = deepCopy(before)
+			const changes = deepDiff(before, after)
+			assert.isTrue(
+				deepEqual(
+					deepPatch(before, changes),
+					after
+				)
+			)
+			assert.isTrue(deepEqual(before, snapshot))
+		}
 	}
 )

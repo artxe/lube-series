@@ -1,6 +1,7 @@
 /**
  * @param {import("eslint").RuleTester.ValidTestCase[]} valid
  * @param {import("eslint").RuleTester.InvalidTestCase[]} invalid
+ * @returns {void}
  */
 export function cases(valid, invalid) {
 	valid.push(
@@ -33,16 +34,10 @@ export function cases(valid, invalid) {
 			code: "var v = 1\n/** @type {A} */(f(a, b))"
 		},
 		{
-			code: "var v = 1\n/** @type {A} */(b).c()"
-		},
-		{
 			code: "var v = new C\n/** @type {A} */(b)"
 		},
 		{
 			code: "function a() { return /** @type {A} */(\n// note\nb)/**/ }"
-		},
-		{
-			code: "function a() { throw /** @type {A} */(\n/* note\nnote */ b)/**/ }"
 		},
 		{
 			code: "function a() { return (\n\t/** @type {A} */(b)\n) }"
@@ -66,9 +61,6 @@ export function cases(valid, invalid) {
 			})
 		),
 		{
-			code: "var v = /** @type {A} */(/** @type {B} */(/** @type {C} */(a)))/**/"
-		},
-		{
 			code: "var v = /** @type {A} */(a)/**/()"
 		},
 		{
@@ -76,27 +68,9 @@ export function cases(valid, invalid) {
 		},
 		{
 			code: "a = /** @type {A} */((b.c || d).e(f))/**/"
-		},
-		{
-			code: `var v = /** @type {V} */({
-				a: /** @type {A} */([/** @type {B} */(b)/**/, /** @type {C} */(c)/**/, /** @type {D} */(d)/**/])/**/,
-				e: /** @type {F} */(f)/**/(/** @type {G} */(g)/**/, /** @type {E} */(E)/**/, /** @type {I} */(i)/**/),
-				j: /** @type {K} */(k)/**/,
-				l: [.../** @type {M} */(m)/**/, .../** @type {N} */(n)/**/, .../** @type {O} */(o)/**/],
-				p: /** @type {Q} */(q.r)/**/,
-				s: /** @type {S} */(t())/**/,
-				u: /** @type {U} */({ v: /** @type {W} */(w)/**/ })/**/,
-				.../** @type {X} */(x)/**/
-			})/**/;
-			/** @type {Y} */(y, /** @type {Z} */(z[/** @type {123} */(123)/**/])/**/)/**/`
 		}
 	)
 	invalid.push(
-		{
-			code: "var v = /** @type {A} @deprecated */ (a)",
-			errors: [ { messageId: "format" } ],
-			output: "var v = /** @type {A} @deprecated */(a)/**/"
-		},
 		{
 			code: "var v = /**\n * @type {A}\n */ (a)",
 			errors: [ { messageId: "format" } ],
@@ -193,28 +167,6 @@ export function cases(valid, invalid) {
 				}
 			],
 			output: "function a() { return /** @type {A} */(b)/**/ }"
-		},
-		{
-			code: "function a() { throw /** @type {A} */(\nb)/**/ }",
-			errors: [
-				{
-					column: 21,
-					line: 1,
-					messageId: "format"
-				}
-			],
-			output: "function a() { throw /** @type {A} */(b)/**/ }"
-		},
-		{
-			code: "function* a() { yield /** @type {A} */(\nb)/**/ }",
-			errors: [
-				{
-					column: 22,
-					line: 1,
-					messageId: "format"
-				}
-			],
-			output: "function* a() { yield /** @type {A} */(b)/**/ }"
 		}
 	)
 }

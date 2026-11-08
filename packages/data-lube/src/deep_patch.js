@@ -95,7 +95,8 @@ function apply_change(draft, changes, index, copied) {
 				}
 			)
 		} else {
-			/** @type {Record<PropertyKey, unknown>} */(target)/**/[/** @type {PropertyKey} */(key)/**/] = value
+			const record = /** @type {Record<PropertyKey, unknown>} */(target)/**/
+			record[/** @type {PropertyKey} */(key)/**/] = value
 		}
 		break
 	case "Set": {
@@ -279,8 +280,8 @@ function not_container(change, position, index, last) {
 		`${label(change, position)} has a path through a value that is not a plain object, array${last
 			? ", Map or Set"
 			: " or Map"}: ${index
-			? `segment ${index} of ${change.path.length}`
-			: "the root"}`
+				? `segment ${index} of ${change.path.length}`
+				: "the root"}`
 	)
 }
 /**

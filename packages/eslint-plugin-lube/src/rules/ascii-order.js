@@ -1,3 +1,4 @@
+import { compare } from "../utils/order_compare.js"
 import { create_source_text } from "../utils/source_text.js"
 const not_static = Symbol("not static")
 const portable_flags_regex = /^[gimsuy]*$/
@@ -60,22 +61,6 @@ const closers = new Set([ ")", "]", "}" ])
 const member_separators = new Set([ ",", ";" ])
 const shebang_types = new Set([ "Hashbang", "Shebang" ])
 /**
- * @param {import("../../private.js").OrderEntry} a
- * @param {import("../../private.js").OrderEntry} b
- * @returns {number}
- */
-function compare(a, b) {
-	const rank = (a.rank ?? 1) - (b.rank ?? 1)
-	if (rank) {
-		return rank
-	}
-	return a.name < b.name
-		? -1
-		: a.name > b.name
-			? 1
-			: 0
-}
-/**
  * @param {import("../../private.js").Comment[]} comments
  * @param {number} line
  * @returns {number}
@@ -93,11 +78,13 @@ function count_same_line(comments, line) {
 }
 /**
  * @param {import("eslint").Rule.RuleContext} context
+ * @returns {{ verify: (entries: import("../../private.js").OrderEntry[], message_id: string, layout: import("../../private.js").OrderLayout, get_level?: ((node: import("../../private.js").OrderNode) => number) | undefined) => void; }}
  */
 function create_reorder(context) {
 	const source_code = context.sourceCode
 	const source = create_source_text(source_code)
 	const text = source.text
+	return { verify }
 	/**
 	 * @param {import("../../private.js").OrderEntry} entry
 	 * @param {import("../../private.js").OrderLayout} layout
@@ -216,11 +203,11 @@ function create_reorder(context) {
 			const has_tail = item.tail_start < item.after
 			if (
 				item.leading && !slot.break_before
-				|| i == 0 && slot.head && !slot.break_before
-				|| slot.header && item != slot
-				|| slot.tail_start < slot.after && !slot.break_after && (i < last_index || !slot.closes)
-				|| has_tail && !slot.break_after && (i < last_index || item.tail_line)
-				|| layout == "statement" && i < last_index && !item.terminated && !slot.break_after
+					|| i == 0 && slot.head && !slot.break_before
+					|| slot.header && item != slot
+					|| slot.tail_start < slot.after && !slot.break_after && (i < last_index || !slot.closes)
+					|| has_tail && !slot.break_after && (i < last_index || item.tail_line)
+					|| layout == "statement" && i < last_index && !item.terminated && !slot.break_after
 			) {
 				return null
 			}
@@ -302,7 +289,6 @@ function create_reorder(context) {
 			}
 		)
 	}
-	return { verify }
 }
 /**
  * @param {import("../../private.js").OrderItem[]} items
@@ -409,6 +395,107 @@ export default {
 		const default_exports = new Set()
 		/** @type {Parameters<typeof verify>[]} */
 		const pending = []
+		/** @type {import("../../private.js").OrderRuleListener} */
+		const listener = {
+			BlockStatement: verify_statements,
+			ExportNamedDeclaration: node => {
+				if (check_names) {
+					verify_nodes(
+						node.specifiers,
+						get_specifier_name,
+						"names",
+						"sequence"
+					)
+				}
+			},
+			ImportDeclaration: node => {
+				if (check_names) {
+					verify_nodes(
+						node.specifiers,
+						get_specifier_name,
+						"names",
+						"sequence"
+					)
+				}
+			},
+			ObjectExpression: node => {
+				if (!check_keys) {
+					return
+				}
+				const condition = is_package_condition(node)
+				verify_nodes(
+					node.properties,
+					get_key_name,
+					condition ? "conditions" : "keys",
+					"sequence",
+					classify,
+					condition ? get_condition_rank : undefined
+				)
+			},
+			ObjectPattern: node => {
+				if (check_keys) {
+					/** @type {Map<import("../../private.js").OrderNode, string[]>} */
+					const targets = new Map()
+					/** @type {Set<string>} */
+					const seen = new Set()
+					/** @type {Set<string>} */
+					const repeated = new Set()
+					for (const property of node.properties) {
+						const names = collect_targets(property, [])
+						for (const name of new Set(names)) {
+							if (seen.has(name)) {
+								repeated.add(name)
+							}
+							seen.add(name)
+						}
+						targets.set(property, names)
+					}
+					verify_nodes(
+						node.properties,
+						get_key_name,
+						"keys",
+						"sequence",
+						property => targets.get(property)?.some(name => repeated.has(name))
+							? 2
+							: classify_pattern(property)
+					)
+				}
+			},
+			Program: node => {
+				collect_default_exports(node)
+				verify_statements(node)
+			},
+			"Program:exit": () => {
+				for (let i = pending.length - 1; i >= 0; i--) {
+					verify(
+						.../** @type {Parameters<typeof verify>} */(pending[i])/**/
+					)
+				}
+			},
+			StaticBlock: verify_statements,
+			TSInterfaceBody: node => {
+				if (check_keys) {
+					verify_nodes(
+						node.body,
+						get_key_name,
+						"keys",
+						"member"
+					)
+				}
+			},
+			TSModuleBlock: verify_statements,
+			TSTypeLiteral: node => {
+				if (check_keys) {
+					verify_nodes(
+						node.members,
+						get_key_name,
+						"keys",
+						"member"
+					)
+				}
+			}
+		}
+		return /** @type {import("eslint").Rule.RuleListener} */(/** @type {unknown} */(listener))/**/
 		/**
 		 * @param {import("../../private.js").OrderNode} node
 		 * @returns {number}
@@ -534,8 +621,8 @@ export default {
 			const args = node.arguments.map(static_value)
 			if (
 				args.includes(not_static)
-				|| (callee.name.includes("Array") || callee.name == "DataView") && args.some(is_large)
-				|| callee.name == "RegExp" && !is_portable_regexp(args)
+					|| (callee.name.includes("Array") || callee.name == "DataView") && args.some(is_large)
+					|| callee.name == "RegExp" && !is_portable_regexp(args)
 			) {
 				return not_static
 			}
@@ -694,8 +781,8 @@ export default {
 			const parent = /** @type {import("eslint").Rule.Node} */(declaration)/**/.parent
 			if (
 				parent?.type == "SwitchCase"
-				|| parent?.parent?.type == "SwitchCase"
-				|| /** @type {[number, number]} */(node.range)/**/[0] < /** @type {[number, number]} */(declaration.range)/**/[1]
+					|| parent?.parent?.type == "SwitchCase"
+					|| /** @type {[number, number]} */(node.range)/**/[0] < /** @type {[number, number]} */(declaration.range)/**/[1]
 			) {
 				return false
 			}
@@ -892,107 +979,6 @@ export default {
 				}
 			}
 		}
-		/** @type {import("../../private.js").OrderRuleListener} */
-		const listener = {
-			BlockStatement: verify_statements,
-			ExportNamedDeclaration: node => {
-				if (check_names) {
-					verify_nodes(
-						node.specifiers,
-						get_specifier_name,
-						"names",
-						"sequence"
-					)
-				}
-			},
-			ImportDeclaration: node => {
-				if (check_names) {
-					verify_nodes(
-						node.specifiers,
-						get_specifier_name,
-						"names",
-						"sequence"
-					)
-				}
-			},
-			ObjectExpression: node => {
-				if (!check_keys) {
-					return
-				}
-				const condition = is_package_condition(node)
-				verify_nodes(
-					node.properties,
-					get_key_name,
-					condition ? "conditions" : "keys",
-					"sequence",
-					classify,
-					condition ? get_condition_rank : undefined
-				)
-			},
-			ObjectPattern: node => {
-				if (check_keys) {
-					/** @type {Map<import("../../private.js").OrderNode, string[]>} */
-					const targets = new Map()
-					/** @type {Set<string>} */
-					const seen = new Set()
-					/** @type {Set<string>} */
-					const repeated = new Set()
-					for (const property of node.properties) {
-						const names = collect_targets(property, [])
-						for (const name of new Set(names)) {
-							if (seen.has(name)) {
-								repeated.add(name)
-							}
-							seen.add(name)
-						}
-						targets.set(property, names)
-					}
-					verify_nodes(
-						node.properties,
-						get_key_name,
-						"keys",
-						"sequence",
-						property => targets.get(property)?.some(name => repeated.has(name))
-							? 2
-							: classify_pattern(property)
-					)
-				}
-			},
-			Program: node => {
-				collect_default_exports(node)
-				verify_statements(node)
-			},
-			"Program:exit": () => {
-				for (let i = pending.length - 1; i >= 0; i--) {
-					verify(
-						.../** @type {Parameters<typeof verify>} */(pending[i])/**/
-					)
-				}
-			},
-			StaticBlock: verify_statements,
-			TSInterfaceBody: node => {
-				if (check_keys) {
-					verify_nodes(
-						node.body,
-						get_key_name,
-						"keys",
-						"member"
-					)
-				}
-			},
-			TSModuleBlock: verify_statements,
-			TSTypeLiteral: node => {
-				if (check_keys) {
-					verify_nodes(
-						node.members,
-						get_key_name,
-						"keys",
-						"member"
-					)
-				}
-			}
-		}
-		return /** @type {import("eslint").Rule.RuleListener} */(/** @type {unknown} */(listener))/**/
 	},
 	meta: {
 		docs: {

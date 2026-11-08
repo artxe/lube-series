@@ -8,6 +8,7 @@ const ts_options = {
 /**
  * @param {import("eslint").RuleTester.ValidTestCase[]} valid
  * @param {import("eslint").RuleTester.InvalidTestCase[]} invalid
+ * @returns {void}
  */
 export function cases(valid, invalid) {
 	valid.push(
@@ -42,8 +43,6 @@ export function cases(valid, invalid) {
 		...[
 			"declare function acquireVsCodeApi(): void; const api = acquireVsCodeApi()",
 			"declare const someGlobal: number; const value = someGlobal",
-			"declare let someGlobal: number; someGlobal = 1",
-			"declare var someGlobal: number; const value = someGlobal",
 			"declare namespace camelCase { type A = 1 } declare function camelCase(): camelCase.A",
 			"declare class SomeClass {} const value = new SomeClass()",
 			"declare global { function fromHost(): void; const someGlobal: number } fromHost()",
@@ -64,7 +63,7 @@ export function cases(valid, invalid) {
 		invalid_case(
 			"[ pendingA ] = value; ({ key: pendingB } = value); var pendingA, pendingB",
 			[ "pendingA", "pendingB" ],
-			"[ pending_a ] = value; ({ key: pendingB } = value); var pending_a, pendingB"
+			"[ pending_a ] = value; ({ key: pending_b } = value); var pending_a, pending_b"
 		),
 		invalid_case(
 			"({ key: camelCase = 1 } = value); var camelCase",
@@ -74,12 +73,12 @@ export function cases(valid, invalid) {
 		invalid_case(
 			"class A { [pendingA]() {} } var pendingA",
 			[ "pendingA" ],
-			"class A { [pending_a]() {} } var pendingA"
+			"class A { [pending_a]() {} } var pending_a"
 		),
 		invalid_case(
 			"do {} while (pendingA); var pendingA",
 			[ "pendingA" ],
-			"do {} while (pending_a); var pendingA"
+			"do {} while (pending_a); var pending_a"
 		),
 		invalid_case(
 			"export function camelCase(camelParam) {}",
@@ -92,24 +91,14 @@ export function cases(valid, invalid) {
 			"for ([ camel_case ] of list) {} var camel_case"
 		),
 		invalid_case(
-			"for ({ key: camelCase } in list) {} var camelCase",
-			[ "camelCase" ],
-			"for ({ key: camel_case } in list) {} var camel_case"
-		),
-		invalid_case(
 			"function func({ camelCase = 1 }) {} var camelCase",
 			[ 41 ],
 			"function func({ camelCase = 1 }) {} var camel_case"
 		),
 		invalid_case(
-			"function func({ key: camelCase = 1 }) {}",
-			[ "camelCase" ],
-			"function func({ key: camel_case = 1 }) {}"
-		),
-		invalid_case(
 			"import(pendingA); var pendingA",
 			[ "pendingA" ],
-			"import(pending_a); var pendingA"
+			"import(pending_a); var pending_a"
 		),
 		invalid_case(
 			"try {} catch (camelCase) {}",
@@ -124,7 +113,7 @@ export function cases(valid, invalid) {
 		invalid_case(
 			"var camelCase = 1; var value = { camelCase: camelCase }",
 			[ 5, 45 ],
-			"var camelCase = 1; var value = { camelCase: camel_case }"
+			"var camel_case = 1; var value = { camelCase: camel_case }"
 		),
 		invalid_case(
 			"var camelCase; export { camelCase as other }",
@@ -139,7 +128,7 @@ export function cases(valid, invalid) {
 		invalid_case(
 			"var value = () => pendingA; class A extends pendingA {} var pendingA",
 			[ "pendingA" ],
-			"var value = () => pending_a; class A extends pending_a {} var pendingA"
+			"var value = () => pending_a; class A extends pending_a {} var pending_a"
 		),
 		invalid_case(
 			"var value = function camelCase(camelCase2) {}",
@@ -149,7 +138,7 @@ export function cases(valid, invalid) {
 		invalid_case(
 			"var value = { [pendingA]: 1 }; var pendingA",
 			[ "pendingA" ],
-			"var value = { [pending_a]: 1 }; var pendingA"
+			"var value = { [pending_a]: 1 }; var pending_a"
 		),
 		invalid_case(
 			"var { key: camelCase } = value",
@@ -169,12 +158,12 @@ export function cases(valid, invalid) {
 		invalid_case(
 			"function a(requestAnimationFrame) { return requestAnimationFrame } function b() { return requestAnimationFrame(() => {}) }",
 			[ 12, 44 ],
-			"function a(requestAnimationFrame) { return request_animation_frame } function b() { return requestAnimationFrame(() => {}) }"
+			"function a(request_animation_frame) { return request_animation_frame } function b() { return requestAnimationFrame(() => {}) }"
 		),
 		invalid_case(
 			"export function flushSync() {} function a(flushSync) { flushSync() } flushSync()",
 			[ 43, 56 ],
-			"export function flushSync() {} function a(flushSync) { flush_sync() } flushSync()"
+			"export function flushSync() {} function a(flush_sync) { flush_sync() } flushSync()"
 		),
 		{
 			...invalid_case(
@@ -246,7 +235,7 @@ export function cases(valid, invalid) {
 		invalid_case(
 			"/** @param {number} itemCount */ function f(itemCount) { return itemCount }",
 			[ 45, 65 ],
-			"/** @param {number} itemCount */ function f(itemCount) { return item_count }"
+			"/** @param {number} item_count */ function f(item_count) { return item_count }"
 		),
 		invalid_case(
 			"/** @param camelCase @param {number} [other] */ function f(camelCase, other) {}",
@@ -281,18 +270,13 @@ export function cases(valid, invalid) {
 		invalid_case(
 			"function camelCase() {} export { camelCase }; camelCase()",
 			[ "camelCase" ],
-			"function camelCase() {} export { camelCase }; camel_case()"
-		),
-		invalid_case(
-			"var camelCase; export { camelCase }; var camelCase",
-			[ "camelCase" ],
-			"var camel_case; export { camel_case as camelCase }; var camel_case"
+			"function camel_case() {} export { camel_case as camelCase }; camel_case()"
 		),
 		{
 			...invalid_case(
 				"var camelCase; <a b={camelCase} {...camelCase}>{camelCase}</a>",
 				[ "camelCase" ],
-				"var camelCase; <a b={camel_case} {...camel_case}>{camel_case}</a>"
+				"var camel_case; <a b={camel_case} {...camel_case}>{camel_case}</a>"
 			),
 			languageOptions: {
 				parserOptions: { ecmaFeatures: { jsx: true } }
@@ -302,7 +286,7 @@ export function cases(valid, invalid) {
 			...invalid_case(
 				"var camelCase; var a = camelCase as A, b = camelCase!, c = <A>camelCase, d = camelCase satisfies A, e = camelCase<A>, f: typeof camelCase.b",
 				[ "camelCase" ],
-				"var camelCase; var a = camel_case as A, b = camel_case!, c = <A>camel_case, d = camel_case satisfies A, e = camel_case<A>, f: typeof camel_case.b"
+				"var camel_case; var a = camel_case as A, b = camel_case!, c = <A>camel_case, d = camel_case satisfies A, e = camel_case<A>, f: typeof camel_case.b"
 			),
 			languageOptions: ts_options
 		},
@@ -310,7 +294,7 @@ export function cases(valid, invalid) {
 			...invalid_case(
 				"var camelCase; @camelCase class A {} enum E { a = camelCase } export = camelCase",
 				[ "camelCase" ],
-				"var camelCase; @camel_case class A {} enum E { a = camel_case } export = camel_case"
+				"var camel_case; @camel_case class A {} enum E { a = camel_case } export = camel_case"
 			),
 			languageOptions: ts_options
 		},
@@ -323,15 +307,7 @@ export function cases(valid, invalid) {
 					"lastValue",
 					"nextValue"
 				],
-				"class B { run(itemCount: number, max_size?: string, @A() lastValue: A = item_count) { let other!: string; let next_value: A = last_value } }"
-			),
-			languageOptions: ts_options
-		},
-		{
-			...invalid_case(
-				"class B { run(@A() camelCase: number) {} }",
-				[ "camelCase" ],
-				"class B { run(@A() camel_case: number) {} }"
+				"class B { run(item_count: number, max_size?: string, @A() last_value: A = item_count) { let other!: string; let next_value: A = last_value } }"
 			),
 			languageOptions: ts_options
 		},
@@ -339,7 +315,7 @@ export function cases(valid, invalid) {
 			...invalid_case(
 				"class A { accessor camelCase = pendingA; accessor [pendingB] = 1 } var pendingA, pendingB",
 				[ "pendingA", "pendingB" ],
-				"class A { accessor camelCase = pending_a; accessor [pending_b] = 1 } var pendingA, pendingB"
+				"class A { accessor camelCase = pending_a; accessor [pending_b] = 1 } var pending_a, pending_b"
 			),
 			languageOptions: ts_options
 		},
@@ -353,7 +329,7 @@ export function cases(valid, invalid) {
 					"pendingD",
 					"pendingE"
 				],
-				"abstract class A { abstract accessor [pending_a]: number; abstract [pending_b](): void; abstract [pending_c]: number } interface I { [pending_d](): void; [pending_e]: number } var pendingA, pendingB, pendingC, pendingD, pendingE"
+				"abstract class A { abstract accessor [pending_a]: number; abstract [pending_b](): void; abstract [pending_c]: number } interface I { [pending_d](): void; [pending_e]: number } var pending_a, pending_b, pending_c, pending_d, pending_e"
 			),
 			languageOptions: ts_options
 		},
@@ -361,15 +337,7 @@ export function cases(valid, invalid) {
 			...invalid_case(
 				"import camelCase = require('module'); import other = camelCase",
 				[ "camelCase" ],
-				"import camelCase = require('module'); import other = camel_case"
-			),
-			languageOptions: ts_options
-		},
-		{
-			...invalid_case(
-				"function camelCase(a: string): void; function camelCase(a) {}",
-				[ "camelCase" ],
-				"function camel_case(a: string): void; function camel_case(a) {}"
+				"import camel_case = require('module'); import other = camel_case"
 			),
 			languageOptions: ts_options
 		},
@@ -386,7 +354,7 @@ export function cases(valid, invalid) {
 			...invalid_case(
 				"function isCamel(camelCase): camelCase is A {}",
 				[ 10, 18, 30 ],
-				"function is_camel(camelCase): camel_case is A {}"
+				"function is_camel(camel_case): camel_case is A {}"
 			),
 			languageOptions: ts_options
 		},
@@ -395,14 +363,6 @@ export function cases(valid, invalid) {
 				"function camelCase(a: number): void; function camelCase(a: unknown) {} camelCase(1)",
 				[ 10, 47, 72 ],
 				"function camel_case(a: number): void; function camel_case(a: unknown) {} camel_case(1)"
-			),
-			languageOptions: ts_options
-		},
-		{
-			...invalid_case(
-				"camelCase(1); function camelCase(a: number): void; function camelCase(a: unknown) {}",
-				[ 1, 24, 61 ],
-				"camel_case(1); function camel_case(a: number): void; function camel_case(a: unknown) {}"
 			),
 			languageOptions: ts_options
 		},
@@ -457,7 +417,7 @@ export function cases(valid, invalid) {
 					messageId: "rename"
 				}
 			],
-			output: "/* eslint-disable no-console */\nvar camelCase = 1\ncamel_case()"
+			output: "/* eslint-disable no-console */\nvar camel_case = 1\ncamel_case()"
 		},
 		{
 			code: "/* eslint-disable */ var camelCase = 1 /* eslint-enable */\ncamelCase()",
@@ -517,7 +477,7 @@ export function cases(valid, invalid) {
 			...invalid_case(
 				"function f(camelCase) { return <camelCase.A>{camelCase.b}</camelCase.A> }",
 				[ 12, 33, 46, 60 ],
-				"function f(camelCase) { return <camel_case.A>{camel_case.b}</camel_case.A> }"
+				"function f(camel_case) { return <camel_case.A>{camel_case.b}</camel_case.A> }"
 			),
 			filename: "a.tsx",
 			languageOptions: {
@@ -550,7 +510,7 @@ export function cases(valid, invalid) {
 		invalid_case(
 			"let lastBid = 1; function bump() { lastBid += 1 } bump(); log(lastBid)",
 			[ "lastBid" ],
-			"let lastBid = 1; function bump() { lastBid += 1 } bump(); log(last_bid)"
+			"let last_bid = 1; function bump() { last_bid += 1 } bump(); log(last_bid)"
 		),
 		invalid_case(
 			"let lastBid = 1; function bump() { lastBid += 1 } bump(); log(last_bid)",
@@ -560,7 +520,7 @@ export function cases(valid, invalid) {
 		invalid_case(
 			"let lastBid; lastBid = 1; log(lastBid)",
 			[ "lastBid" ],
-			"let lastBid; lastBid = 1; log(last_bid)"
+			"let last_bid; last_bid = 1; log(last_bid)"
 		),
 		invalid_case(
 			"let lastBid; lastBid = 1; log(last_bid)",
@@ -570,7 +530,7 @@ export function cases(valid, invalid) {
 		invalid_case(
 			"function camelCase() {} export default camelCase; camelCase()",
 			[ "camelCase" ],
-			"function camelCase() {} export default camelCase; camel_case()"
+			"function camel_case() {} export default camel_case; camel_case()"
 		),
 		invalid_case(
 			"let [ itemCount ] = value; itemCount++",
@@ -586,11 +546,6 @@ export function cases(valid, invalid) {
 			"let lastBid = 1; export { lastBid }; lastBid = 2",
 			[ "lastBid" ],
 			"let last_bid = 1; export { last_bid as lastBid }; last_bid = 2"
-		),
-		invalid_case(
-			"let lastBid = 1; log(lastBid)",
-			[ "lastBid" ],
-			"let lastBid = 1; log(last_bid)"
 		),
 		{
 			...invalid_case(

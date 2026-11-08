@@ -157,6 +157,92 @@ export type DisableDirective = {
 	type: "disable" | "disable-line" | "disable-next-line" | "enable"
 	value: string
 }
+export type IndentEntry = {
+	first: number
+	inner: number
+	last: number
+	node: IndentNode
+	parent: number
+}
+export type IndentLine = {
+	end: number
+	expected: string
+	line: number
+	start: number
+}
+export type IndentModel = {
+	get_lines(): IndentLine[]
+	get_token_indent(position: number): string
+}
+export type IndentNode = {
+	alternate?: IndentNode | null
+	arguments?: IndentNode[]
+	async?: boolean
+	attributes?: IndentNode[]
+	body?: IndentNode | IndentNode[] | null
+	callee?: IndentNode
+	children?: IndentNode[]
+	closingElement?: IndentNode | null
+	closingFragment?: IndentNode
+	computed?: boolean
+	consequent?: IndentNode | IndentNode[]
+	declaration?: IndentNode | null
+	declarations?: IndentNode[]
+	decorators?: IndentNode[]
+	default?: IndentNode | null
+	discriminant?: IndentNode
+	elementTypes?: (IndentNode | null)[]
+	elements?: (IndentNode | null)[]
+	expression?: IndentNode
+	expressions?: IndentNode[]
+	extends?: IndentNode[]
+	extendsType?: IndentNode
+	falseType?: IndentNode
+	implements?: IndentNode[]
+	indexType?: IndentNode
+	init?: IndentNode | null
+	initializer?: IndentNode | null
+	key?: IndentNode
+	kind?: string
+	left?: IndentNode
+	members?: IndentNode[]
+	meta?: IndentNode
+	method?: boolean
+	moduleReference?: IndentNode
+	name?: IndentNode | string
+	object?: IndentNode
+	objectType?: IndentNode
+	openingElement?: IndentNode
+	openingFragment?: IndentNode
+	operator?: string
+	optional?: boolean
+	options?: IndentNode | null
+	params?: IndentNode[]
+	properties?: IndentNode[]
+	property?: IndentNode
+	quasis?: IndentNode[]
+	range: [number, number]
+	returnType?: IndentNode | null
+	right?: IndentNode
+	selfClosing?: boolean
+	shorthand?: boolean
+	source?: IndentNode | null
+	specifiers?: IndentNode[]
+	superClass?: IndentNode | null
+	test?: IndentNode | null
+	trueType?: IndentNode
+	type: string
+	typeAnnotation?: IndentNode
+	typeArguments?: IndentNode | null
+	types?: IndentNode[]
+	update?: IndentNode | null
+	value?: IndentNode | null
+}
+export type IndentSettings = {
+	operator: number
+	switch_case: number
+	unit: string
+}
 export type ModuleDeclaration = estree.ExportNamedDeclaration | estree.ImportDeclaration
 export type NamingIdentifier = AstNode & estree.Identifier
 export type NamingParent = AstNode | {
@@ -167,6 +253,28 @@ export type NamingParent = AstNode | {
 	parent?: AstNode
 	type: "AccessorProperty" | "Decorator" | "ImportAttribute" | "JSXExpressionContainer" | "JSXSpreadAttribute" | "JSXSpreadChild" | "TSAbstractAccessorProperty" | "TSAbstractMethodDefinition" | "TSAbstractPropertyDefinition" | "TSAsExpression" | "TSCallSignatureDeclaration" | "TSConstructSignatureDeclaration" | "TSConstructorType" | "TSDeclareFunction" | "TSEmptyBodyFunctionExpression" | "TSEnumDeclaration" | "TSEnumMember" | "TSExportAssignment" | "TSFunctionType" | "TSImportEqualsDeclaration" | "TSIndexSignature" | "TSInstantiationExpression" | "TSInterfaceDeclaration" | "TSMappedType" | "TSMethodSignature" | "TSModuleDeclaration" | "TSNamespaceExportDeclaration" | "TSNonNullExpression" | "TSPropertySignature" | "TSQualifiedName" | "TSSatisfiesExpression" | "TSTypeAliasDeclaration" | "TSTypeAssertion" | "TSTypeParameter" | "TSTypePredicate" | "TSTypeQuery"
 	value?: AstNode | null
+}
+export type Item = {
+	loc: estree.SourceLocation
+	range: [number, number]
+	type: string
+}
+export type ParenNode = {
+	arguments?: ParenNode[]
+	body?: ParenNode
+	consequent?: ParenNode
+	discriminant?: ParenNode
+	expressions?: ParenNode[]
+	object?: ParenNode
+	options?: ParenNode | null
+	param?: ParenNode | null
+	params?: ParenNode[]
+	parent: ParenNode | null
+	quasis?: ParenNode[]
+	range: [number, number]
+	source?: ParenNode
+	test?: ParenNode
+	type: string
 }
 export type OrderEntry = {
 	first: OrderNode
@@ -200,13 +308,6 @@ export type OrderRuleListener = {
 } & {
 	"Program:exit"?: () => void
 }
-export type RenamePlan = {
-	atomic: boolean
-	exported: NamingIdentifier[]
-	fixable: boolean
-	held: NamingIdentifier[]
-	used: NamingIdentifier[]
-}
 export type RenameEdit = {
 	range: [number, number]
 	text: string
@@ -234,6 +335,9 @@ export type RuleOptions = {
 		semicolon?: boolean
 	}
 	"pretty-jsdoc-casting": never
+	"pretty-parens"?: {
+		indent?: string
+	}
 	"pretty-sequence"?: {
 		arrayBracketSpacing?: boolean
 		checkArray?: boolean

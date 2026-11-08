@@ -47,9 +47,7 @@ describe(
 		class Tag {
 			/** @type {string} */
 			label
-			/**
-			 * @param {string} label
-			 */
+			/** @param {string} label */
 			constructor(label) {
 				this.label = label
 			}
@@ -70,6 +68,244 @@ describe(
 		]
 		const obj_keys = [ "a", "b", "c", "d", "x" ]
 		const map_keys = [ "k1", "k2", 3, "k4" ]
+		it(
+			"deepEqual, deepCopy, deepDiff and deepMerge match references",
+			() => {
+				const count = seeds
+					? seeds * 50
+					: 600
+				/** @type {Failure[]} */
+				const failures = []
+				for (let i = 0; i < count; i++) {
+					const seed = first * 7919 + i
+					if (only && String(seed) != only) {
+						continue
+					}
+					const r = rand(seed)
+					/** @type {GenOptions} */
+					const opt = {
+						cycles: r.chance(0.4),
+						freeze: r.pick(
+							/** @type {const} */([ "none", "deep", "partial" ])/**/
+						),
+						holes: true,
+						shared: r.chance(0.5),
+						size: 2 + r.int(10)
+					}
+					const a = gen_value(r, opt)
+					const b = r.chance(0.2)
+						? gen_value(r, opt)
+						: mutate_clone(r, a, r.int(4))
+					const ctx = {
+						failures,
+						label: `seed=${seed} a=${show(a)} b=${show(b)}`,
+						trace: []
+					}
+					const equal = deepEqual(a, b)
+					if (equal != deepEqual(b, a)) {
+						fail(ctx, "equal-symmetry", "")
+					}
+					if (equal != ref_equal(a, b)) {
+						fail(
+							ctx,
+							"equal-vs-reference",
+							`deepEqual is ${equal}`
+						)
+					}
+					if (!deepEqual(a, a) || !deepEqual(b, b)) {
+						fail(ctx, "equal-reflexive", "")
+					}
+					const copy = deepCopy(a)
+					const res = iso(
+						copy,
+						a,
+						v => typeof v == "function"
+					)
+					if (res.fail) {
+						fail(ctx, "copy-iso", res.fail)
+					}
+					for (const [ c, o ] of res.pairs) {
+						if (c === o) {
+							fail(ctx, "copy-shares-input", show(c))
+						}
+					}
+					if (!deepEqual(copy, a)) {
+						fail(ctx, "copy-not-equal", "")
+					}
+					/** @type {unknown} */
+					let kept
+					try {
+						kept = deepUpdate(a, () => {})
+					} catch (error) {
+						kept = error
+					}
+					if (is_drafted_kind(kind_of(a))
+						? kept !== a
+						: !(kept instanceof TypeError)) {
+						fail(
+							ctx,
+							"update-undrafted",
+							show(kept)
+						)
+					}
+					if (!has_cycle(a) && !has_cycle(b)) {
+						const snap = snapshot(a)
+						/** @type {Change[]} */
+						let changes = []
+						try {
+							changes = deepDiff(a, b)
+							const patched = deepPatch(a, changes)
+							if (!ref_equal(
+								fill_holes(patched),
+								fill_holes(b)
+							)) {
+								fail(
+									ctx,
+									"diff-round-trip",
+									`patched=${show(patched)} changes=${show(changes)}`
+								)
+							}
+							if (Object.isFrozen(a) && typeof patched == "object" && patched !== null && patched !== a && !Object.isFrozen(patched)) {
+								fail(ctx, "diff-frozen", show(patched))
+							}
+							if (deepDiff(a, a).length) {
+								fail(ctx, "diff-self", "")
+							}
+						} catch (error) {
+							fail(
+								ctx,
+								"diff-throw",
+								`${String(error)} changes=${show(changes)}`
+							)
+						}
+						const message = snap.check()
+						if (message) {
+							fail(ctx, "diff-input-changed", message)
+						}
+						if (typeof b == "object" && b !== null && !Object.isFrozen(b) && Object.isFrozen(a)) {
+							const after = snapshot(b)
+							deepPatch(a, deepDiff(a, b))
+							const changed = after.check()
+							if (changed) {
+								fail(ctx, "diff-after-changed", changed)
+							}
+						}
+					}
+					const j1 = json_safe(r)
+					const j2 = r.chance(0.8)
+						? mutate_json(r, j1)
+						: json_safe(r)
+					const json_ctx = {
+						failures,
+						label: `seed=${seed} j1=${JSON.stringify(j1)} j2=${JSON.stringify(j2)}`,
+						trace: []
+					}
+					try {
+						/** @type {Change[]} */
+						const wire = JSON.parse(
+							JSON.stringify(deepDiff(j1, j2))
+						)
+						const source = r.chance(0.5)
+							? deepFreeze(JSON.parse(JSON.stringify(j1)))
+							: j1
+						const patched = deepPatch(source, wire)
+						if (!ref_equal(patched, j2)) {
+							fail(
+								json_ctx,
+								"json-round-trip",
+								`patched=${JSON.stringify(patched)} wire=${JSON.stringify(wire)}`
+							)
+						}
+					} catch (error) {
+						fail(
+							json_ctx,
+							"json-throw",
+							String(error)
+						)
+					}
+					const layers = [
+						j1,
+						j2,
+						r.chance(0.3)
+							? undefined
+							: json_safe(r),
+						r.chance(0.3)
+							? null
+							: mutate_json(r, j2)
+					]
+					const merged = deepMerge(...layers)
+					const expected = ref_merge(layers, [])
+					if (!ref_equal(merged, expected) || JSON.stringify(merged) != JSON.stringify(expected)) {
+						fail(
+							{
+								failures,
+								label: `seed=${seed} layers=${JSON.stringify(layers)}`,
+								trace: []
+							},
+							"merge-vs-reference",
+							`${JSON.stringify(merged)} vs ${JSON.stringify(expected)}`
+						)
+					}
+				}
+				report(failures, count)
+			},
+			timeout
+		)
+		it(
+			"deepUpdate matches a reference clone mutated the same way",
+			async () => {
+				const per = seeds || 8
+				/** @type {CaseConfig[]} */
+				const configs = []
+				for (const shape of [ "tree", "graph", "shared" ]) {
+					for (const freeze of /** @type {const} */([ "none", "deep", "partial", "shallow" ])/**/) {
+						for (const returns of /** @type {const} */([
+							"mutate",
+							"draft",
+							"new",
+							"mutate+return"
+						])/**/) {
+							for (const async of [ false, true ]) {
+								configs.push(
+									{
+										async,
+										chain: returns == "mutate",
+										gen: {
+											cycles: shape != "tree",
+											freeze,
+											holes: true,
+											shared: shape != "tree",
+											size: 8
+										},
+										graph: shape == "graph",
+										returns
+									}
+								)
+							}
+						}
+					}
+				}
+				/** @type {Failure[]} */
+				const failures = []
+				let cases = 0
+				for (let c = 0; c < configs.length; c++) {
+					for (let i = 0; i < per; i++) {
+						const seed = first * 1000003 + c * 100000 + i
+						if (only && String(seed) != only) {
+							continue
+						}
+						cases++
+						await update_case(
+							seed,
+							/** @type {CaseConfig} */(configs[c])/**/,
+							failures
+						)
+					}
+				}
+				report(failures, cases)
+			},
+			timeout
+		)
 		/**
 		 * @param {unknown} root
 		 * @param {Op} op
@@ -281,6 +517,24 @@ describe(
 			return out
 		}
 		/**
+		 * @param {Record<string, unknown>} o
+		 * @param {string} k
+		 * @param {unknown} value
+		 * @returns {void}
+		 */
+		function define(o, k, value) {
+			Object.defineProperty(
+				o,
+				k,
+				{
+					configurable: true,
+					enumerable: true,
+					value,
+					writable: true
+				}
+			)
+		}
+		/**
 		 * @param {{ failures: Failure[], label: string, trace: string[] }} ctx
 		 * @param {string} kind
 		 * @param {string} detail
@@ -301,6 +555,51 @@ describe(
 		 */
 		function fields(value) {
 			return /** @type {Record<string, unknown>} */(value)/**/
+		}
+		/**
+		 * @param {unknown} v
+		 * @param {Map<unknown, unknown>} [seen]
+		 * @returns {unknown}
+		 */
+		function fill_holes(v, seen = new Map()) {
+			if (typeof v != "object" || v === null || !is_drafted_kind(kind_of(v))) {
+				return v
+			}
+			if (seen.has(v)) {
+				return seen.get(v)
+			}
+			if (Array.isArray(v)) {
+				/** @type {unknown[]} */
+				const out = []
+				seen.set(v, out)
+				for (let i = 0; i < v.length; i++) {
+					out.push(fill_holes(v[i], seen))
+				}
+				return out
+			}
+			if (v instanceof Map) {
+				const out = new Map()
+				seen.set(v, out)
+				for (const [ k, x ] of v) {
+					out.set(k, fill_holes(x, seen))
+				}
+				return out
+			}
+			if (v instanceof Set) {
+				const out = new Set()
+				seen.set(v, out)
+				for (const x of v) {
+					out.add(fill_holes(x, seen))
+				}
+				return out
+			}
+			/** @type {Record<string, unknown>} */
+			const out = Object.create(Object.getPrototypeOf(v))
+			seen.set(v, out)
+			for (const k of Object.keys(v)) {
+				out[k] = fill_holes(fields(v)[k], seen)
+			}
+			return out
 		}
 		/**
 		 * @param {Rand} r
@@ -602,6 +901,54 @@ describe(
 			}
 			/** @type {Set<number>} */
 			const used = new Set()
+			for (let i = 0; i < n; i++) {
+				const { kind, value } = /** @type {{ kind: Kind, value: unknown }} */(shells[i])/**/
+				const count = r.int(4) + (i == 0
+					? 1
+					: 0)
+				if (kind == "obj") {
+					for (let c = 0; c < count; c++) {
+						fields(value)[r.pick(obj_keys)] = child(i)
+					}
+				} else if (kind == "arr") {
+					const array = as_array(value)
+					for (let c = 0; c < count; c++) {
+						if (opt.holes && r.chance(0.2)) {
+							array.length++
+						} else {
+							array.push(child(i))
+						}
+					}
+				} else if (kind == "map") {
+					for (let c = 0; c < count; c++) {
+						as_map(value).set(r.pick(map_keys), child(i))
+					}
+				} else if (kind == "set") {
+					for (let c = 0; c < count; c++) {
+						as_set(value).add(child(i))
+					}
+				} else if (kind == "part") {
+					const part = /** @type {Part} */(value)/**/
+					part.ref = child(i)
+				}
+			}
+			const root = /** @type {{ value: unknown }} */(shells[0])/**/.value
+			if (opt.freeze == "deep") {
+				deepFreeze(root)
+			} else if (opt.freeze == "partial") {
+				for (const shell of shells) {
+					if (r.chance(0.3)) {
+						deepFreeze(shell.value)
+					}
+				}
+			} else if (opt.freeze == "shallow") {
+				for (const shell of shells) {
+					if (r.chance(0.4) && shell.kind != "part") {
+						Object.freeze(shell.value)
+					}
+				}
+			}
+			return root
 			/**
 			 * @param {number} from
 			 * @returns {unknown}
@@ -639,53 +986,44 @@ describe(
 				}
 				return /** @type {{ value: unknown }} */(shells[j])/**/.value
 			}
-			for (let i = 0; i < n; i++) {
-				const { kind, value } = /** @type {{ kind: Kind, value: unknown }} */(shells[i])/**/
-				const count = r.int(4) + (i == 0
-					? 1
-					: 0)
-				if (kind == "obj") {
-					for (let c = 0; c < count; c++) {
-						fields(value)[r.pick(obj_keys)] = child(i)
-					}
-				} else if (kind == "arr") {
-					const array = as_array(value)
-					for (let c = 0; c < count; c++) {
-						if (opt.holes && r.chance(0.2)) {
-							array.length++
-						} else {
-							array.push(child(i))
-						}
-					}
-				} else if (kind == "map") {
-					for (let c = 0; c < count; c++) {
-						as_map(value).set(r.pick(map_keys), child(i))
-					}
-				} else if (kind == "set") {
-					for (let c = 0; c < count; c++) {
-						as_set(value).add(child(i))
-					}
-				} else if (kind == "part") {
-					/** @type {Part} */(value)/**/.ref = child(i)
+		}
+		/**
+		 * @param {unknown} root
+		 * @returns {boolean}
+		 */
+		function has_cycle(root) {
+			/** @type {Map<unknown, number>} */
+			const state = new Map()
+			return go(root)
+			/**
+			 * @param {unknown} v
+			 * @returns {boolean}
+			 */
+			function go(v) {
+				if (typeof v != "object" || v === null || kind_of(v) == "date") {
+					return false
 				}
+				const s = state.get(v)
+				if (s == 1) {
+					return true
+				}
+				if (s == 2) {
+					return false
+				}
+				state.set(v, 1)
+				const kids = v instanceof Map
+					? [ ...v.values(), ...v.keys() ]
+					: v instanceof Set
+						? [ ...v ]
+						: Object.values(v)
+				for (const c of kids) {
+					if (go(c)) {
+						return true
+					}
+				}
+				state.set(v, 2)
+				return false
 			}
-			const root = /** @type {{ value: unknown }} */(shells[0])/**/.value
-			if (opt.freeze == "deep") {
-				deepFreeze(root)
-			} else if (opt.freeze == "partial") {
-				for (const shell of shells) {
-					if (r.chance(0.3)) {
-						deepFreeze(shell.value)
-					}
-				}
-			} else if (opt.freeze == "shallow") {
-				for (const shell of shells) {
-					if (r.chance(0.4) && shell.kind != "part") {
-						Object.freeze(shell.value)
-					}
-				}
-			}
-			return root
 		}
 		/**
 		 * @param {unknown} root
@@ -905,6 +1243,46 @@ describe(
 			return { pairs: r2e }
 		}
 		/**
+		 * @param {Rand} r
+		 * @param {number} [depth]
+		 * @returns {unknown}
+		 */
+		function json_safe(r, depth = 0) {
+			const w = depth > 3
+				? 0
+				: r.int(4)
+			if (w == 0) {
+				return r.pick(
+					[ 0, 1, "s", "", null, true, false, 2.5 ]
+				)
+			}
+			if (w == 1) {
+				return Array.from(
+					{ length: r.int(4) },
+					() => json_safe(r, depth + 1)
+				)
+			}
+			/** @type {Record<string, unknown>} */
+			const o = {}
+			for (let i = r.int(4); i > 0; i--) {
+				define(
+					o,
+					r.pick(
+						[
+							...obj_keys,
+							"__proto__",
+							"constructor",
+							"0",
+							"10",
+							"2"
+						]
+					),
+					json_safe(r, depth + 1)
+				)
+			}
+			return o
+		}
+		/**
 		 * @param {WeakKey} a
 		 * @param {WeakKey} b
 		 * @param {Map<unknown, Set<unknown>>} pairs
@@ -965,6 +1343,8 @@ describe(
 		function materialize(spec, ref_side, draft_side) {
 			/** @type {[ unknown, unknown ][]} */
 			const pairs = []
+			const [ ref, draft ] = go(spec)
+			return { draft, pairs, ref }
 			/**
 			 * @param {Spec} s
 			 * @returns {[ unknown, unknown ]}
@@ -1036,8 +1416,6 @@ describe(
 				}
 				return [ a, b ]
 			}
-			const [ ref, draft ] = go(spec)
-			return { draft, pairs, ref }
 		}
 		/**
 		 * @param {Map<unknown, Set<unknown>>} pairs
@@ -1050,6 +1428,114 @@ describe(
 					assume(pairs, x, y)
 				}
 			}
+		}
+		/**
+		 * @param {Rand} r
+		 * @param {unknown} root
+		 * @param {number} count
+		 * @returns {unknown}
+		 */
+		function mutate_clone(r, root, count) {
+			const clone = ref_clone(root).root
+			/** @type {unknown[]} */
+			const nodes = []
+			const seen = new Set()
+			const stack = [ clone ]
+			while (stack.length) {
+				const v = stack.pop()
+				if (typeof v != "object" || v === null || seen.has(v) || !is_drafted_kind(kind_of(v))) {
+					continue
+				}
+				seen.add(v)
+				nodes.push(v)
+				stack.push(
+					...slots(v).map(([ , x ]) => x)
+				)
+			}
+			for (let i = 0; i < count && nodes.length; i++) {
+				const t = r.pick(nodes)
+				const kind = kind_of(t)
+				const value = r.chance(0.7)
+					? r.pick(primitives)
+					: r.chance(0.5)
+						? {}
+						: r.pick(nodes)
+				if (kind == "obj") {
+					if (r.chance(0.3)) {
+						delete fields(t)[r.pick(obj_keys)]
+					} else {
+						fields(t)[r.pick(obj_keys)] = value
+					}
+				} else if (kind == "arr") {
+					const a = as_array(t)
+					const w = r.int(4)
+					if (w == 0) {
+						a.push(value)
+					} else if (w == 1) {
+						a.pop()
+					} else if (w == 2 && a.length) {
+						delete a[r.int(a.length)]
+					} else {
+						a[r.int(a.length + 1)] = value
+					}
+				} else if (kind == "map") {
+					if (r.chance(0.3)) {
+						as_map(t).delete(r.pick(map_keys))
+					} else {
+						as_map(t).set(r.pick(map_keys), value)
+					}
+				} else if (r.chance(0.3)) {
+					as_set(t).delete([ ...as_set(t) ][0])
+				} else {
+					as_set(t).add(value)
+				}
+			}
+			return clone
+		}
+		/**
+		 * @param {Rand} r
+		 * @param {unknown} v
+		 * @param {number} [depth]
+		 * @returns {unknown}
+		 */
+		function mutate_json(r, v, depth = 0) {
+			if (r.chance(0.15) || depth > 4) {
+				return json_safe(r, depth)
+			}
+			if (Array.isArray(v)) {
+				const out = v.map(
+					x => mutate_json(r, x, depth + 1)
+				)
+				if (r.chance(0.2)) {
+					out.push(json_safe(r, depth + 1))
+				}
+				if (r.chance(0.2)) {
+					out.shift()
+				}
+				return out
+			}
+			if (typeof v == "object" && v !== null) {
+				/** @type {Record<string, unknown>} */
+				const out = {}
+				for (const [ k, x ] of Object.entries(v)) {
+					if (!r.chance(0.15)) {
+						define(
+							out,
+							k,
+							mutate_json(r, x, depth + 1)
+						)
+					}
+				}
+				if (r.chance(0.3)) {
+					define(
+						out,
+						r.pick(obj_keys),
+						json_safe(r, depth + 1)
+					)
+				}
+				return out
+			}
+			return v
 		}
 		/**
 		 * @param {Rand} r
@@ -1073,104 +1559,9 @@ describe(
 			let returned_new = false
 			let returned_draft_root = false
 			let changed = false
-			/**
-			 * @param {unknown} draft
-			 * @returns {void}
-			 */
-			function body(draft) {
-				const op = gen_op(r, ref.root, strict)
-				ctx.trace.push(op_text(op))
-				if (op.kind == "check") {
-					check_inside(ctx, op, draft, ref.root, snapshots)
-					return
-				}
-				changed = true
-				const vals = op.kind == "push" || op.kind == "unshift"
-					? op.args
-					: "v" in op
-						? [ op.v ]
-						: []
-				/** @type {unknown[]} */
-				const rv = []
-				/** @type {unknown[]} */
-				const dv = []
-				for (const x of vals) {
-					const [ a, b ] = resolve_val(x, ref, { fresh: [], root: draft })
-					rv.push(a)
-					dv.push(b)
-				}
-				apply(draft, op, dv, undefined)
-				apply(ref.root, op, rv, touched)
-			}
-			/**
-			 * @param {unknown} draft
-			 * @returns {unknown}
-			 */
-			function make_return(draft) {
-				/** @type {Spec} */
-				const spec = r.chance(0.5)
-					? {
-						entries: [
-							[ "a", { path: 0, t: "ref" } ],
-							[ "b", gen_spec(r, 1, 0) ]
-						],
-						t: "obj"
-					}
-					: { path: 0, t: "ref" }
-				let refs = [ pick_path(r, ref.root, "any") ]
-				if (cfg.returns == "mutate+return" && spec.t == "ref") {
-					while (!refs[0]?.length && slots(ref.root).some(
-						([ , x ]) => typeof x == "object" && x !== null
-					) && r.chance(0.95)) {
-						refs = [ pick_path(r, ref.root, "any") ]
-					}
-				}
-				returned_new = true
-				ctx.trace.push(
-					`return ${show_spec(spec, refs.map(path_text))}`
-				)
-				const [ a, b ] = resolve_val(
-					{ refs, spec, t: "fresh" },
-					ref,
-					{ fresh: [], root: draft }
-				)
-				if (b === draft) {
-					returned_draft_root = true
-				}
-				ref.root = a
-				return b
-			}
 			const count = cfg.returns == "new"
 				? r.int(2)
 				: 1 + r.int(6)
-			/**
-			 * @param {unknown} draft
-			 * @returns {unknown}
-			 */
-			function finish(draft) {
-				if (cfg.returns == "draft") {
-					return draft
-				}
-				if (cfg.returns == "new" || cfg.returns == "mutate+return") {
-					return make_return(draft)
-				}
-				return undefined
-			}
-			/**
-			 * @param {unknown} draft
-			 * @returns {void}
-			 */
-			function step_once(draft) {
-				if (cfg.returns != "new") {
-					body(draft)
-					return
-				}
-				const op = gen_op(r, ref.root, true)
-				if (op.kind == "check") {
-					ctx.trace.push(op_text(op))
-					check_inside(ctx, op, draft, ref.root, snapshots)
-				}
-			}
 			/** @type {unknown} */
 			let result
 			/** @type {unknown} */
@@ -1287,24 +1678,6 @@ describe(
 					dirty.add(e)
 				}
 			}
-			/**
-			 * @param {Set<unknown>} from
-			 * @returns {Set<unknown>}
-			 */
-			function reaches(from) {
-				const out = new Set(from)
-				let grew = true
-				while (grew) {
-					grew = false
-					for (const e of nodes) {
-						if (!out.has(e) && slots(e).some(([ , x ]) => out.has(x))) {
-							out.add(e)
-							grew = true
-						}
-					}
-				}
-				return out
-			}
 			const must_copy = reaches(dirty)
 			const maybe = reaches(
 				new Set([ ...dirty, ...touched ])
@@ -1328,13 +1701,6 @@ describe(
 						`an unchanged object was copied: ${show(e)}`
 					)
 				}
-			}
-			/**
-			 * @param {unknown} x
-			 * @returns {boolean}
-			 */
-			function original(x) {
-				return rc.clone_to_orig.has(x) || snap.objects.has(x)
 			}
 			/** @type {unknown[]} */
 			const starts = []
@@ -1394,8 +1760,8 @@ describe(
 						`a copy of ${Object.isFrozen(orig)
 							? "a frozen"
 							: "an unfrozen"} original is ${frozen
-							? "frozen"
-							: "not frozen"}: ${show(rr)}`
+								? "frozen"
+								: "not frozen"}: ${show(rr)}`
 					)
 				}
 			}
@@ -1424,6 +1790,126 @@ describe(
 					false,
 					true
 				)
+			}
+			/**
+			 * @param {unknown} draft
+			 * @returns {void}
+			 */
+			function body(draft) {
+				const op = gen_op(r, ref.root, strict)
+				ctx.trace.push(op_text(op))
+				if (op.kind == "check") {
+					check_inside(ctx, op, draft, ref.root, snapshots)
+					return
+				}
+				changed = true
+				const vals = op.kind == "push" || op.kind == "unshift"
+					? op.args
+					: "v" in op
+						? [ op.v ]
+						: []
+				/** @type {unknown[]} */
+				const rv = []
+				/** @type {unknown[]} */
+				const dv = []
+				for (const x of vals) {
+					const [ a, b ] = resolve_val(x, ref, { fresh: [], root: draft })
+					rv.push(a)
+					dv.push(b)
+				}
+				apply(draft, op, dv, undefined)
+				apply(ref.root, op, rv, touched)
+			}
+			/**
+			 * @param {unknown} draft
+			 * @returns {unknown}
+			 */
+			function finish(draft) {
+				if (cfg.returns == "draft") {
+					return draft
+				}
+				if (cfg.returns == "new" || cfg.returns == "mutate+return") {
+					return make_return(draft)
+				}
+				return undefined
+			}
+			/**
+			 * @param {unknown} draft
+			 * @returns {unknown}
+			 */
+			function make_return(draft) {
+				/** @type {Spec} */
+				const spec = r.chance(0.5)
+					? {
+						entries: [
+							[ "a", { path: 0, t: "ref" } ],
+							[ "b", gen_spec(r, 1, 0) ]
+						],
+						t: "obj"
+					}
+					: { path: 0, t: "ref" }
+				let refs = [ pick_path(r, ref.root, "any") ]
+				if (cfg.returns == "mutate+return" && spec.t == "ref") {
+					while (!refs[0]?.length && slots(ref.root).some(
+						([ , x ]) => typeof x == "object" && x !== null
+					) && r.chance(0.95)) {
+						refs = [ pick_path(r, ref.root, "any") ]
+					}
+				}
+				returned_new = true
+				ctx.trace.push(
+					`return ${show_spec(spec, refs.map(path_text))}`
+				)
+				const [ a, b ] = resolve_val(
+					{ refs, spec, t: "fresh" },
+					ref,
+					{ fresh: [], root: draft }
+				)
+				if (b === draft) {
+					returned_draft_root = true
+				}
+				ref.root = a
+				return b
+			}
+			/**
+			 * @param {unknown} x
+			 * @returns {boolean}
+			 */
+			function original(x) {
+				return rc.clone_to_orig.has(x) || snap.objects.has(x)
+			}
+			/**
+			 * @param {Set<unknown>} from
+			 * @returns {Set<unknown>}
+			 */
+			function reaches(from) {
+				const out = new Set(from)
+				let grew = true
+				while (grew) {
+					grew = false
+					for (const e of nodes) {
+						if (!out.has(e) && slots(e).some(([ , x ]) => out.has(x))) {
+							out.add(e)
+							grew = true
+						}
+					}
+				}
+				return out
+			}
+			/**
+			 * @param {unknown} draft
+			 * @returns {void}
+			 */
+			function step_once(draft) {
+				if (cfg.returns != "new") {
+					body(draft)
+					return
+				}
+				const op = gen_op(r, ref.root, true)
+				if (op.kind == "check") {
+					ctx.trace.push(op_text(op))
+					check_inside(ctx, op, draft, ref.root, snapshots)
+				}
 			}
 		}
 		/**
@@ -1524,6 +2010,12 @@ describe(
 		 */
 		function rand(seed) {
 			let s = seed >>> 0
+			return {
+				chance: p => next() < p,
+				int,
+				pick,
+				weighted
+			}
 			/**
 			 * @param {number} n
 			 * @returns {number}
@@ -1531,9 +2023,7 @@ describe(
 			function int(n) {
 				return Math.floor(next() * n)
 			}
-			/**
-			 * @returns {number}
-			 */
+			/** @returns {number} */
 			function next() {
 				s = s + 0x6d2b79f5 >>> 0
 				let t = s
@@ -1571,12 +2061,6 @@ describe(
 				}
 				return /** @type {readonly [ T, number ]} */(items[items.length - 1])/**/[0]
 			}
-			return {
-				chance: p => next() < p,
-				int,
-				pick,
-				weighted
-			}
 		}
 		/**
 		 * @param {unknown} root
@@ -1587,6 +2071,7 @@ describe(
 			const orig_to_clone = new Map()
 			/** @type {Map<unknown, unknown>} */
 			const clone_to_orig = new Map()
+			return { clone_to_orig, root: walk(root) }
 			/**
 			 * @param {unknown} clone
 			 * @param {unknown} v
@@ -1646,7 +2131,6 @@ describe(
 				}
 				return c
 			}
-			return { clone_to_orig, root: walk(root) }
 		}
 		/**
 		 * @param {unknown} a
@@ -1753,6 +2237,20 @@ describe(
 				return keys_equal(a, b, pairs)
 			}
 			return keys_equal(a, b, pairs)
+		}
+		/**
+		 * @param {unknown[]} values
+		 * @param {[ unknown, unknown ][]} fresh
+		 * @returns {unknown}
+		 */
+		function ref_merge(values, fresh) {
+			let acc = values[0]
+			for (const b of values.slice(1)) {
+				if (b !== undefined && b !== null) {
+					acc = ref_merge_into(acc, b, fresh)
+				}
+			}
+			return acc
 		}
 		/**
 		 * @param {unknown} a
@@ -2048,9 +2546,7 @@ describe(
 				}
 				objects.add(v)
 				const kind = kind_of(v)
-				/**
-				 * @returns {{ core: unknown[], frozen: boolean, writable: unknown[] }}
-				 */
+				/** @returns {{ core: unknown[], frozen: boolean, writable: unknown[] }} */
 				function describe_value() {
 					/** @type {unknown[]} */
 					const core = []
@@ -2087,6 +2583,13 @@ describe(
 				records.push(
 					() => {
 						const after = describe_value()
+						if (!same(after.core, before.core)) {
+							return `input ${kind} changed: ${show(v, 3)}`
+						}
+						if (after.frozen != before.frozen || !same(after.writable, before.writable)) {
+							return `input ${kind} got frozen: ${show(v, 3)}`
+						}
+						return undefined
 						/**
 						 * @param {unknown[]} x
 						 * @param {unknown[]} y
@@ -2095,13 +2598,6 @@ describe(
 						function same(x, y) {
 							return x.length == y.length && x.every((z, i) => same_prim(z, y[i]))
 						}
-						if (!same(after.core, before.core)) {
-							return `input ${kind} changed: ${show(v, 3)}`
-						}
-						if (after.frozen != before.frozen || !same(after.writable, before.writable)) {
-							return `input ${kind} got frozen: ${show(v, 3)}`
-						}
-						return undefined
 					}
 				)
 				for (const k of Reflect.ownKeys(v)) {
@@ -2197,506 +2693,5 @@ describe(
 			}
 			return show_spec(x.spec, x.refs.map(path_text))
 		}
-		it(
-			"deepUpdate matches a reference clone mutated the same way",
-			async () => {
-				const per = seeds || 8
-				/** @type {CaseConfig[]} */
-				const configs = []
-				for (const shape of [ "tree", "graph", "shared" ]) {
-					for (const freeze of /** @type {const} */([ "none", "deep", "partial", "shallow" ])/**/) {
-						for (const returns of /** @type {const} */([
-							"mutate",
-							"draft",
-							"new",
-							"mutate+return"
-						])/**/) {
-							for (const async of [ false, true ]) {
-								configs.push(
-									{
-										async,
-										chain: returns == "mutate",
-										gen: {
-											cycles: shape != "tree",
-											freeze,
-											holes: true,
-											shared: shape != "tree",
-											size: 8
-										},
-										graph: shape == "graph",
-										returns
-									}
-								)
-							}
-						}
-					}
-				}
-				/** @type {Failure[]} */
-				const failures = []
-				let cases = 0
-				for (let c = 0; c < configs.length; c++) {
-					for (let i = 0; i < per; i++) {
-						const seed = first * 1000003 + c * 100000 + i
-						if (only && String(seed) != only) {
-							continue
-						}
-						cases++
-						await update_case(
-							seed,
-							/** @type {CaseConfig} */(configs[c])/**/,
-							failures
-						)
-					}
-				}
-				report(failures, cases)
-			},
-			timeout
-		)
-		/**
-		 * @param {Record<string, unknown>} o
-		 * @param {string} k
-		 * @param {unknown} value
-		 * @returns {void}
-		 */
-		function define(o, k, value) {
-			Object.defineProperty(
-				o,
-				k,
-				{
-					configurable: true,
-					enumerable: true,
-					value,
-					writable: true
-				}
-			)
-		}
-		/**
-		 * @param {unknown} v
-		 * @param {Map<unknown, unknown>} [seen]
-		 * @returns {unknown}
-		 */
-		function fill_holes(v, seen = new Map()) {
-			if (typeof v != "object" || v === null || !is_drafted_kind(kind_of(v))) {
-				return v
-			}
-			if (seen.has(v)) {
-				return seen.get(v)
-			}
-			if (Array.isArray(v)) {
-				/** @type {unknown[]} */
-				const out = []
-				seen.set(v, out)
-				for (let i = 0; i < v.length; i++) {
-					out.push(fill_holes(v[i], seen))
-				}
-				return out
-			}
-			if (v instanceof Map) {
-				const out = new Map()
-				seen.set(v, out)
-				for (const [ k, x ] of v) {
-					out.set(k, fill_holes(x, seen))
-				}
-				return out
-			}
-			if (v instanceof Set) {
-				const out = new Set()
-				seen.set(v, out)
-				for (const x of v) {
-					out.add(fill_holes(x, seen))
-				}
-				return out
-			}
-			/** @type {Record<string, unknown>} */
-			const out = Object.create(Object.getPrototypeOf(v))
-			seen.set(v, out)
-			for (const k of Object.keys(v)) {
-				out[k] = fill_holes(fields(v)[k], seen)
-			}
-			return out
-		}
-		/**
-		 * @param {unknown} root
-		 * @returns {boolean}
-		 */
-		function has_cycle(root) {
-			/** @type {Map<unknown, number>} */
-			const state = new Map()
-			/**
-			 * @param {unknown} v
-			 * @returns {boolean}
-			 */
-			function go(v) {
-				if (typeof v != "object" || v === null || kind_of(v) == "date") {
-					return false
-				}
-				const s = state.get(v)
-				if (s == 1) {
-					return true
-				}
-				if (s == 2) {
-					return false
-				}
-				state.set(v, 1)
-				const kids = v instanceof Map
-					? [ ...v.values(), ...v.keys() ]
-					: v instanceof Set
-						? [ ...v ]
-						: Object.values(v)
-				for (const c of kids) {
-					if (go(c)) {
-						return true
-					}
-				}
-				state.set(v, 2)
-				return false
-			}
-			return go(root)
-		}
-		/**
-		 * @param {Rand} r
-		 * @param {number} [depth]
-		 * @returns {unknown}
-		 */
-		function json_safe(r, depth = 0) {
-			const w = depth > 3
-				? 0
-				: r.int(4)
-			if (w == 0) {
-				return r.pick(
-					[ 0, 1, "s", "", null, true, false, 2.5 ]
-				)
-			}
-			if (w == 1) {
-				return Array.from(
-					{ length: r.int(4) },
-					() => json_safe(r, depth + 1)
-				)
-			}
-			/** @type {Record<string, unknown>} */
-			const o = {}
-			for (let i = r.int(4); i > 0; i--) {
-				define(
-					o,
-					r.pick(
-						[
-							...obj_keys,
-							"__proto__",
-							"constructor",
-							"0",
-							"10",
-							"2"
-						]
-					),
-					json_safe(r, depth + 1)
-				)
-			}
-			return o
-		}
-		/**
-		 * @param {Rand} r
-		 * @param {unknown} root
-		 * @param {number} count
-		 * @returns {unknown}
-		 */
-		function mutate_clone(r, root, count) {
-			const clone = ref_clone(root).root
-			/** @type {unknown[]} */
-			const nodes = []
-			const seen = new Set()
-			const stack = [ clone ]
-			while (stack.length) {
-				const v = stack.pop()
-				if (typeof v != "object" || v === null || seen.has(v) || !is_drafted_kind(kind_of(v))) {
-					continue
-				}
-				seen.add(v)
-				nodes.push(v)
-				stack.push(
-					...slots(v).map(([ , x ]) => x)
-				)
-			}
-			for (let i = 0; i < count && nodes.length; i++) {
-				const t = r.pick(nodes)
-				const kind = kind_of(t)
-				const value = r.chance(0.7)
-					? r.pick(primitives)
-					: r.chance(0.5)
-						? {}
-						: r.pick(nodes)
-				if (kind == "obj") {
-					if (r.chance(0.3)) {
-						delete fields(t)[r.pick(obj_keys)]
-					} else {
-						fields(t)[r.pick(obj_keys)] = value
-					}
-				} else if (kind == "arr") {
-					const a = as_array(t)
-					const w = r.int(4)
-					if (w == 0) {
-						a.push(value)
-					} else if (w == 1) {
-						a.pop()
-					} else if (w == 2 && a.length) {
-						delete a[r.int(a.length)]
-					} else {
-						a[r.int(a.length + 1)] = value
-					}
-				} else if (kind == "map") {
-					if (r.chance(0.3)) {
-						as_map(t).delete(r.pick(map_keys))
-					} else {
-						as_map(t).set(r.pick(map_keys), value)
-					}
-				} else if (r.chance(0.3)) {
-					as_set(t).delete([ ...as_set(t) ][0])
-				} else {
-					as_set(t).add(value)
-				}
-			}
-			return clone
-		}
-		/**
-		 * @param {Rand} r
-		 * @param {unknown} v
-		 * @param {number} [depth]
-		 * @returns {unknown}
-		 */
-		function mutate_json(r, v, depth = 0) {
-			if (r.chance(0.15) || depth > 4) {
-				return json_safe(r, depth)
-			}
-			if (Array.isArray(v)) {
-				const out = v.map(
-					x => mutate_json(r, x, depth + 1)
-				)
-				if (r.chance(0.2)) {
-					out.push(json_safe(r, depth + 1))
-				}
-				if (r.chance(0.2)) {
-					out.shift()
-				}
-				return out
-			}
-			if (typeof v == "object" && v !== null) {
-				/** @type {Record<string, unknown>} */
-				const out = {}
-				for (const [ k, x ] of Object.entries(v)) {
-					if (!r.chance(0.15)) {
-						define(
-							out,
-							k,
-							mutate_json(r, x, depth + 1)
-						)
-					}
-				}
-				if (r.chance(0.3)) {
-					define(
-						out,
-						r.pick(obj_keys),
-						json_safe(r, depth + 1)
-					)
-				}
-				return out
-			}
-			return v
-		}
-		/**
-		 * @param {unknown[]} values
-		 * @param {[ unknown, unknown ][]} fresh
-		 * @returns {unknown}
-		 */
-		function ref_merge(values, fresh) {
-			let acc = values[0]
-			for (const b of values.slice(1)) {
-				if (b !== undefined && b !== null) {
-					acc = ref_merge_into(acc, b, fresh)
-				}
-			}
-			return acc
-		}
-		it(
-			"deepEqual, deepCopy, deepDiff and deepMerge match references",
-			() => {
-				const count = seeds
-					? seeds * 50
-					: 600
-				/** @type {Failure[]} */
-				const failures = []
-				for (let i = 0; i < count; i++) {
-					const seed = first * 7919 + i
-					if (only && String(seed) != only) {
-						continue
-					}
-					const r = rand(seed)
-					/** @type {GenOptions} */
-					const opt = {
-						cycles: r.chance(0.4),
-						freeze: r.pick(
-							/** @type {const} */([ "none", "deep", "partial" ])/**/
-						),
-						holes: true,
-						shared: r.chance(0.5),
-						size: 2 + r.int(10)
-					}
-					const a = gen_value(r, opt)
-					const b = r.chance(0.2)
-						? gen_value(r, opt)
-						: mutate_clone(r, a, r.int(4))
-					const ctx = {
-						failures,
-						label: `seed=${seed} a=${show(a)} b=${show(b)}`,
-						trace: []
-					}
-					const equal = deepEqual(a, b)
-					if (equal != deepEqual(b, a)) {
-						fail(ctx, "equal-symmetry", "")
-					}
-					if (equal != ref_equal(a, b)) {
-						fail(
-							ctx,
-							"equal-vs-reference",
-							`deepEqual is ${equal}`
-						)
-					}
-					if (!deepEqual(a, a) || !deepEqual(b, b)) {
-						fail(ctx, "equal-reflexive", "")
-					}
-					const copy = deepCopy(a)
-					const res = iso(
-						copy,
-						a,
-						v => typeof v == "function"
-					)
-					if (res.fail) {
-						fail(ctx, "copy-iso", res.fail)
-					}
-					for (const [ c, o ] of res.pairs) {
-						if (c === o) {
-							fail(ctx, "copy-shares-input", show(c))
-						}
-					}
-					if (!deepEqual(copy, a)) {
-						fail(ctx, "copy-not-equal", "")
-					}
-					/** @type {unknown} */
-					let kept
-					try {
-						kept = deepUpdate(a, () => {})
-					} catch (error) {
-						kept = error
-					}
-					if (is_drafted_kind(kind_of(a))
-						? kept !== a
-						: !(kept instanceof TypeError)) {
-						fail(
-							ctx,
-							"update-undrafted",
-							show(kept)
-						)
-					}
-					if (!has_cycle(a) && !has_cycle(b)) {
-						const snap = snapshot(a)
-						/** @type {Change[]} */
-						let changes = []
-						try {
-							changes = deepDiff(a, b)
-							const patched = deepPatch(a, changes)
-							if (!ref_equal(
-								fill_holes(patched),
-								fill_holes(b)
-							)) {
-								fail(
-									ctx,
-									"diff-round-trip",
-									`patched=${show(patched)} changes=${show(changes)}`
-								)
-							}
-							if (Object.isFrozen(a) && typeof patched == "object" && patched !== null && patched !== a && !Object.isFrozen(patched)) {
-								fail(ctx, "diff-frozen", show(patched))
-							}
-							if (deepDiff(a, a).length) {
-								fail(ctx, "diff-self", "")
-							}
-						} catch (error) {
-							fail(
-								ctx,
-								"diff-throw",
-								`${String(error)} changes=${show(changes)}`
-							)
-						}
-						const message = snap.check()
-						if (message) {
-							fail(ctx, "diff-input-changed", message)
-						}
-						if (typeof b == "object" && b !== null && !Object.isFrozen(b) && Object.isFrozen(a)) {
-							const after = snapshot(b)
-							deepPatch(a, deepDiff(a, b))
-							const changed = after.check()
-							if (changed) {
-								fail(ctx, "diff-after-changed", changed)
-							}
-						}
-					}
-					const j1 = json_safe(r)
-					const j2 = r.chance(0.8)
-						? mutate_json(r, j1)
-						: json_safe(r)
-					const json_ctx = {
-						failures,
-						label: `seed=${seed} j1=${JSON.stringify(j1)} j2=${JSON.stringify(j2)}`,
-						trace: []
-					}
-					try {
-						/** @type {Change[]} */
-						const wire = JSON.parse(
-							JSON.stringify(deepDiff(j1, j2))
-						)
-						const source = r.chance(0.5)
-							? deepFreeze(JSON.parse(JSON.stringify(j1)))
-							: j1
-						const patched = deepPatch(source, wire)
-						if (!ref_equal(patched, j2)) {
-							fail(
-								json_ctx,
-								"json-round-trip",
-								`patched=${JSON.stringify(patched)} wire=${JSON.stringify(wire)}`
-							)
-						}
-					} catch (error) {
-						fail(
-							json_ctx,
-							"json-throw",
-							String(error)
-						)
-					}
-					const layers = [
-						j1,
-						j2,
-						r.chance(0.3)
-							? undefined
-							: json_safe(r),
-						r.chance(0.3)
-							? null
-							: mutate_json(r, j2)
-					]
-					const merged = deepMerge(...layers)
-					const expected = ref_merge(layers, [])
-					if (!ref_equal(merged, expected) || JSON.stringify(merged) != JSON.stringify(expected)) {
-						fail(
-							{
-								failures,
-								label: `seed=${seed} layers=${JSON.stringify(layers)}`,
-								trace: []
-							},
-							"merge-vs-reference",
-							`${JSON.stringify(merged)} vs ${JSON.stringify(expected)}`
-						)
-					}
-				}
-				report(failures, count)
-			},
-			timeout
-		)
 	}
 )

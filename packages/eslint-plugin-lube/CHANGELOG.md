@@ -1,5 +1,93 @@
 # Changelog
 
+## 0.9.0
+
+### Breaking
+
+- **The strict and recommended configs use `lube/indent` instead of `@stylistic/indent`**: options and disable
+  comments for `@stylistic/indent` no longer apply to them, so set the indentation with `lube/indent`. The plugin's
+  `@stylistic/indent` is `@stylistic/eslint-plugin`'s own rule again, no longer wrapped. `recommended` now indents a
+  line that starts with an operator (`&&`, `||`, `+`) one level deeper than the line its expression starts on, also
+  when the expression starts its own line after `(`, `[` or `=`, every such line of one expression at that same
+  level; the `*` lines of a block comment align under its `/*`; and a line inside a Svelte template expression is
+  indented as JavaScript from the indent of the line that holds the expression's `{`, while markup lines and `$:`
+  statements stay as they are. A bracket opened in the middle of a line, as in `} of f(`, `); i < bar(` or
+  `|| b).catch(`, indents its contents one level deeper than that line, where `@stylistic/indent` indented them from
+  the line their expression starts on, and its closer goes back to that line's indent; the body of a statement (`if`,
+  `for`, `while`, `switch`, a function or a class) still indents from the statement's first line, wherever its `{`
+  lands.
+  A line that starts with a comment followed by code, such as a JSDoc cast, is indented like that code. Run
+  `eslint --fix` once to re-indent existing code.
+- **The strict config moves nested function declarations below the last statement of their function** with the new
+  `closures-last`: a function declaration inside a function body goes below the `return`, or to the bottom of the
+  body when there is none. The moved functions come in `ascii-order`'s order when that rule checks declarations for
+  the file, and keep their source order otherwise. It has a fix, so run `eslint --fix` once; a moved function whose
+  parameter or local has the name of a variable of the enclosing function is then reported by `no-shadow`, so rename
+  it by hand.
+- **The strict and recommended configs write a JSDoc block of one tag on one line** with the new
+  `pretty-jsdoc-lines`: a block of several lines holding one tag and no description becomes `/** @returns {void} */`,
+  and a one-line block of two or more tags is split, one tag a line. A tag whose type spans lines and a block with a
+  description, a blank line or an `@example` stay as they are. It has a fix, so run `eslint --fix` once.
+- **The strict config requires a `@returns` tag** with the new `require-returns`, on every function declaration and
+  every function held by a `const`. Its fix adds `@returns {void}` (`Promise<void>` for an async function) to a
+  function that returns no value; write the type of the others by hand.
+- **The strict config forbids loose types** with the new `no-loose-types`: `any`, `*`, `object` and `Object` in the
+  type of a JSDoc tag or a TypeScript annotation are reported, while a property or parameter of that name is not. It
+  has no fix; write the real type, or `unknown` for a value that is really arbitrary.
+- **The strict config forbids `@typedef` and `@callback`** with the new `no-typedef`: both JSDoc tags are reported.
+  It has no fix; declare the type in a `.d.ts` file and name it with `import("./types.js").Name`.
+- **The strict config forbids a statement that starts with `(`, `[` or a template literal** with the new
+  `no-ambiguous-start`, also behind a leading JSDoc cast, since without semicolons it joins the line above. It has no
+  fix; assign the value to a `const` first.
+
+### Changed
+
+- **The strict config's fixes settle in fewer passes**: a fix of a `lube` or `@stylistic` rule covers only the text it
+  changes, so it no longer blocks the fixes of other rules next to it within the same `eslint --fix` pass.
+- **`closures-last` fixes bodies with a line that starts with a guarding `;`**: a statement after `"use strict"\n;` or
+  `;[ a ].map(f)` moves like any other, and a moved statement keeps its `;` where the code needs it.
+- **`closures-last` fixes a body where a statement starting with `(`, `[`, `` ` ``, `+`, `-`, `/` or `<` follows a
+  function declaration**: when moving the function would let that statement continue the one before it, the fix puts
+  a `;` at its start, as in `var x = 1\n;(x)`. The strict config, whose `@stylistic/no-extra-semi` removes the `;`
+  written after a function declaration, no longer ends with a `closures-last` report it cannot fix there.
+- **The strict config indents a line that starts with a binary or logical operator** (`||`, `&&`, `??`, `+`,
+  `===`, ...): at the indent of its expression when the expression starts a line of its own, as in `if (\n\ta\n\t&& b\n)`,
+  and one level deeper than the line the expression starts on otherwise, as in `return a\n\t|| b`. The lines of the
+  operand after it, a call `pretty-sequence` splits there among them, move with it in the same pass. Run
+  `eslint --fix` once to re-indent existing code.
+
+### Added
+
+- `pretty-parens`, in the strict and recommended configs: a grouping parenthesis, the parentheses of `if`, `while`,
+  `do ... while`, `for`, `switch`, `catch` and `with`, and the `${ }` of a template literal that hold an expression
+  spanning lines are written either as `(a\n\tb)`, the closing bracket right after the last token, or as
+  `(\n\ta\n\tb\n)`, the closing bracket on its own line when the opening bracket ends its line. Mixed forms are fixed
+  to the form the opening bracket starts; when a line comment ends the content, the fix breaks after the opening
+  bracket instead. JSDoc casts stay with `pretty-jsdoc-casting`, and the brackets of calls, parameters, arrays and
+  objects with `pretty-sequence`.
+- `lube/indent`, in the strict and recommended configs: reports and fixes the indentation of every line, computed
+  from the syntax tree. The first option is `"tab"` or a number of spaces; the second sets `SwitchCase` and
+  `binaryOperator`, both `1` by default and `SwitchCase: 0` in the configs.
+- `closures-last`, in the strict config: reports a function declaration that has another statement after it in the
+  body of a function, a function expression or an arrow function, and fixes it by moving the declarations to the end
+  of the body in their source order, each with the comments above it and the comment after it on its line, and its
+  overload signatures. The top level of a file, nested blocks and functions assigned to variables stay. A body that
+  shares a line with its statements, or a statement that would move up while starting with `(`, `[`, `` ` ``, `+`,
+  `-`, `/` or `<`, is reported without a fix.
+
+### Fixed
+
+- `eslint --fix` with the strict config finishes in one run on files that need many renames: it used to stop
+  after its 10 passes with renames and formatting left. `svelte-naming-convention` now renames every fixable name of a
+  file, with its declarations, usages and export specifiers, in one fix, whatever `fixSameNames` is, which only
+  decides whether usages are reported too. A name with a usage on a line turned off by `eslint-disable` is reported
+  without a fix, like one with a declaration there.
+- `max-statements-per-line` in the strict config puts every declaration of a line like
+  `var a; var b; var c` on its own line in one pass instead of one per pass.
+- In a file whose line breaks are CR alone, `eol-last` counts a final CR as the line break at the end of the file:
+  `eslint --fix` with the recommended config used to stop with circular fixes there, and now ends the file with
+  exactly one CR; the strict config now removes the final CR as it removes a final LF or CRLF.
+
 ## 0.8.1
 
 ### Fixed

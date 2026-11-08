@@ -3,6 +3,8 @@
     "commit": "",
     "pr": ""
   },
+  "disableClaudeAiConnectors": true,
+  "enableArtifact": false,
   "env": {
     "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "200000"
   },
@@ -43,6 +45,7 @@
       "Bash(mkdir *)",
       "Bash(mv *)",
       "Bash(node *)",
+      "Bash(node .tmp/*)",
       "Bash(npm *)",
       "Bash(npx *)",
       "Bash(nslookup *)",
@@ -66,6 +69,8 @@
       "Bash(touch *)",
       "Bash(tr *)",
       "Bash(uniq *)",
+      "Bash(unzip * -d .tmp*)",
+      "Bash(unzip -l *)",
       "Bash(wc *)",
       "Bash(which *)",
       "Bash(xargs *)",
@@ -127,6 +132,7 @@
       "PowerShell(gh search *)",
       "PowerShell(git *)",
       "PowerShell(node *)",
+      "PowerShell(node .tmp/*)",
       "PowerShell(npm *)",
       "PowerShell(npx *)",
       "PowerShell(pip *)",
@@ -136,11 +142,13 @@
       "PowerShell(python3 *)",
       "PowerShell(tar -t*)",
       "PowerShell(tar -x* -C .tmp*)",
+      "PowerShell(wc *)",
       "Read(~/.claude/projects/**)",
       "WebFetch",
       "WebSearch"
     ],
     "deny": [
+      "Artifact",
       "Bash(rm *.git*)",
       "Bash(rmdir *.git*)",
       "Edit(**/.git/**)",
@@ -252,6 +260,7 @@
       "Bash(touch *:/*)",
       "Bash(touch *:\\\\*)",
       "Bash(touch *~*)",
+      "Bash(unzip *..*)",
       "PowerShell(Copy-Item *..*)",
       "PowerShell(Copy-Item */c/*)",
       "PowerShell(Copy-Item */d/*)",

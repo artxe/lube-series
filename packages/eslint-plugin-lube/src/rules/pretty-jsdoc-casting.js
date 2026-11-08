@@ -18,6 +18,42 @@ export default {
 		const expressions = []
 		/** @type {Set<string>} */
 		const node_ranges = new Set()
+		/** @type {import("../../private.js").RuleListener} */
+		const listener = {
+			ArrayExpression: push,
+			ArrowFunctionExpression: push,
+			AssignmentExpression: push,
+			AwaitExpression: push,
+			BinaryExpression: push,
+			CallExpression: push,
+			ChainExpression: push,
+			ClassExpression: push,
+			ConditionalExpression: push,
+			FunctionExpression: push,
+			Identifier: push,
+			ImportExpression: push,
+			Literal: push,
+			LogicalExpression: push,
+			MemberExpression: push,
+			MetaProperty: push,
+			NewExpression: push,
+			ObjectExpression: push,
+			"Program:exit": () => {
+				for (let i = expressions.length - 1; i >= 0; i--) {
+					verify(
+						/** @type {import("../../private.js").AstNode} */(expressions[i])/**/
+					)
+				}
+			},
+			SequenceExpression: push,
+			TaggedTemplateExpression: push,
+			TemplateLiteral: push,
+			ThisExpression: push,
+			UnaryExpression: push,
+			UpdateExpression: push,
+			YieldExpression: push
+		}
+		return /** @type {import("eslint").Rule.RuleListener} */(/** @type {unknown} */(listener))/**/
 		/**
 		 * @param {import("../../private.js").Comment} comment
 		 * @returns {string}
@@ -234,9 +270,9 @@ export default {
 			const suffix = render_without(content_end, right, removed)
 			if (
 				line_break_regex.test(prefix)
-				&& restricted_regex.test(
-					text.slice(Math.max(0, left - 7), left)
-				)
+					&& restricted_regex.test(
+						text.slice(Math.max(0, left - 7), left)
+					)
 			) {
 				return
 			}
@@ -263,42 +299,6 @@ export default {
 				}
 			)
 		}
-		/** @type {import("../../private.js").RuleListener} */
-		const listener = {
-			ArrayExpression: push,
-			ArrowFunctionExpression: push,
-			AssignmentExpression: push,
-			AwaitExpression: push,
-			BinaryExpression: push,
-			CallExpression: push,
-			ChainExpression: push,
-			ClassExpression: push,
-			ConditionalExpression: push,
-			FunctionExpression: push,
-			Identifier: push,
-			ImportExpression: push,
-			Literal: push,
-			LogicalExpression: push,
-			MemberExpression: push,
-			MetaProperty: push,
-			NewExpression: push,
-			ObjectExpression: push,
-			"Program:exit": () => {
-				for (let i = expressions.length - 1; i >= 0; i--) {
-					verify(
-						/** @type {import("../../private.js").AstNode} */(expressions[i])/**/
-					)
-				}
-			},
-			SequenceExpression: push,
-			TaggedTemplateExpression: push,
-			TemplateLiteral: push,
-			ThisExpression: push,
-			UnaryExpression: push,
-			UpdateExpression: push,
-			YieldExpression: push
-		}
-		return /** @type {import("eslint").Rule.RuleListener} */(/** @type {unknown} */(listener))/**/
 	},
 	meta: {
 		docs: {

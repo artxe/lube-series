@@ -1,21 +1,32 @@
 import ascii_order from "./rules/ascii-order.js"
+import closures_last from "./rules/closures-last.js"
+import indent from "./rules/indent.js"
+import no_ambiguous_start from "./rules/no-ambiguous-start.js"
+import no_loose_types from "./rules/no-loose-types.js"
+import no_typedef from "./rules/no-typedef.js"
 import prefer_param_tag from "./rules/prefer-param-tag.js"
 import prefer_type_tag from "./rules/prefer-type-tag.js"
 import pretty_imports from "./rules/pretty-imports.js"
 import pretty_jsdoc_casting from "./rules/pretty-jsdoc-casting.js"
+import pretty_jsdoc_lines from "./rules/pretty-jsdoc-lines.js"
+import pretty_parens from "./rules/pretty-parens.js"
 import pretty_sequence from "./rules/pretty-sequence.js"
 import pretty_ternary from "./rules/pretty-ternary.js"
+import require_returns from "./rules/require-returns.js"
 import svelte_naming_convention from "./rules/svelte-naming-convention.js"
+import { accept_cr_eol } from "./utils/accept_cr_eol.js"
 import { keep_body_comments } from "./utils/keep_body_comments.js"
 import {
 	keep_comment_order,
 	keep_comments
 } from "./utils/keep_comments.js"
 import { keep_line_breaks } from "./utils/keep_line_breaks.js"
+import { record_options } from "./utils/rule_options.js"
 import { skip_hole_commas } from "./utils/skip_hole_commas.js"
 import { skip_optional_patterns } from "./utils/skip_optional_patterns.js"
 import { skip_unchanged_fixes } from "./utils/skip_unchanged_fixes.js"
 import { split_declarations } from "./utils/split_declarations.js"
+import { trim_fixes } from "./utils/trim_fixes.js"
 import stylistic_plugin from "@stylistic/eslint-plugin"
 import { builtinRules } from "eslint/use-at-your-own-risk"
 import { readFileSync } from "node:fs"
@@ -30,6 +41,12 @@ const manifest = JSON.parse(
 		),
 		"utf8"
 	)
+)
+const whole_comment_rules = new Set(
+	[
+		"pretty-jsdoc-lines",
+		"require-returns"
+	]
 )
 const brace_rules = /** @type {const} */([
 	"object-curly-newline",
@@ -66,11 +83,6 @@ const strict_rules = {
 	"@stylistic/function-call-argument-newline": [ "error", "consistent" ],
 	"@stylistic/function-call-spacing": [ "error", "never" ],
 	"@stylistic/generator-star-spacing": [ "error", "after" ],
-	"@stylistic/indent": [
-		"error",
-		"tab",
-		{ "SwitchCase": 0 }
-	],
 	"@stylistic/jsx-quotes": [ "error", "prefer-double" ],
 	"@stylistic/key-spacing": [
 		"error",
@@ -152,13 +164,28 @@ const strict_rules = {
 			checkTests: true
 		}
 	],
+	"lube/closures-last": "error",
 	"lube/curly": [ "error", "all" ],
+	"lube/indent": [
+		"error",
+		"tab",
+		{
+			"SwitchCase": 0,
+			"binaryOperator": 1
+		}
+	],
+	"lube/no-ambiguous-start": "error",
+	"lube/no-loose-types": "error",
+	"lube/no-typedef": "error",
 	"lube/prefer-param-tag": "error",
 	"lube/prefer-type-tag": "error",
 	"lube/pretty-imports": "error",
 	"lube/pretty-jsdoc-casting": "error",
+	"lube/pretty-jsdoc-lines": "error",
+	"lube/pretty-parens": "error",
 	"lube/pretty-sequence": "error",
 	"lube/pretty-ternary": "error",
+	"lube/require-returns": "error",
 	"lube/svelte-naming-convention": "error",
 	"no-case-declarations": "off",
 	"no-console": "warn",
@@ -212,8 +239,15 @@ const recommended_rules = {
 			checkTests: false
 		}
 	],
+	"lube/indent": [
+		"error",
+		"tab",
+		{ "SwitchCase": 0 }
+	],
 	"lube/pretty-imports": [ "error", { maxLength: 80 } ],
 	"lube/pretty-jsdoc-casting": "error",
+	"lube/pretty-jsdoc-lines": "error",
+	"lube/pretty-parens": "error",
 	"lube/pretty-sequence": [ "error", { maxLength: 80 } ],
 	"lube/pretty-ternary": "error"
 }
@@ -243,25 +277,48 @@ const plugin = {
 		name: "eslint-plugin-lube",
 		version: manifest.version
 	},
-	rules: {
-		"ascii-order": ascii_order,
-		"curly": keep_body_comments(
-			/** @type {import("eslint").Rule.RuleModule} */(builtinRules.get("curly"))/**/
-		),
-		"prefer-param-tag": prefer_param_tag,
-		"prefer-type-tag": prefer_type_tag,
-		"pretty-imports": pretty_imports,
-		"pretty-jsdoc-casting": pretty_jsdoc_casting,
-		"pretty-sequence": pretty_sequence,
-		"pretty-ternary": pretty_ternary,
-		"svelte-naming-convention": svelte_naming_convention
-	}
+	rules: Object.fromEntries(
+		Object.entries(
+			/** @type {Record<string, import("eslint").Rule.RuleModule>} */({
+				"ascii-order": ascii_order,
+				"closures-last": closures_last,
+				"curly": keep_body_comments(
+					/** @type {import("eslint").Rule.RuleModule} */(builtinRules.get("curly"))/**/
+				),
+				"indent": indent,
+				"no-ambiguous-start": no_ambiguous_start,
+				"no-loose-types": no_loose_types,
+				"no-typedef": no_typedef,
+				"prefer-param-tag": prefer_param_tag,
+				"prefer-type-tag": prefer_type_tag,
+				"pretty-imports": pretty_imports,
+				"pretty-jsdoc-casting": pretty_jsdoc_casting,
+				"pretty-jsdoc-lines": pretty_jsdoc_lines,
+				"pretty-parens": pretty_parens,
+				"pretty-sequence": pretty_sequence,
+				"pretty-ternary": pretty_ternary,
+				"require-returns": require_returns,
+				"svelte-naming-convention": svelte_naming_convention
+			})/**/
+		).map(
+			([ name, rule ]) => [
+				name,
+				record_options(
+					name,
+					rule.meta?.fixable && !whole_comment_rules.has(name) ? trim_fixes(rule) : rule
+				)
+			]
+		)
+	)
 }
 /** @type {Record<string, import("eslint").Rule.RuleModule>} */
 const stylistic_rules = {
 	...stylistic.rules,
 	"comma-style": skip_hole_commas(
 		/** @type {import("eslint").Rule.RuleModule} */(stylistic.rules?.["comma-style"])/**/
+	),
+	"eol-last": accept_cr_eol(
+		/** @type {import("eslint").Rule.RuleModule} */(stylistic.rules?.["eol-last"])/**/
 	),
 	"max-statements-per-line": split_declarations(
 		/** @type {import("eslint").Rule.RuleModule} */(stylistic.rules?.["max-statements-per-line"])/**/
@@ -298,7 +355,9 @@ const plugins = {
 			Object.entries(stylistic_rules).map(
 				([ name, rule ]) => [
 					name,
-					skip_unchanged_fixes(keep_line_breaks(rule))
+					trim_fixes(
+						skip_unchanged_fixes(keep_line_breaks(rule))
+					)
 				]
 			)
 		)

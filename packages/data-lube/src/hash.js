@@ -94,7 +94,7 @@ function hash_object(value, budget) {
 		result = length
 		for (let i = 0; i < length && i < items_cap; i++) {
 			result = Math.imul(result, 31) + hash_value(
-			/** @type {unknown[]} */(value)/**/[i],
+				/** @type {unknown[]} */(value)/**/[i],
 				share
 			) | 0
 		}
@@ -172,7 +172,7 @@ function hash_object(value, budget) {
 			result = result + mix(
 				hash_value(key, 0),
 				hash_value(
-				/** @type {Record<PropertyKey, unknown>} */(value)/**/[key],
+					/** @type {Record<PropertyKey, unknown>} */(value)/**/[key],
 					share
 				)
 			) | 0

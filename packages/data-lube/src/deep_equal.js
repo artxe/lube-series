@@ -150,9 +150,7 @@ function compare_objects(a, b, proto, memo) {
 	}
 	return result
 }
-/**
- * @returns {Memo}
- */
+/** @returns {Memo} */
 function create_memo() {
 	return {
 		assumed: 0,
@@ -207,11 +205,11 @@ function drain(memo) {
  */
 function equal(a, b, memo) {
 	return a === b
-	|| (
-		a && b && typeof a == "object" && typeof b == "object"
-			? equal_objects(a, b, memo)
-			: Number.isNaN(a) && Number.isNaN(b)
-	)
+		|| (
+			a && b && typeof a == "object" && typeof b == "object"
+				? equal_objects(a, b, memo)
+				: Number.isNaN(a) && Number.isNaN(b)
+		)
 }
 /**
  * @param {unknown[]} a
@@ -490,19 +488,19 @@ function equal_other(a, b, proto, memo) {
 	case "Error":
 		register(a, b, memo)
 		return /** @type {Error} */(a)/**/.name === /** @type {Error} */(b)/**/.name
-				&& /** @type {Error} */(a)/**/.message === /** @type {Error} */(b)/**/.message
-				&& has_own.call(a, "cause") === has_own.call(b, "cause")
-				&& equal(
-					/** @type {Error} */(a)/**/.cause,
-					/** @type {Error} */(b)/**/.cause,
-					memo
-				)
-				&& equal(
-					/** @type {Error & { errors?: unknown }} */(a)/**/.errors,
-					/** @type {Error & { errors?: unknown }} */(b)/**/.errors,
-					memo
-				)
-				&& equal_keys(a, b, memo)
+			&& /** @type {Error} */(a)/**/.message === /** @type {Error} */(b)/**/.message
+			&& has_own.call(a, "cause") === has_own.call(b, "cause")
+			&& equal(
+				/** @type {Error} */(a)/**/.cause,
+				/** @type {Error} */(b)/**/.cause,
+				memo
+			)
+			&& equal(
+				/** @type {Error & { errors?: unknown }} */(a)/**/.errors,
+				/** @type {Error & { errors?: unknown }} */(b)/**/.errors,
+				memo
+			)
+			&& equal_keys(a, b, memo)
 	case "FinalizationRegistry":
 	case "Promise":
 	case "WeakMap":
@@ -526,9 +524,9 @@ function equal_other(a, b, proto, memo) {
 			&& equal_keys(a, b, memo)
 	case "RegExp":
 		return /** @type {RegExp} */(a)/**/.source === /** @type {RegExp} */(b)/**/.source
-				&& /** @type {RegExp} */(a)/**/.flags === /** @type {RegExp} */(b)/**/.flags
-				&& /** @type {RegExp} */(a)/**/.lastIndex === /** @type {RegExp} */(b)/**/.lastIndex
-				&& equal_keys(a, b, memo)
+			&& /** @type {RegExp} */(a)/**/.flags === /** @type {RegExp} */(b)/**/.flags
+			&& /** @type {RegExp} */(a)/**/.lastIndex === /** @type {RegExp} */(b)/**/.lastIndex
+			&& equal_keys(a, b, memo)
 	case "Set":
 		register(a, b, memo)
 		return equal_sets(
@@ -838,19 +836,6 @@ function match_all(values, others, match, memo) {
 	const deep = memo.tentative > 0 || memo.depth > 64
 	/** @type {HashGroups | undefined} */
 	let groups
-	/**
-	 * @param {unknown} value
-	 * @param {number} i
-	 * @returns {boolean}
-	 */
-	function take(value, i) {
-		const other = others[i]
-		if (other === taken || !attempt(memo, () => match(value, other))) {
-			return false
-		}
-		others[i] = taken
-		return true
-	}
 	for (let k = 0; k < length; k++) {
 		const value = values[k]
 		const mirror = length - 1 - k
@@ -875,6 +860,19 @@ function match_all(values, others, match, memo) {
 		}
 	}
 	return true
+	/**
+	 * @param {unknown} value
+	 * @param {number} i
+	 * @returns {boolean}
+	 */
+	function take(value, i) {
+		const other = others[i]
+		if (other === taken || !attempt(memo, () => match(value, other))) {
+			return false
+		}
+		others[i] = taken
+		return true
+	}
 }
 /**
  * @param {WeakKey} a
@@ -984,12 +982,12 @@ export default /** @type {import("../public.js").DeepEqual} */(
 	 */
 	function(value, other) {
 		return value === other
-		|| (
-			value && other && typeof value == "object" && typeof other == "object"
-				? drafts.active
-					? equal_drafts(value, other)
-					: equal_root(value, other)
-				: Number.isNaN(value) && Number.isNaN(other)
-		)
+			|| (
+				value && other && typeof value == "object" && typeof other == "object"
+					? drafts.active
+						? equal_drafts(value, other)
+						: equal_root(value, other)
+					: Number.isNaN(value) && Number.isNaN(other)
+			)
 	}
 )/**/

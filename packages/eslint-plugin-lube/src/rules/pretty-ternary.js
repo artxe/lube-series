@@ -15,6 +15,32 @@ export default {
 		/** @type {import("../../private.js").TernaryNode[]} */
 		const nodes = []
 		let template_end = -1
+		return {
+			/** @param {import("estree").ConditionalExpression} node */
+			ConditionalExpression(node) {
+				push(
+					/** @type {import("../../private.js").TernaryNode} */(/** @type {unknown} */(node))/**/
+				)
+			},
+			"Program:exit": () => {
+				for (const node of nodes) {
+					verify(node)
+				}
+			},
+			/** @param {import("estree").Node} node */
+			TSConditionalType(node) {
+				push(
+					/** @type {import("../../private.js").TernaryNode} */(/** @type {unknown} */(node))/**/
+				)
+			},
+			/** @param {import("estree").TemplateLiteral} node */
+			TemplateLiteral(node) {
+				const end = /** @type {[number, number]} */(node.range)/**/[1]
+				if (end > template_end) {
+					template_end = end
+				}
+			}
+		}
 		/**
 		 * @param {import("../../private.js").TernaryNode} node
 		 * @param {number} depth
@@ -150,11 +176,7 @@ export default {
 						? "it spans lines"
 						: ""
 			const multiline = reason != ""
-			const line_indent = source.get_line_indent(
-				/** @type {import("../../private.js").AstNode} */(/** @type {unknown} */(node))/**/,
-				node.range[0],
-				indent
-			)
+			const line_indent = source.get_token_indent(node.range[0], indent)
 			/** @type {import("eslint").AST.Range[]} */
 			const ranges = []
 			/** @type {string[]} */
@@ -192,32 +214,6 @@ export default {
 					node: /** @type {import("estree").Node} */(/** @type {unknown} */(node))/**/
 				}
 			)
-		}
-		return {
-			/** @param {import("estree").ConditionalExpression} node */
-			ConditionalExpression(node) {
-				push(
-					/** @type {import("../../private.js").TernaryNode} */(/** @type {unknown} */(node))/**/
-				)
-			},
-			"Program:exit": () => {
-				for (const node of nodes) {
-					verify(node)
-				}
-			},
-			/** @param {import("estree").Node} node */
-			TSConditionalType(node) {
-				push(
-					/** @type {import("../../private.js").TernaryNode} */(/** @type {unknown} */(node))/**/
-				)
-			},
-			/** @param {import("estree").TemplateLiteral} node */
-			TemplateLiteral(node) {
-				const end = /** @type {[number, number]} */(node.range)/**/[1]
-				if (end > template_end) {
-					template_end = end
-				}
-			}
 		}
 	},
 	meta: {

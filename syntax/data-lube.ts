@@ -268,6 +268,7 @@ class Member {
 		return this.#role
 	}
 }
+/** @returns {string} */
 function payslip(member: Member): string {
 	return member.role
 }

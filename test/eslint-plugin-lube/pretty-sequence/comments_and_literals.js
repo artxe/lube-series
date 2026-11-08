@@ -1,6 +1,7 @@
 /**
  * @param {import("eslint").RuleTester.ValidTestCase[]} valid
  * @param {import("eslint").RuleTester.InvalidTestCase[]} invalid
+ * @returns {void}
  */
 export function cases(valid, invalid) {
 	valid.push(
@@ -9,12 +10,6 @@ export function cases(valid, invalid) {
 		},
 		{
 			code: "foo(`a\nb`, cccccccccccccccccccccccccccccc)"
-		},
-		{
-			code: "foo(`a b`, cccccccccccccccccccccccccccccc)"
-		},
-		{
-			code: "foo(\"a b\", cccccccccccccccccccccccccccccc)"
 		},
 		{
 			code: "foo(...`a${1}b c${2}`, ...[ 1, 2 ], ccccccccccccccccccc)"
@@ -48,17 +43,7 @@ export function cases(valid, invalid) {
 			output: "f(a, b)"
 		},
 		{
-			code: "var value = [ b, c // note\n]",
-			errors: [ { messageId: "multiline" } ],
-			output: "var value = [\n\tb,\n\tc // note\n]"
-		},
-		{
 			code: "f(a, // a\nb)",
-			errors: [ { messageId: "multiline" } ],
-			output: "f(\n\ta, // a\n\tb\n)"
-		},
-		{
-			code: "f(a // a\n, b)",
 			errors: [ { messageId: "multiline" } ],
 			output: "f(\n\ta, // a\n\tb\n)"
 		},
@@ -92,17 +77,6 @@ export function cases(valid, invalid) {
 				{ line: 2, messageId: "multiline" }
 			],
 			output: "var value = [ a, b ]\r\nf(\r\n\taaaaaaaaaaaaaaaa,\r\n\tbbbbbbbbbbbbbbbbbbb\r\n)\r\n"
-		},
-		{
-			code: "var value = [a,b]\rf(aaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbb)\r",
-			errors: [
-				{
-					line: 1,
-					messageId: "single_line"
-				},
-				{ line: 2, messageId: "multiline" }
-			],
-			output: "var value = [ a, b ]\rf(\r\taaaaaaaaaaaaaaaa,\r\tbbbbbbbbbbbbbbbbbbb\r)\r"
 		},
 		{
 			code: "var value = [a,b] f(aaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbb) ",

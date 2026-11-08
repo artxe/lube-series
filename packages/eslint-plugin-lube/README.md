@@ -82,7 +82,8 @@ Both configs are flat config objects with `plugins` and `rules`, and differ in h
 
 **`configs.recommended`** only formats and orders, and every rule in it has a fix, so it suits format on save.
 - The `@stylistic` formatting rules: tab indentation, double quotes, no semicolons, spacing and line breaks.
-- `pretty-imports`, `pretty-jsdoc-casting`, `pretty-sequence` and `pretty-ternary`, with items on one line up to 80 characters.
+- `pretty-imports`, `pretty-jsdoc-casting`, `pretty-parens`, `pretty-sequence` and `pretty-ternary`, with items on one line up to 80 characters.
+- `pretty-jsdoc-lines`, which writes a JSDoc block of one tag on one line and a block of several tags one tag a line.
 - `ascii-order` for the names inside import and export braces only.
 - A line break at the end of a file and at most one blank line, as editors write them.
 - It never renames an identifier, never moves an import, key, function or test, and reports nothing about what the code does.
@@ -91,9 +92,13 @@ Both configs are flat config objects with `plugins` and `rules`, and differ in h
 - `svelte-naming-convention`, which renames declarations to snake_case.
 - `prefer-param-tag`, which moves the inline `/** @type {T} */` comments of a function declaration's parameters into `@param` tags on the declaration ([prefer-param-tag](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/prefer-param-tag.md)).
 - `prefer-type-tag`, which moves the cast of a declaration's value into a `@type` tag on the declaration, in a project linted with type information ([prefer-type-tag](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/prefer-type-tag.md) shows the parser options).
+- `closures-last`, which moves the function declarations inside a function body below its other statements ([closures-last](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/closures-last.md)).
+- `require-returns`, which asks for a `@returns` tag on every function declaration and every function held by a `const`, and adds `@returns {void}` to one that returns no value ([require-returns](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/require-returns.md)).
+- `no-loose-types`, `no-typedef` and `no-ambiguous-start`, which report `any`, `*`, `object` and `Object` in types, the tags `@typedef` and `@callback`, and a statement starting with `(`, `[` or a template literal ([no-loose-types](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/no-loose-types.md), [no-typedef](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/no-typedef.md), [no-ambiguous-start](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/no-ambiguous-start.md)).
 - `ascii-order` for import statements, object keys, function declarations and test cases too (see below).
 - `pretty-sequence` and `pretty-imports` at 30 characters.
 - No blank lines, no line break at the end of a file and one statement per line.
+- A line that starts with `||`, `&&`, `+` or another binary operator indented under its expression, one level deeper than the line the expression starts on (the `binaryOperator` option of `lube/indent`, which `recommended` sets too).
 - `curly` (braces on every block) and core rules such as `func-style` (declarations), `no-shadow`, `prefer-const`, `one-var` (never) and `no-console`.
 
 In `strict`, `ascii-order` fixes import order assuming modules can run in any order, and key order assuming nothing reads it: sorted keys change `Object.keys`, `JSON.stringify` and `for...in`.
@@ -101,9 +106,9 @@ In `strict`, `ascii-order` fixes import order assuming modules can run in any or
 - Disable the rule where key or import order matters; [ascii-order](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/ascii-order.md) lists what it does not fix.
 
 ### Changing a rule
-Override a rule after the spread: `rules: { ...lube.configs.recommended.rules, "@stylistic/indent": ["error", 4] }`.
-- Formatting rules go by their `@stylistic/` name.
-- An indentation of your own also goes to the `indent` option of `pretty-imports`, `pretty-sequence` and `pretty-ternary`, or those rules and `@stylistic/indent` keep rewriting each other's fixes.
+Override a rule after the spread: `rules: { ...lube.configs.recommended.rules, "lube/indent": ["error", 4] }`.
+- Formatting rules go by their `@stylistic/` name, except indentation, which is `lube/indent`.
+- An indentation of your own also goes to the `indent` option of `pretty-imports`, `pretty-parens`, `pretty-sequence` and `pretty-ternary`, or those rules and `lube/indent` keep rewriting each other's fixes.
 - `pretty-sequence` writes the items of an array, object or call one per line once they are longer than its `maxLength` together, 80 in `recommended` and 30 in `strict`: `"lube/pretty-sequence": ["error", { maxLength: 100 }]`.
 - Every option of a rule is checked, so a misspelled option is a configuration error.
 
@@ -111,13 +116,21 @@ Override a rule after the spread: `rules: { ...lube.configs.recommended.rules, "
 | Rule | Enforces | `recommended` |
 | --- | --- | --- |
 | [ascii-order](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/ascii-order.md) | ASCII order of import statements, import and export names, object keys, function declarations and test cases | names only |
+| [closures-last](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/closures-last.md) | Function declarations inside a function body below its other statements, since they are hoisted | no |
 | [curly](https://eslint.org/docs/latest/rules/curly) | Braces around the bodies of `if`, `else`, `for`, `while` and `do`, as ESLint's own rule does, with a fix that keeps a comment in front of the body, such as a JSDoc cast, inside the braces | no |
+| [indent](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/indent.md) | Indentation of every line computed from the syntax tree, including lines that start with an operator, the `*` lines of block comments and the template expressions of `.svelte` files | yes |
+| [no-ambiguous-start](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/no-ambiguous-start.md) | No statement starting with `(`, `[` or a template literal, which joins the line above without semicolons | no |
+| [no-loose-types](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/no-loose-types.md) | No `any`, `*`, `object` or `Object` in JSDoc tag types and TypeScript annotations | no |
+| [no-typedef](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/no-typedef.md) | No `@typedef` or `@callback` JSDoc tags | no |
 | [prefer-param-tag](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/prefer-param-tag.md) | JSDoc `@param` tags on a function declaration instead of inline `/** @type {T} */` comments in its parameter list | no |
 | [prefer-type-tag](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/prefer-type-tag.md) | A JSDoc `@type` tag on a declaration instead of a cast of its value, wherever the tag would type check (needs type information) | no |
 | [pretty-imports](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/pretty-imports.md) | Import and export names on one line when they fit, or one per line | yes |
 | [pretty-jsdoc-casting](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/pretty-jsdoc-casting.md) | JSDoc type casts written as `/** @type {T} */(value)/**/` | yes |
+| [pretty-jsdoc-lines](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/pretty-jsdoc-lines.md) | A JSDoc block of one tag on one line, and a block of several tags one tag a line | yes |
+| [pretty-parens](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/pretty-parens.md) | Parentheses, statement headers and `${ }` that hold a multi-line expression closed right after the last token, or on their own line when the opener ends its line | yes |
 | [pretty-sequence](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/pretty-sequence.md) | Items of arrays, objects, calls and parameters on one line when they fit, or one per line | yes |
 | [pretty-ternary](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/pretty-ternary.md) | Nested and long ternaries broken before `?` and `:`, one indent deeper per level | yes |
+| [require-returns](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/require-returns.md) | A JSDoc `@returns` tag on every function declaration and every function held by a `const` | no |
 | [svelte-naming-convention](https://github.com/artxe/lube-series/blob/master/packages/eslint-plugin-lube/docs/svelte-naming-convention.md) | snake_case declarations, following the Svelte code conventions | no |
 
 ## What it is not

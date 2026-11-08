@@ -3,6 +3,7 @@ const language_options = { parser: svelte_parser }
 /**
  * @param {import("eslint").RuleTester.ValidTestCase[]} valid
  * @param {import("eslint").RuleTester.InvalidTestCase[]} invalid
+ * @returns {void}
  */
 export function cases(valid, invalid) {
 	valid.push(
@@ -30,7 +31,7 @@ export function cases(valid, invalid) {
 			],
 			filename: "a.svelte",
 			languageOptions: language_options,
-			output: "<script>\n\tconst fooBar = 1\n</script>\n<p>{foo_bar}</p>"
+			output: "<script>\n\tconst foo_bar = 1\n</script>\n<p>{foo_bar}</p>"
 		},
 		{
 			code: "<script>\n\tconst fooBar = 1\n</script>\n<Comp {fooBar} />",
@@ -39,7 +40,7 @@ export function cases(valid, invalid) {
 			],
 			filename: "a.svelte",
 			languageOptions: language_options,
-			output: "<script>\n\tconst fooBar = 1\n</script>\n<Comp fooBar={foo_bar} />"
+			output: "<script>\n\tconst foo_bar = 1\n</script>\n<Comp fooBar={foo_bar} />"
 		},
 		{
 			code: "<script>\n\tconst fooBar = 1\n</script>\n<Comp attr={fooBar} {...fooBar} />",
@@ -48,7 +49,7 @@ export function cases(valid, invalid) {
 			],
 			filename: "a.svelte",
 			languageOptions: language_options,
-			output: "<script>\n\tconst fooBar = 1\n</script>\n<Comp attr={foo_bar} {...foo_bar} />"
+			output: "<script>\n\tconst foo_bar = 1\n</script>\n<Comp attr={foo_bar} {...foo_bar} />"
 		},
 		{
 			code: "<script>\n\tconst fooBar = []\n</script>\n{#if fooBar}a{/if}\n{#each fooBar as v}{v}{/each}\n{#key fooBar}x{/key}",
@@ -57,7 +58,7 @@ export function cases(valid, invalid) {
 			],
 			filename: "a.svelte",
 			languageOptions: language_options,
-			output: "<script>\n\tconst fooBar = []\n</script>\n{#if foo_bar}a{/if}\n{#each foo_bar as v}{v}{/each}\n{#key foo_bar}x{/key}"
+			output: "<script>\n\tconst foo_bar = []\n</script>\n{#if foo_bar}a{/if}\n{#each foo_bar as v}{v}{/each}\n{#key foo_bar}x{/key}"
 		}
 	)
 }

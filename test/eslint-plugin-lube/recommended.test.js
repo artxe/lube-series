@@ -7,26 +7,23 @@ describe(
 	"fixes of the recommended config",
 	() => {
 		const linter = new Linter()
-		/**
-		 * @param {string} code
-		 * @param {string} output
-		 * @returns {void}
-		 */
-		function assert_converges(code, output) {
-			const result = linter.verifyAndFix(
-				code,
-				[ lube.configs.recommended ]
-			)
-			assert.strictEqual(result.output, output)
-			assert.deepStrictEqual(result.messages, [])
-			assert.strictEqual(
-				linter.verifyAndFix(
-					output,
-					[ lube.configs.recommended ]
-				).output,
-				output
-			)
-		}
+		it(
+			"ends a file of CR line breaks with one CR",
+			() => {
+				assert_converges(
+					"const a = 1\rconst b = 2\r",
+					"const a = 1\rconst b = 2\r"
+				)
+				assert_converges(
+					"const a = 1\rconst b = 2",
+					"const a = 1\rconst b = 2\r"
+				)
+				assert_converges(
+					"const a = 1\r\r\rconst b = 2\r\r\r",
+					"const a = 1\r\rconst b = 2\r"
+				)
+			}
+		)
 		it(
 			"ends a file with a line break and keeps one blank line",
 			() => {
@@ -72,6 +69,15 @@ describe(
 			}
 		)
 		it(
+			"indents a line that starts with an operator one level",
+			() => {
+				assert_converges(
+					"function f() {\n\treturn a\n|| b\n}\n",
+					"function f() {\n\treturn a\n\t\t|| b\n}\n"
+				)
+			}
+		)
+		it(
 			"keeps CRLF line breaks",
 			() => {
 				assert_converges(
@@ -109,5 +115,25 @@ describe(
 				)
 			}
 		)
+		/**
+		 * @param {string} code
+		 * @param {string} output
+		 * @returns {void}
+		 */
+		function assert_converges(code, output) {
+			const result = linter.verifyAndFix(
+				code,
+				[ lube.configs.recommended ]
+			)
+			assert.strictEqual(result.output, output)
+			assert.deepStrictEqual(result.messages, [])
+			assert.strictEqual(
+				linter.verifyAndFix(
+					output,
+					[ lube.configs.recommended ]
+				).output,
+				output
+			)
+		}
 	}
 )

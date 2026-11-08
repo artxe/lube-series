@@ -7,6 +7,7 @@ const language_options = {
 /**
  * @param {import("eslint").RuleTester.ValidTestCase[]} valid
  * @param {import("eslint").RuleTester.InvalidTestCase[]} invalid
+ * @returns {void}
  */
 export function cases(valid, invalid) {
 	valid.push(

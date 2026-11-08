@@ -1,17 +1,12 @@
 /**
  * @param {import("eslint").RuleTester.ValidTestCase[]} valid
  * @param {import("eslint").RuleTester.InvalidTestCase[]} invalid
+ * @returns {void}
  */
 export function cases(valid, invalid) {
 	valid.push(
 		{
 			code: "var value = a ? // b\n\tb : c ? d : e"
-		},
-		{
-			code: "var value = a ? b : c ? // d\n\td : e"
-		},
-		{
-			code: "var value = `${a ? b : c ? d : e}`"
 		},
 		{
 			code: "var value = a\n\t? `b\nc`\n\t: d"

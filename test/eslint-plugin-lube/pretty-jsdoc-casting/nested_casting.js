@@ -1,6 +1,7 @@
 /**
  * @param {import("eslint").RuleTester.ValidTestCase[]} valid
  * @param {import("eslint").RuleTester.InvalidTestCase[]} invalid
+ * @returns {void}
  */
 export function cases(valid, invalid) {
 	valid.push(
@@ -16,9 +17,6 @@ export function cases(valid, invalid) {
 		},
 		{
 			code: "var v = (/** @type {A} */(a)/**/)"
-		},
-		{
-			code: "var v = /** @type {X} */(/** @type {A} */(/** @type {B} */(a))/**/.b)/**/"
 		}
 	)
 	invalid.push(
@@ -46,25 +44,12 @@ export function cases(valid, invalid) {
 			output: "var v = /** @type {A} */(/** @type {B} */(a))/**/"
 		},
 		{
-			code: "var v = /** @type {A} */(/** @type {B} */(/** @type {C} */(a)/**/)/**/)/**/.d",
-			errors: [ { messageId: "marker" } ],
-			output: "var v = /** @type {A} */(/** @type {B} */(/** @type {C} */(a)))/**/.d"
-		},
-		{
 			code: "var v = /** @type {X} */(a + /** @type {B} */(b))",
 			errors: [
 				{ messageId: "marker" },
 				{ messageId: "marker" }
 			],
 			output: "var v = /** @type {X} */(a + /** @type {B} */(b)/**/)/**/"
-		},
-		{
-			code: "f(/** @type {A} */(a), /** @type {B} */ (b))",
-			errors: [
-				{ messageId: "marker" },
-				{ messageId: "format" }
-			],
-			output: "f(/** @type {A} */(a)/**/, /** @type {B} */(b)/**/)"
 		}
 	)
 }

@@ -24,13 +24,6 @@ function escape_regex(text) {
  */
 function jsdoc_with(comment, indent, eol, tags) {
 	let rows = `/*${comment.value}*/`.split(line_terminator_regex)
-	/**
-	 * @param {number} index
-	 * @returns {string}
-	 */
-	function row_at(index) {
-		return /** @type {string} */(rows[index])/**/
-	}
 	if (rows.length < 2 || !/^\/\*\*\s*$/.test(row_at(0)) || !/^\s*\*\/$/.test(row_at(rows.length - 1))) {
 		const body = comment.value.slice(1).split(line_terminator_regex)
 			.map(
@@ -84,40 +77,19 @@ function jsdoc_with(comment, indent, eol, tags) {
 		rows.splice(at, 0, ...added)
 	}
 	return rows.join(eol)
+	/**
+	 * @param {number} index
+	 * @returns {string}
+	 */
+	function row_at(index) {
+		return /** @type {string} */(rows[index])/**/
+	}
 }
 /** @type {import("eslint").Rule.RuleModule} */
 export default {
 	create(context) {
 		const source_code = context.sourceCode
 		const text = source_code.text
-		/**
-		 * @param {import("estree").Comment} comment
-		 * @returns {import("eslint").AST.Range}
-		 */
-		function comment_range(comment) {
-			return /** @type {import("eslint").AST.Range} */(comment.range)/**/
-		}
-		/**
-		 * @param {number} position
-		 * @returns {number}
-		 */
-		function line_start_of(position) {
-			let start = position
-			while (start > 0 && !line_terminator_regex.test(text.charAt(start - 1))) {
-				start--
-			}
-			return start
-		}
-		/**
-		 * @param {import("estree").Comment} comment
-		 * @returns {boolean}
-		 */
-		function starts_line(comment) {
-			const start = comment_range(comment)[0]
-			return space_regex.test(
-				text.slice(line_start_of(start), start)
-			)
-		}
 		return {
 			FunctionDeclaration(node) {
 				/** @type {{ comment: import("estree").Comment, index: number, name: string, type: string }[]} */
@@ -232,6 +204,34 @@ export default {
 					}
 				)
 			}
+		}
+		/**
+		 * @param {import("estree").Comment} comment
+		 * @returns {import("eslint").AST.Range}
+		 */
+		function comment_range(comment) {
+			return /** @type {import("eslint").AST.Range} */(comment.range)/**/
+		}
+		/**
+		 * @param {number} position
+		 * @returns {number}
+		 */
+		function line_start_of(position) {
+			let start = position
+			while (start > 0 && !line_terminator_regex.test(text.charAt(start - 1))) {
+				start--
+			}
+			return start
+		}
+		/**
+		 * @param {import("estree").Comment} comment
+		 * @returns {boolean}
+		 */
+		function starts_line(comment) {
+			const start = comment_range(comment)[0]
+			return space_regex.test(
+				text.slice(line_start_of(start), start)
+			)
 		}
 	},
 	meta: {

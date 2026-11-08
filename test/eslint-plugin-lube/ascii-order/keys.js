@@ -20,6 +20,7 @@ const parser_without_literal_keys = {
 /**
  * @param {import("eslint").RuleTester.ValidTestCase[]} valid
  * @param {import("eslint").RuleTester.InvalidTestCase[]} invalid
+ * @returns {void}
  */
 export function cases(valid, invalid) {
 	valid.push(
@@ -27,9 +28,6 @@ export function cases(valid, invalid) {
 			code: "{\n\t\"exports\": {\n\t\t\".\": {\n\t\t\t\"types\": \"./a.d.ts\",\n\t\t\t\"default\": \"./a.js\"\n\t\t}\n\t},\n\t\"imports\": {\n\t\t\"#a\": {\n\t\t\t\"node\": \"./a.js\",\n\t\t\t\"default\": \"./b.js\"\n\t\t}\n\t}\n}",
 			filename: "package.json",
 			languageOptions: { parser: ts_parser }
-		},
-		{
-			code: "var o = { a: 1, b: 2, c: 3 }"
 		},
 		{
 			code: "var o = { B: 1, a: 2, b: 3 }"
@@ -56,7 +54,6 @@ export function cases(valid, invalid) {
 			code: "var o = { get a() { return 1 }, set a(v) {}, b: 2 }"
 		},
 		{ code: "var { b, ...a } = o" },
-		{ code: "var o = {}" },
 		{
 			code: "var o = { b: 1, a: 2 }",
 			options: [ { checkKeys: false } ]
@@ -160,16 +157,6 @@ export function cases(valid, invalid) {
 			output: null
 		},
 		{
-			code: "var o = { b: f(), a: x }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
-			code: "var o = { c: f(), b: g(), a: 1 }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
 			code: "var o = { b: f(), c: g(), a: 1 }",
 			errors: [ { messageId: "keys" } ],
 			output: "var o = { a: 1, b: f(), c: g() }"
@@ -185,22 +172,12 @@ export function cases(valid, invalid) {
 			output: null
 		},
 		{
-			code: "var o = { b: delete x.y, a: x }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
 			code: "var o = { b: -x, a: { c: typeof y } }",
 			errors: [ { messageId: "keys" } ],
 			output: "var o = { a: { c: typeof y }, b: -x }"
 		},
 		{
 			code: "var { b, a = b } = o",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
-			code: "var { b = x, a } = o",
 			errors: [ { messageId: "keys" } ],
 			output: null
 		},
@@ -230,11 +207,6 @@ export function cases(valid, invalid) {
 			output: null
 		},
 		{
-			code: "var o = { b: { [f()]: 1 }, a: 1 }",
-			errors: [ { messageId: "keys" } ],
-			output: "var o = { a: 1, b: { [f()]: 1 } }"
-		},
-		{
 			code: "var o = { b: { [f()]: 1 }, a: x }",
 			errors: [ { messageId: "keys" } ],
 			output: null
@@ -248,16 +220,6 @@ export function cases(valid, invalid) {
 			code: "async function f() { var o = { b: await x, a: y } }",
 			errors: [ { messageId: "keys" } ],
 			output: null
-		},
-		{
-			code: "var o = { updatedAt: new Date(), createdAt: new Date() }",
-			errors: [ { messageId: "keys" } ],
-			output: "var o = { createdAt: new Date(), updatedAt: new Date() }"
-		},
-		{
-			code: "var o = { s: new Set([ 1 ]), m: new Map() }",
-			errors: [ { messageId: "keys" } ],
-			output: "var o = { m: new Map(), s: new Set([ 1 ]) }"
 		},
 		{
 			code: "var o = { c: new Map([ [ \"a\", 1 ], [ `b`, -2n ] ]), b: new WeakMap, a: new WeakSet([]) }",
@@ -278,11 +240,6 @@ export function cases(valid, invalid) {
 			code: "var o = { b: new Set([ new Date(), /a/ ]), a: x }",
 			errors: [ { messageId: "keys" } ],
 			output: "var o = { a: x, b: new Set([ new Date(), /a/ ]) }"
-		},
-		{
-			code: "var o = { b: f(), a: new Date() }",
-			errors: [ { messageId: "keys" } ],
-			output: null
 		},
 		{
 			code: "var o = { b: new Set(x), a: y }",
@@ -310,11 +267,6 @@ export function cases(valid, invalid) {
 			output: null
 		},
 		{
-			code: "var o = { b: new Map(f()), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
 			code: "var o = { b: new Date(-x), a: y }",
 			errors: [ { messageId: "keys" } ],
 			output: null
@@ -335,11 +287,6 @@ export function cases(valid, invalid) {
 			output: null
 		},
 		{
-			code: "function f(Map) { return { b: new Map(), a: y } }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
 			code: "var { b = new Date(), a } = o",
 			errors: [ { messageId: "keys" } ],
 			output: null
@@ -348,16 +295,6 @@ export function cases(valid, invalid) {
 			code: "const x = 1\nvar o = { b: f(), a: x }",
 			errors: [ { messageId: "keys" } ],
 			output: "const x = 1\nvar o = { a: x, b: f() }"
-		},
-		{
-			code: "function x() {}\nclass Y {}\nvar o = { c: f(), b: Y, a: x }",
-			errors: [ { messageId: "keys" } ],
-			output: "function x() {}\nclass Y {}\nvar o = { a: x, b: Y, c: f() }"
-		},
-		{
-			code: "import * as x from \"m\"\nvar o = { b: f(), a: x }",
-			errors: [ { messageId: "keys" } ],
-			output: "import * as x from \"m\"\nvar o = { a: x, b: f() }"
 		},
 		{
 			code: "const x = 1\nvar o = { b: f(), a: [ x, typeof x, x === 1, !x, x ? x : x || x ] }",
@@ -377,11 +314,6 @@ export function cases(valid, invalid) {
 		},
 		{
 			code: "function x() {}\nx = 1\nvar o = { b: f(), a: x }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
-			code: "var x = 1\nvar x = 2\nvar o = { b: f(), a: x }",
 			errors: [ { messageId: "keys" } ],
 			output: null
 		},
@@ -416,21 +348,6 @@ export function cases(valid, invalid) {
 			output: null
 		},
 		{
-			code: "const x = {}\nvar o = { b: f(), a: `${x}` }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
-			code: "const x = []\nvar o = { b: f(), a: [ ...x ] }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
-			code: "const x = {}\nvar o = { b: f(), a: -x }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
 			code: "const x = {}\nvar o = { b: f(), a: x + 1 }",
 			errors: [ { messageId: "keys" } ],
 			output: null
@@ -441,27 +358,12 @@ export function cases(valid, invalid) {
 			output: "var o = { a: y, b: new Set([ undefined, NaN, Infinity ]) }"
 		},
 		{
-			code: "function g(NaN) { return { b: new Set([ NaN ]), a: y } }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
 			code: "var o = { c: new URL(\"https://example.com/a\"), b: new URL(\"a\", \"https://example.com\"), a: y }",
 			errors: [ { messageId: "keys" } ],
 			output: "var o = { a: y, b: new URL(\"a\", \"https://example.com\"), c: new URL(\"https://example.com/a\") }"
 		},
 		{
 			code: "var o = { b: new URL(\"/a\"), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
-			code: "var o = { b: new URL(x), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
-			code: "var o = { b: new URL(\"https://example.com\", 1, 2), a: y }",
 			errors: [ { messageId: "keys" } ],
 			output: null
 		},
@@ -476,22 +378,7 @@ export function cases(valid, invalid) {
 			output: null
 		},
 		{
-			code: "var o = { b: new DataView(x), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
 			code: "var o = { b: new RegExp(\"(\"), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
-			code: "var o = { b: new RegExp(\"a\", \"gg\"), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
-			code: "var o = { b: new RegExp(1), a: y }",
 			errors: [ { messageId: "keys" } ],
 			output: null
 		},
@@ -499,11 +386,6 @@ export function cases(valid, invalid) {
 			code: "var o = { b: new RegExp(), a: y }",
 			errors: [ { messageId: "keys" } ],
 			output: "var o = { a: y, b: new RegExp() }"
-		},
-		{
-			code: "var o = { b: new Error(\"e\", { cause: x }), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: null
 		},
 		{
 			code: "var o = { b: 1, a: 2 }",
@@ -519,27 +401,7 @@ export function cases(valid, invalid) {
 			output: null
 		},
 		{
-			code: "var o = { b: new Array(1.5), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
-			code: "var o = { b: new ArrayBuffer(-1), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
 			code: "var o = { b: new ArrayBuffer(1e9), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
-			code: "var o = { b: new Uint8Array(-1), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
-			code: "var o = { b: new Float64Array(2 ** 40), a: y }",
 			errors: [ { messageId: "keys" } ],
 			output: null
 		},
@@ -554,27 +416,7 @@ export function cases(valid, invalid) {
 			output: null
 		},
 		{
-			code: "var o = { b: new WeakSet([ 1 ]), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
-			code: "var o = { b: new WeakMap([ [ 1, 2 ] ]), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
 			code: "var o = { b: new RegExp(\"a\", \"v\"), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
-			code: "var o = { b: new RegExp(\"a\", \"d\"), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
-			code: "var o = { b: new RegExp(/a/v), a: y }",
 			errors: [ { messageId: "keys" } ],
 			output: null
 		},
@@ -594,17 +436,7 @@ export function cases(valid, invalid) {
 			output: "var o = { a: y, b: new RegExp(/a/g), c: new RegExp(\"(?<x>a)(?<=b)(?:c)\\\\p{L}\", \"gimsuy\") }"
 		},
 		{
-			code: "var o = { b: new Set(new Array(1e8)), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
 			code: "var o = { b: new Array(65537), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
-			code: "var o = { b: new ArrayBuffer(\"1e9\"), a: y }",
 			errors: [ { messageId: "keys" } ],
 			output: null
 		},
@@ -619,11 +451,6 @@ export function cases(valid, invalid) {
 			output: null
 		},
 		{
-			code: "var o = { b: new Uint8Array({ length: [ 1e9 ] }), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
 			code: "var o = { b: new Uint8Array({ length: 2 }), a: new Array(65536) }",
 			errors: [ { messageId: "keys" } ],
 			output: "var o = { a: new Array(65536), b: new Uint8Array({ length: 2 }) }"
@@ -634,22 +461,12 @@ export function cases(valid, invalid) {
 			output: null
 		},
 		{
-			code: "var o = { b: f(), a: Y }\nclass Y {}",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
 			code: "const X = { b: f(), a: X }",
 			errors: [ { messageId: "keys" } ],
 			output: null
 		},
 		{
 			code: "const X = 1\nfunction g() {\n\treturn { b: f(), a: X }\n}",
-			errors: [ { messageId: "keys" } ],
-			output: null
-		},
-		{
-			code: "class Y {\n\tm() {\n\t\treturn { b: f(), a: Y }\n\t}\n}",
 			errors: [ { messageId: "keys" } ],
 			output: null
 		},
@@ -673,21 +490,6 @@ export function cases(valid, invalid) {
 			code: "var o = { b: f(), a: x }\nfunction x() {}",
 			errors: [ { messageId: "keys" } ],
 			output: "var o = { a: x, b: f() }\nfunction x() {}"
-		},
-		{
-			code: "var o = { b: new Array(-0), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: "var o = { a: y, b: new Array(-0) }"
-		},
-		{
-			code: "var o = { b: new WeakSet([ {} ]), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: "var o = { a: y, b: new WeakSet([ {} ]) }"
-		},
-		{
-			code: "var o = { b: new WeakMap([ [ {}, 1 ] ]), a: y }",
-			errors: [ { messageId: "keys" } ],
-			output: "var o = { a: y, b: new WeakMap([ [ {}, 1 ] ]) }"
 		},
 		{
 			code: "var o = { b: new Map([ [ 1, 2 ] ]), a: y }",

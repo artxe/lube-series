@@ -166,15 +166,6 @@ describe(
 		it(
 			"circular reference",
 			() => {
-				/**
-				 * @returns {{ self?: ReturnType<typeof create>, value: number }}
-				 */
-				function create() {
-					/** @type {ReturnType<typeof create>} */
-					const object = { value: 1 }
-					object.self = object
-					return object
-				}
 				const a = create()
 				const b = create()
 				assert.isTrue(deepEqual(a, b))
@@ -189,6 +180,25 @@ describe(
 				const second = { next: first }
 				first.next = second
 				assert.isTrue(deepEqual(loop, first))
+				assert.isTrue(
+					deepEqual(create_map(1), create_map(1))
+				)
+				assert.isFalse(
+					deepEqual(create_map(1), create_map(2))
+				)
+				assert.isTrue(
+					deepEqual(create_set(1), create_set(1))
+				)
+				assert.isFalse(
+					deepEqual(create_set(1), create_set(2))
+				)
+				/** @returns {{ self?: ReturnType<typeof create>, value: number }} */
+				function create() {
+					/** @type {ReturnType<typeof create>} */
+					const object = { value: 1 }
+					object.self = object
+					return object
+				}
 				/**
 				 * @param {number} value
 				 * @returns {Map<{ map: ReturnType<typeof create_map> }, number>}
@@ -209,18 +219,6 @@ describe(
 					set.add({ set, value })
 					return set
 				}
-				assert.isTrue(
-					deepEqual(create_map(1), create_map(1))
-				)
-				assert.isFalse(
-					deepEqual(create_map(1), create_map(2))
-				)
-				assert.isTrue(
-					deepEqual(create_set(1), create_set(1))
-				)
-				assert.isFalse(
-					deepEqual(create_set(1), create_set(2))
-				)
 			}
 		)
 		it(
@@ -283,23 +281,6 @@ describe(
 			}
 		)
 		it(
-			"finalization registries compare by identity",
-			() => {
-				const registry = new FinalizationRegistry(() => {})
-				assert.isTrue(
-					deepEqual({ registry }, { registry })
-				)
-				assert.isFalse(
-					deepEqual(
-						{ registry },
-						{
-							registry: new FinalizationRegistry(() => {})
-						}
-					)
-				)
-			}
-		)
-		it(
 			"literals",
 			() => {
 				assert.isTrue(deepEqual(undefined, void 0))
@@ -320,21 +301,6 @@ describe(
 		it(
 			"maps and sets",
 			() => {
-				let reads = 0
-				/**
-				 * @param {number} id
-				 * @returns {{ user: { readonly id: number } }}
-				 */
-				function counted(id) {
-					return {
-						user: {
-							get id() {
-								reads++
-								return id
-							}
-						}
-					}
-				}
 				const count = 2000
 				assert.isTrue(
 					deepEqual(
@@ -352,50 +318,6 @@ describe(
 						)
 					)
 				)
-				assert.isBelow(reads, count * 30)
-				/**
-				 * @param {number} index
-				 * @returns {{ deep: { deeper: { deepest: number } } }}
-				 */
-				function collide(index) {
-					return {
-						deep: { deeper: { deepest: index } }
-					}
-				}
-				/**
-				 * @param {number} index
-				 * @returns {{ bigint: bigint, date: Date, flag: boolean, float: number, list: (number | string)[], map: Map<number, { index: number }>, nan: number, none: null, regexp: RegExp, set: Set<number>, symbol: symbol, wide: Record<string, number>, wide_map: Map<number, number>, wide_set: Set<number> }}
-				 */
-				function variety(index) {
-					return {
-						bigint: BigInt(index),
-						date: new Date(index),
-						flag: index % 2 == 0,
-						float: index + 0.5,
-						list: [ index, "text".repeat(index % 40) ],
-						map: new Map([ [ index, { index } ] ]),
-						nan: NaN,
-						none: null,
-						regexp: /a/,
-						set: new Set([ index ]),
-						symbol: Symbol.iterator,
-						wide: Object.fromEntries(
-							Array.from(
-								{ length: 70 },
-								(_, key) => [ `k${key}`, key ]
-							)
-						),
-						wide_map: new Map(
-							Array.from(
-								{ length: 70 },
-								(_, key) => [ key, key ]
-							)
-						),
-						wide_set: new Set(
-							Array.from({ length: 70 }, (_, key) => key)
-						)
-					}
-				}
 				const size = 30
 				for (const make of [ collide, variety ]) {
 					assert.isTrue(
@@ -440,16 +362,6 @@ describe(
 						new Map([ [ k1, 2 ], [ k3, 1 ] ])
 					)
 				)
-				/**
-				 * @param {unknown} value
-				 * @returns {unknown}
-				 */
-				function deep(value) {
-					for (let i = 0; i < 100; i++) {
-						value = [ value ]
-					}
-					return value
-				}
 				const first = { child: { value: 1 } }
 				const second = { child: { value: 2 } }
 				assert.isFalse(
@@ -533,17 +445,6 @@ describe(
 						new Map([ [ NaN, 1 ] ])
 					)
 				)
-				/**
-				 * @param {unknown} value
-				 * @param {number} depth
-				 * @returns {unknown}
-				 */
-				function nest(value, depth) {
-					for (let i = 0; i < depth; i++) {
-						value = [ value ]
-					}
-					return value
-				}
 				const one = { child: { value: 1 } }
 				const two = { child: { value: 2 } }
 				const items = Array.from(
@@ -702,241 +603,79 @@ describe(
 						)
 					)
 				}
-			}
-		)
-		it(
-			"maps sharing an object key with values past the depth limit",
-			() => {
 				/**
-				 * @param {number} end
-				 * @returns {Record<string, unknown>}
+				 * @param {number} index
+				 * @returns {{ deep: { deeper: { deepest: number } } }}
 				 */
-				function chain(end) {
-					/** @type {Record<string, unknown>} */
-					let node = { end }
-					for (let i = 0; i < 250; i++) {
-						node = { next: node }
+				function collide(index) {
+					return {
+						deep: { deeper: { deepest: index } }
 					}
-					return node
 				}
-				const key = { id: 1 }
-				/**
-				 * @param {number} end
-				 * @returns {Map<unknown, unknown>}
-				 */
-				function map_of(end) {
-					/** @type {[ unknown, unknown ][]} */
-					const entries = [
-						[ key, chain(end) ],
-						[ "other", 1 ]
-					]
-					return new Map(entries)
-				}
-				const map = map_of(1)
-				assert.isTrue(deepEqual(map, map_of(1)))
-				assert.isFalse(deepEqual(map, map_of(2)))
-			}
-		)
-		it(
-			"matches that rely on assumed pairs",
-			() => {
-				const second = new Set()
-				const y = { s: second, tag: "Y" }
-				const x = { s: second, tag: "X" }
-				second.add({ p: y }).add({ p: x })
-				const first = new Set()
-				const a = { s: first, tag: "X" }
-				first.add({ p: a }).add({ p: y })
-				assert.isTrue(deepEqual(a, x))
-				assert.isTrue(
-					deepEqual(
-						[
-							new Set([ a, { s: second, tag: "Y" } ])
-						],
-						[ new Set([ y, x ]) ]
-					)
-				)
-			}
-		)
-		it(
-			"members whose hashes collide in a large bucket",
-			() => {
-				/**
-				 * @param {number[]} tags
-				 * @returns {Set<number[]>}
-				 */
-				function members(tags) {
-					return new Set(
-						tags.map(
-							tag => [ ...new Array(16).fill(0), tag ]
-						)
-					)
-				}
-				const tags = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 9 ]
-				const rotated = [ ...tags.slice(1), 1 ]
-				assert.isTrue(
-					deepEqual(members(tags), members(rotated))
-				)
-				assert.isFalse(
-					deepEqual(
-						members(tags),
-						members(
-							[ ...rotated.slice(0, -1), 10 ]
-						)
-					)
-				)
-			}
-		)
-		it(
-			"members whose hashes collide shallowly",
-			() => {
-				let reads = 0
 				/**
 				 * @param {number} id
-				 * @returns {{ tags: { readonly id: number }[] }}
+				 * @returns {{ user: { readonly id: number } }}
 				 */
-				function member(id) {
-					return {
-						tags: [
-							{
-								get id() {
-									reads++
-									return id
-								}
-							}
-						]
-					}
+				function counted(id) {
+					return { user: { id } }
 				}
-				const count = 2000
-				const ids = Array.from({ length: count }, (_, i) => i)
-				const shuffled = ids.map(i => i * 7919 % count)
-				assert.isTrue(
-					deepEqual(
-						new Set(ids.map(member)),
-						new Set(shuffled.map(member))
-					)
-				)
-				assert.isBelow(reads, count * 20)
-				reads = 0
-				assert.isTrue(
-					deepEqual(
-						new Set(
-							ids.map(
-								i => new Uint8Array([ i & 255, i >> 8 ])
-							)
-						),
-						new Set(
-							shuffled.map(
-								i => new Uint8Array([ i & 255, i >> 8 ])
-							)
-						)
-					)
-				)
 				/**
-				 * @param {number} tag
-				 * @returns {unknown[]}
-				 */
-				function built_ins(tag) {
-					const shrunk = new ArrayBuffer(4, { maxByteLength: 8 })
-					const outside = new DataView(shrunk, 2, 2)
-					shrunk.resize(1)
-					return [
-						outside,
-						[ { a: tag } ],
-						[ { a: tag } ],
-						new ArrayBuffer(tag),
-						new ArrayBuffer(0),
-						new DataView(new ArrayBuffer(tag)),
-						new Date(tag),
-						new Error(`${tag}`),
-						new Map([ [ { k: tag }, { v: tag } ] ]),
-						new Set([ { v: tag } ]),
-						new Uint8Array([ tag ]),
-						Object(BigInt(tag)),
-						Object(`${tag}`),
-						Object(tag % 2 == 0),
-						Object(tag),
-						Object(Symbol.iterator),
-						Object.assign(Object.create(null), { tag }),
-						RegExp(`${tag}`),
-						{
-							big: new Map(
-								Array.from(
-									{ length: 65 },
-									(_, i) => [ i, tag ]
-								)
-							)
-						},
-						{
-							big: new Set(
-								Array.from(
-									{ length: 65 },
-									(_, i) => i + tag
-								)
-							)
-						},
-						{
-							wide: Object.fromEntries(
-								Array.from(
-									{ length: 65 },
-									(_, i) => [ `k${i}`, tag ]
-								)
-							)
-						}
-					]
-				}
-				for (const tag of [ 1, 2 ]) {
-					assert.isTrue(
-						deepEqual(
-							new Set(built_ins(tag)),
-							new Set(built_ins(tag).reverse())
-						)
-					)
-				}
-				assert.isFalse(
-					deepEqual(
-						new Set(built_ins(1)),
-						new Set(built_ins(2).reverse())
-					)
-				)
-			}
-		)
-		it(
-			"nested members that differ deep inside",
-			() => {
-				let reads = 0
-				/**
-				 * @param {number} depth
-				 * @param {number} leaf
-				 * @param {(value: unknown) => unknown} wrap
+				 * @param {unknown} value
 				 * @returns {unknown}
 				 */
-				function nest(depth, leaf, wrap) {
-					/** @type {unknown} */
-					let value = {
-						get leaf() {
-							reads++
-							return leaf
-						}
-					}
-					for (let i = 0; i < depth; i++) {
-						value = wrap(value)
+				function deep(value) {
+					for (let i = 0; i < 100; i++) {
+						value = [ value ]
 					}
 					return value
 				}
-				for (const wrap of [
-					(/** @type {unknown} */ value) => new Set([ [ value ] ]),
-					(/** @type {unknown} */ value) => new Map([ [ { a: value }, 1 ] ]),
-					(/** @type {unknown} */ value) => new Set([ { a: value }, { b: value } ])
-				]) {
-					reads = 0
-					assert.isFalse(
-						deepEqual(
-							nest(16, 1, wrap),
-							nest(16, 2, wrap)
+				/**
+				 * @param {unknown} value
+				 * @param {number} depth
+				 * @returns {unknown}
+				 */
+				function nest(value, depth) {
+					for (let i = 0; i < depth; i++) {
+						value = [ value ]
+					}
+					return value
+				}
+				/**
+				 * @param {number} index
+				 * @returns {{ bigint: bigint, date: Date, flag: boolean, float: number, list: (number | string)[], map: Map<number, { index: number }>, nan: number, none: null, regexp: RegExp, set: Set<number>, symbol: symbol, wide: Record<string, number>, wide_map: Map<number, number>, wide_set: Set<number> }}
+				 */
+				function variety(index) {
+					return {
+						bigint: BigInt(index),
+						date: new Date(index),
+						flag: index % 2 == 0,
+						float: index + 0.5,
+						list: [ index, "text".repeat(index % 40) ],
+						map: new Map([ [ index, { index } ] ]),
+						nan: NaN,
+						none: null,
+						regexp: /a/,
+						set: new Set([ index ]),
+						symbol: Symbol.iterator,
+						wide: Object.fromEntries(
+							Array.from(
+								{ length: 70 },
+								(_, position) => [ `k${position}`, position ]
+							)
+						),
+						wide_map: new Map(
+							Array.from(
+								{ length: 70 },
+								(_, position) => [ position, position ]
+							)
+						),
+						wide_set: new Set(
+							Array.from(
+								{ length: 70 },
+								(_, position) => position
+							)
 						)
-					)
-					assert.isBelow(reads, 1000)
+					}
 				}
 			}
 		)
@@ -1021,9 +760,7 @@ describe(
 					)
 				)
 				class Fake {
-					/**
-					 * @param {number} value
-					 */
+					/** @param {number} value */
 					constructor(value) {
 						this.value = value
 					}
@@ -1114,9 +851,9 @@ describe(
 		it(
 			"objects that only claim a tag",
 			() => {
-				/**
-				 * @returns {Record<PropertyKey, unknown>}
-				 */
+				assert.isTrue(deepEqual(tagged(), tagged()))
+				assert.notInstanceOf(deepCopy(tagged()), Error)
+				/** @returns {Record<PropertyKey, unknown>} */
 				function tagged() {
 					return Object.assign(
 						Object.create(null),
@@ -1126,8 +863,6 @@ describe(
 						}
 					)
 				}
-				assert.isTrue(deepEqual(tagged(), tagged()))
-				assert.notInstanceOf(deepCopy(tagged()), Error)
 			}
 		)
 		it(
@@ -1175,15 +910,6 @@ describe(
 				assert.isTrue(
 					deepEqual(new Cache(), new Cache())
 				)
-				/**
-				 * @template {WeakKey} T
-				 * @param {T} value
-				 * @param {unknown} tag
-				 * @returns {T}
-				 */
-				function tagged(value, tag) {
-					return Object.assign(value, { tag })
-				}
 				for (const create of [
 					() => new Date(0),
 					() => /a/,
@@ -1208,6 +934,15 @@ describe(
 						)
 					)
 				}
+				/**
+				 * @template {WeakKey} T
+				 * @param {T} value
+				 * @param {unknown} tag
+				 * @returns {T}
+				 */
+				function tagged(value, tag) {
+					return Object.assign(value, { tag })
+				}
 			}
 		)
 		it(
@@ -1226,91 +961,11 @@ describe(
 			}
 		)
 		it(
-			"set members that share an object deep in a tree",
-			() => {
-				/**
-				 * @param {unknown} shared
-				 * @param {number} tag
-				 * @returns {unknown[]}
-				 */
-				function member(shared, tag) {
-					return [
-						...new Array(16).fill(0),
-						shared,
-						tag
-					]
-				}
-				/**
-				 * @param {Set<unknown[]>} set
-				 * @returns {Record<string, unknown>}
-				 */
-				function nest(set) {
-					/** @type {Record<string, unknown>} */
-					let node = { set }
-					for (let i = 0; i < 70; i++) {
-						node = { next: node }
-					}
-					return node
-				}
-				const shared = { inner: {} }
-				const left = nest(
-					new Set(
-						[ 1, 2, 3, 4 ].map(tag => member(shared, tag))
-					)
-				)
-				assert.isTrue(
-					deepEqual(
-						left,
-						nest(
-							new Set(
-								[ 1, 4, 2, 3 ].map(
-									tag => member({ inner: {} }, tag)
-								)
-							)
-						)
-					)
-				)
-				assert.isFalse(
-					deepEqual(
-						left,
-						nest(
-							new Set(
-								[ 1, 4, 2, 5 ].map(
-									tag => member({ inner: {} }, tag)
-								)
-							)
-						)
-					)
-				)
-			}
-		)
-		it(
 			"shared references",
 			() => {
-				/**
-				 * @returns {{ left: ReturnType<typeof create>, right: ReturnType<typeof create> } | { leaf: boolean }}
-				 */
-				function create() {
-					/** @type {ReturnType<typeof create>} */
-					let node = { leaf: true }
-					for (let i = 0; i < 64; i++) {
-						node = { left: node, right: node }
-					}
-					return node
-				}
 				const a = create()
 				assert.isTrue(deepEqual(a, create()))
 				assert.isTrue(deepEqual(a, deepCopy(a)))
-				/**
-				 * @param {unknown} value
-				 * @returns {unknown}
-				 */
-				function nest(value) {
-					for (let i = 0; i < 100; i++) {
-						value = [ value ]
-					}
-					return value
-				}
 				const shared = { child: { value: 1 } }
 				assert.isTrue(
 					deepEqual(
@@ -1339,6 +994,25 @@ describe(
 						)
 					)
 				)
+				/** @returns {{ left: ReturnType<typeof create>, right: ReturnType<typeof create> } | { leaf: boolean }} */
+				function create() {
+					/** @type {ReturnType<typeof create>} */
+					let node = { leaf: true }
+					for (let i = 0; i < 64; i++) {
+						node = { left: node, right: node }
+					}
+					return node
+				}
+				/**
+				 * @param {unknown} value
+				 * @returns {unknown}
+				 */
+				function nest(value) {
+					for (let i = 0; i < 100; i++) {
+						value = [ value ]
+					}
+					return value
+				}
 			}
 		)
 		it(

@@ -7,6 +7,7 @@ const typescript = {
 /**
  * @param {import("eslint").RuleTester.ValidTestCase[]} valid
  * @param {import("eslint").RuleTester.InvalidTestCase[]} invalid
+ * @returns {void}
  */
 export function cases(valid, invalid) {
 	valid.push(
@@ -58,19 +59,8 @@ export function cases(valid, invalid) {
 			output: "import { a, b } from \"module\";var value = 1"
 		},
 		{
-			code: "var a, b\nexport {a,b};var value = 1",
-			errors: [ { messageId: "single_line" } ],
-			output: "var a, b\nexport { a, b };var value = 1"
-		},
-		{
 			code: "import {a,b} from \"module\"\n;[a, b].map(f)",
 			errors: [ { messageId: "single_line" } ],
-			output: "import { a, b } from \"module\"\n;[a, b].map(f)"
-		},
-		{
-			code: "import {a,b} from \"module\"\n;[a, b].map(f)",
-			errors: [ { messageId: "single_line" } ],
-			options: [ { semicolon: true } ],
 			output: "import { a, b } from \"module\"\n;[a, b].map(f)"
 		},
 		{

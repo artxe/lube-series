@@ -26,6 +26,72 @@ export default {
 		/** @type {import("../../private.js").AstNode[]} */
 		const nodes = []
 		let template_end = -1
+		/** @type {import("../../private.js").RuleListener} */
+		const listener = {
+			ArrayExpression: node => {
+				if (check_array) {
+					push(node)
+				}
+			},
+			ArrayPattern: node => {
+				if (check_array) {
+					push(node)
+				}
+			},
+			ArrowFunctionExpression: node => {
+				if (check_call) {
+					push(node)
+				}
+			},
+			CallExpression: node => {
+				if (check_call) {
+					push(node)
+				}
+			},
+			FunctionDeclaration: node => {
+				if (check_call) {
+					push(node)
+				}
+			},
+			FunctionExpression: node => {
+				if (check_call) {
+					push(node)
+				}
+			},
+			NewExpression: node => {
+				if (check_call) {
+					push(node)
+				}
+			},
+			ObjectExpression: node => {
+				if (check_object) {
+					push(node)
+				}
+			},
+			ObjectPattern: node => {
+				if (check_object) {
+					push(node)
+				}
+			},
+			"Program:exit": () => {
+				for (let i = nodes.length - 1; i >= 0; i--) {
+					verify(
+						/** @type {import("../../private.js").AstNode} */(nodes[i])/**/
+					)
+				}
+			},
+			SequenceExpression: node => {
+				if (check_sequence) {
+					push(node)
+				}
+			},
+			TemplateLiteral: node => {
+				if (node.range[1] > template_end) {
+					template_end = node.range[1]
+				}
+			}
+		}
+		return /** @type {import("eslint").Rule.RuleListener} */(/** @type {unknown} */(listener))/**/
 		/**
 		 * @param {import("../../private.js").AstNode} node
 		 * @param {string} opener
@@ -49,11 +115,7 @@ export default {
 			return {
 				end,
 				items,
-				line_indent: source.get_line_indent(
-					node,
-					source.get_anchor(node.range[0]),
-					indent
-				),
+				line_indent: source.get_token_indent(node.range[0], indent),
 				spacing,
 				start: node.range[0] + 1
 			}
@@ -138,20 +200,16 @@ export default {
 				}
 				if (
 					open?.value != "("
-					|| close?.value != ")"
-					|| open.range[0] < node.range[0]
-					|| close.range[1] > node.range[1]
+						|| close?.value != ")"
+						|| open.range[0] < node.range[0]
+						|| close.range[1] > node.range[1]
 				) {
 					return
 				}
 				return {
 					end: close.range[0],
 					items: params,
-					line_indent: source.get_line_indent(
-						node,
-						source.get_anchor(node.range[0]),
-						indent
-					),
+					line_indent: source.get_token_indent(open.range[0], indent),
 					spacing: func_call_spacing,
 					start: open.range[1]
 				}
@@ -167,19 +225,15 @@ export default {
 				}
 				if (
 					close?.value != ")"
-					|| open?.value != "("
-					|| open.range[0] >= close.range[0]
+						|| open?.value != "("
+						|| open.range[0] >= close.range[0]
 				) {
 					return
 				}
 				return {
 					end: close.range[0],
 					items: node.arguments,
-					line_indent: source.get_line_indent(
-						node,
-						source.get_anchor(node.callee.range[1]),
-						indent
-					),
+					line_indent: source.get_token_indent(open.range[0], indent),
 					spacing: func_call_spacing,
 					start: open.range[1]
 				}
@@ -197,11 +251,7 @@ export default {
 				return {
 					end: node.range[1],
 					items: /** @type {import("../../private.js").AstNode & import("estree").SequenceExpression} */(node)/**/.expressions,
-					line_indent: source.get_line_indent(
-						node,
-						source.get_anchor(node.range[0]),
-						indent
-					),
+					line_indent: source.get_token_indent(node.range[0], indent),
 					spacing: false,
 					start: node.range[0]
 				}
@@ -353,10 +403,10 @@ export default {
 				length += text_width(item.text) + item.after_comma.length
 				if (
 					item.after_comma_line_comment
-					|| item.after_comma_newline
-					|| item.after_comma.includes("\n")
-					|| item.text.includes("\n")
-					|| item.trailing_line_comment
+						|| item.after_comma_newline
+						|| item.after_comma.includes("\n")
+						|| item.text.includes("\n")
+						|| item.trailing_line_comment
 				) {
 					multiline = true
 				}
@@ -454,72 +504,6 @@ export default {
 				)
 			}
 		}
-		/** @type {import("../../private.js").RuleListener} */
-		const listener = {
-			ArrayExpression: node => {
-				if (check_array) {
-					push(node)
-				}
-			},
-			ArrayPattern: node => {
-				if (check_array) {
-					push(node)
-				}
-			},
-			ArrowFunctionExpression: node => {
-				if (check_call) {
-					push(node)
-				}
-			},
-			CallExpression: node => {
-				if (check_call) {
-					push(node)
-				}
-			},
-			FunctionDeclaration: node => {
-				if (check_call) {
-					push(node)
-				}
-			},
-			FunctionExpression: node => {
-				if (check_call) {
-					push(node)
-				}
-			},
-			NewExpression: node => {
-				if (check_call) {
-					push(node)
-				}
-			},
-			ObjectExpression: node => {
-				if (check_object) {
-					push(node)
-				}
-			},
-			ObjectPattern: node => {
-				if (check_object) {
-					push(node)
-				}
-			},
-			"Program:exit": () => {
-				for (let i = nodes.length - 1; i >= 0; i--) {
-					verify(
-						/** @type {import("../../private.js").AstNode} */(nodes[i])/**/
-					)
-				}
-			},
-			SequenceExpression: node => {
-				if (check_sequence) {
-					push(node)
-				}
-			},
-			TemplateLiteral: node => {
-				if (node.range[1] > template_end) {
-					template_end = node.range[1]
-				}
-			}
-		}
-		return /** @type {import("eslint").Rule.RuleListener} */(/** @type {unknown} */(listener))/**/
 	},
 	meta: {
 		docs: {

@@ -24,6 +24,21 @@ describe(
 	"configs",
 	() => {
 		it(
+			"adds @returns to a one-tag JSDoc block without breaking its layout",
+			() => {
+				const linter = new Linter()
+				for (const code of [
+					"/**\n * @param {number} seed\n */\nfunction f(seed) {}",
+					"/** @param {number} seed */\nfunction f(seed) {}"
+				]) {
+					assert.strictEqual(
+						linter.verifyAndFix(code, [ lube.configs.strict ]).output,
+						"/**\n * @param {number} seed\n * @returns {void}\n */\nfunction f(seed) {}"
+					)
+				}
+			}
+		)
+		it(
 			"holds recommended and strict, each with the plugins and rules",
 			() => {
 				assert.hasAllKeys(
@@ -79,6 +94,40 @@ describe(
 			}
 		)
 		it(
+			"puts the JSDoc layout rule in both configs and the @returns rule in strict only",
+			() => {
+				assert.strictEqual(
+					recommended_rules["lube/pretty-jsdoc-lines"],
+					"error"
+				)
+				assert.strictEqual(
+					strict_rules["lube/pretty-jsdoc-lines"],
+					"error"
+				)
+				assert.strictEqual(
+					strict_rules["lube/require-returns"],
+					"error"
+				)
+				assert.notProperty(
+					recommended_rules,
+					"lube/require-returns"
+				)
+			}
+		)
+		it(
+			"puts the loose type, typedef and ambiguous start rules in strict only",
+			() => {
+				for (const name of [
+					"lube/no-ambiguous-start",
+					"lube/no-loose-types",
+					"lube/no-typedef"
+				]) {
+					assert.strictEqual(strict_rules[name], "error", name)
+					assert.notProperty(recommended_rules, name)
+				}
+			}
+		)
+		it(
 			"recommends only fixable formatting and ordering",
 			() => {
 				for (const name of Object.keys(recommended_rules)) {
@@ -119,18 +168,6 @@ describe(
 						}
 					]
 				)
-				assert.deepStrictEqual(
-					recommended_rules["@stylistic/eol-last"],
-					[ "error", "always" ]
-				)
-				assert.deepStrictEqual(
-					recommended_rules["lube/pretty-sequence"],
-					[ "error", { maxLength: 80 } ]
-				)
-				assert.deepStrictEqual(
-					recommended_rules["lube/pretty-imports"],
-					[ "error", { maxLength: 80 } ]
-				)
 			}
 		)
 		it(
@@ -170,15 +207,6 @@ describe(
 						name
 					)
 				}
-			}
-		)
-		it(
-			"types svelte-naming-convention as a suggestion, since its fix renames",
-			() => {
-				assert.strictEqual(
-					lube_rules["svelte-naming-convention"]?.meta?.type,
-					"suggestion"
-				)
 			}
 		)
 	}

@@ -34,28 +34,49 @@ function split_declarations(rule) {
 								)
 								if (
 									!node
-									|| !semicolon
-									|| !previous
-									|| indent == null
-									|| indent.trim()
-									|| node.type != "VariableDeclaration"
-									|| previous.type != "VariableDeclaration"
-									|| previous.parent != node.parent
-									|| previous.range[1] != semicolon.range[1]
+										|| !semicolon
+										|| !previous
+										|| indent == null
+										|| indent.trim()
+										|| node.type != "VariableDeclaration"
+										|| previous.type != "VariableDeclaration"
+										|| previous.parent != node.parent
+										|| previous.range[1] != semicolon.range[1]
 								) {
 									context.report(descriptor)
 									return
+								}
+								/** @type {[number, number][]} */
+								const gaps = [
+									[
+										semicolon.range[1],
+										node.range[0]
+									]
+								]
+								const siblings = /** @type {{ body?: unknown, consequent?: unknown }} */(node.parent)/**/
+								const statements = /** @type {import("../../private.js").AstNode[]} */(Array.isArray(siblings.body) ? siblings.body : siblings.consequent)/**/
+								for (let index = statements.indexOf(node) + 1; index < statements.length; index++) {
+									const current = /** @type {import("../../private.js").AstNode} */(statements[index - 1])/**/
+									const next = /** @type {import("../../private.js").AstNode} */(statements[index])/**/
+									if (
+										next.type != "VariableDeclaration"
+											|| text[current.range[1] - 1] != ";"
+											|| !/^[ \t]*$/.test(
+												text.slice(current.range[1], next.range[0])
+											)
+									) {
+										break
+									}
+									gaps.push(
+										[ current.range[1], next.range[0] ]
+									)
 								}
 								context.report(
 									{
 										...descriptor,
 										fix(fixer) {
-											return fixer.replaceTextRange(
-												[
-													semicolon.range[1],
-													node.range[0]
-												],
-												"\n" + indent
+											return gaps.map(
+												gap => fixer.replaceTextRange(gap, "\n" + indent)
 											)
 										}
 									}

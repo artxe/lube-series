@@ -640,7 +640,7 @@ const handlers = {
 			}
 			if (key === "size") {
 				return size_of(
-				/** @type {DraftState<MapDraft>} */(state)/**/
+					/** @type {DraftState<MapDraft>} */(state)/**/
 				)
 			}
 			return has_own.call(map_methods, key)
@@ -657,7 +657,7 @@ const handlers = {
 			}
 			if (key === "size") {
 				return size_of(
-				/** @type {DraftState<SetDraft>} */(state)/**/
+					/** @type {DraftState<SetDraft>} */(state)/**/
 				)
 			}
 			return has_own.call(set_methods, key)
@@ -1020,36 +1020,6 @@ function link(root) {
 	/** @type {unknown[]} */
 	const found = []
 	let shared = false
-	/**
-	 * @param {unknown} value
-	 * @returns {number}
-	 */
-	function node_of(value) {
-		const own = state_of(value)
-		const state = own?.scope === scope
-			? own
-			: states.get(value)
-		const key = state ?? value
-		const known = index.get(key)
-		if (known !== undefined) {
-			return known
-		}
-		const kind = state
-			? state.kind
-			: own
-				? own.kind
-				: container_kind(value)
-		if (!kind) {
-			return -1
-		}
-		const at = values.length
-		index.set(key, at)
-		values.push(value)
-		owners.push(state)
-		kinds.push(kind)
-		incoming.push(0)
-		return at
-	}
 	node_of(root.proxy)
 	for (let at = 0; at < values.length; at++) {
 		const state = owners[at]
@@ -1178,6 +1148,36 @@ function link(root) {
 		)
 	}
 	return shared
+	/**
+	 * @param {unknown} value
+	 * @returns {number}
+	 */
+	function node_of(value) {
+		const own = state_of(value)
+		const state = own?.scope === scope
+			? own
+			: states.get(value)
+		const key = state ?? value
+		const known = index.get(key)
+		if (known !== undefined) {
+			return known
+		}
+		const kind = state
+			? state.kind
+			: own
+				? own.kind
+				: container_kind(value)
+		if (!kind) {
+			return -1
+		}
+		const at = values.length
+		index.set(key, at)
+		values.push(value)
+		owners.push(state)
+		kinds.push(kind)
+		incoming.push(0)
+		return at
+	}
 }
 /**
  * @param {DraftScope} scope
@@ -1468,7 +1468,7 @@ function reaches_draft(value, scope, visited) {
 		case "Object":
 			for (const key of ownKeys(item)) {
 				stack.push(
-				/** @type {Record<PropertyKey, unknown>} */(item)/**/[key],
+					/** @type {Record<PropertyKey, unknown>} */(item)/**/[key],
 					item
 				)
 			}
@@ -1538,7 +1538,7 @@ function remember(
 	}
 	if (value_tree === false) {
 		shapes.set(
-		/** @type {WeakKey} */(value)/**/,
+			/** @type {WeakKey} */(value)/**/,
 			false
 		)
 	}
@@ -1611,7 +1611,7 @@ function resolve(value, scope) {
 		if (!reaches_draft(value, scope, visited)) {
 			for (const item of visited) {
 				seen.set(
-				/** @type {Draftable} */(item)/**/,
+					/** @type {Draftable} */(item)/**/,
 					/** @type {Draftable} */(item)/**/
 				)
 			}
@@ -1691,7 +1691,8 @@ function resolve_items(value, target, kind, scope) {
 			if (typeof item == "object" && item !== null) {
 				const resolved = resolve(item, scope)
 				if (resolved !== item) {
-					/** @type {unknown[]} */(target)/**/[i] = resolved
+					const list = /** @type {unknown[]} */(target)/**/
+					list[i] = resolved
 				}
 			}
 		}

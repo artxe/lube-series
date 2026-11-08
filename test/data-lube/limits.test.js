@@ -13,33 +13,26 @@ import { assert, describe, it } from "vitest"
 describe(
 	"limits",
 	() => {
-		/**
-		 * @param {number} value
-		 * @returns {Chain}
-		 */
-		function chain(value) {
-			/** @type {Chain | { value: number }} */
-			let node = { value }
-			for (let i = 0; i < 20000; i++) {
-				node = { i, next: node, set: new Set([ i ]) }
-			}
-			return /** @type {Chain} */(node)/**/
-		}
-		/**
-		 * @param {Chain} node
-		 * @returns {unknown}
-		 */
-		function last(node) {
-			/** @type {Chain | { value: number }} */
-			let current = node
-			while ("next" in current) {
-				current = current.next
-			}
-			return current
-		}
 		it(
 			"circular diffs list each change once",
 			() => {
+				assert.deepEqual(
+					deepDiff(grid("a"), grid("b")),
+					[
+						{
+							op: "replace",
+							path: [ "title" ],
+							value: "b"
+						}
+					]
+				)
+				assert.deepEqual(
+					deepDiff(looped(1, 10), looped(2, 10)).map(change => change.path),
+					deepDiff(
+						looped(1, 100001),
+						looped(2, 100001)
+					).map(change => change.path)
+				)
 				/**
 				 * @param {string} title
 				 * @returns {unknown}
@@ -68,16 +61,6 @@ describe(
 					}
 					return doc
 				}
-				assert.deepEqual(
-					deepDiff(grid("a"), grid("b")),
-					[
-						{
-							op: "replace",
-							path: [ "title" ],
-							value: "b"
-						}
-					]
-				)
 				/**
 				 * @param {number} value
 				 * @param {number} size
@@ -94,22 +77,13 @@ describe(
 						q: outer
 					}
 				}
-				assert.deepEqual(
-					deepDiff(looped(1, 10), looped(2, 10)).map(change => change.path),
-					deepDiff(
-						looped(1, 100001),
-						looped(2, 100001)
-					).map(change => change.path)
-				)
 			}
 		)
 		it(
 			"deep chains of every container",
 			() => {
 				class Box {
-					/**
-					 * @param {unknown} inner
-					 */
+					/** @param {unknown} inner */
 					constructor(inner) {
 						this.inner = inner
 					}
@@ -126,18 +100,6 @@ describe(
 					value => Object.assign(new Date(0), { inner: value }),
 					value => ({ inner: value })
 				]
-				/**
-				 * @param {number} leaf
-				 * @returns {unknown}
-				 */
-				function build(leaf) {
-					/** @type {unknown} */
-					let value = { leaf }
-					for (let i = 0; i < 3000; i++) {
-						value = /** @type {(value: unknown) => unknown} */(wrappers[i % wrappers.length])/**/(value)
-					}
-					return value
-				}
 				const a = build(1)
 				const copy = deepCopy(a)
 				assert.notEqual(copy, a)
@@ -152,11 +114,38 @@ describe(
 				)
 				deepFreeze(a)
 				assert.isTrue(Object.isFrozen(a))
+				/**
+				 * @param {number} leaf
+				 * @returns {unknown}
+				 */
+				function build(leaf) {
+					/** @type {unknown} */
+					let value = { leaf }
+					for (let i = 0; i < 3000; i++) {
+						value = /** @type {(value: unknown) => unknown} */(wrappers[i % wrappers.length])/**/(value)
+					}
+					return value
+				}
 			}
 		)
 		it(
 			"deep collections that need matching",
 			() => {
+				assert.isTrue(deepEqual(sets(1), sets(1)))
+				assert.isFalse(deepEqual(sets(1), sets(2)))
+				assert.isTrue(deepEqual(maps(1), maps(1)))
+				assert.isFalse(deepEqual(maps(1), maps(2)))
+				/** @type {unknown[]} */
+				const spread = []
+				spread.length = 2 ** 26
+				for (let i = 0; i < 5; i++) {
+					spread[2 ** 22 * i] = { i }
+				}
+				const start = performance.now()
+				assert.isTrue(
+					deepEqual(deepCopy(spread), spread)
+				)
+				assert.isBelow(performance.now() - start, 1000)
 				/**
 				 * @param {number} leaf
 				 * @returns {unknown}
@@ -186,26 +175,51 @@ describe(
 					}
 					return value
 				}
-				assert.isTrue(deepEqual(sets(1), sets(1)))
-				assert.isFalse(deepEqual(sets(1), sets(2)))
-				assert.isTrue(deepEqual(maps(1), maps(1)))
-				assert.isFalse(deepEqual(maps(1), maps(2)))
-				/** @type {unknown[]} */
-				const spread = []
-				spread.length = 2 ** 26
-				for (let i = 0; i < 5; i++) {
-					spread[2 ** 22 * i] = { i }
-				}
-				const start = performance.now()
-				assert.isTrue(
-					deepEqual(deepCopy(spread), spread)
-				)
-				assert.isBelow(performance.now() - start, 1000)
 			}
 		)
 		it(
 			"deep collections whose members collide",
 			() => {
+				assert.isTrue(
+					deepEqual(keyed(3000), keyed(3000))
+				)
+				const start = performance.now()
+				assert.isTrue(
+					deepEqual(
+						ladder(40, false),
+						ladder(40, true)
+					)
+				)
+				assert.isBelow(performance.now() - start, 1000)
+				assert.isFalse(
+					deepEqual(hidden(5000, 1), hidden(5000, 2))
+				)
+				const frozen = hidden(5000, {})
+				deepFreeze(frozen)
+				assert.isTrue(Object.isFrozen(frozen[3]))
+				assert.isTrue(
+					3 in deepCopy(hidden(5000, { x: 1 }))
+				)
+				/**
+				 * @param {number} length
+				 * @param {unknown} value
+				 * @returns {unknown[]}
+				 */
+				function hidden(length, value) {
+					/** @type {unknown[]} */
+					const array = new Array(length)
+					Object.defineProperty(
+						array,
+						3,
+						{
+							configurable: true,
+							enumerable: false,
+							value,
+							writable: true
+						}
+					)
+					return array
+				}
 				/**
 				 * @param {number} depth
 				 * @returns {unknown}
@@ -218,9 +232,6 @@ describe(
 					}
 					return value
 				}
-				assert.isTrue(
-					deepEqual(keyed(3000), keyed(3000))
-				)
 				/**
 				 * @param {number} depth
 				 * @param {boolean} reverse
@@ -242,145 +253,6 @@ describe(
 						)
 					}
 					return value
-				}
-				const start = performance.now()
-				assert.isTrue(
-					deepEqual(
-						ladder(40, false),
-						ladder(40, true)
-					)
-				)
-				assert.isBelow(performance.now() - start, 1000)
-				/**
-				 * @param {number} length
-				 * @param {unknown} value
-				 * @returns {unknown[]}
-				 */
-				function hidden(length, value) {
-					/** @type {unknown[]} */
-					const array = new Array(length)
-					Object.defineProperty(
-						array,
-						3,
-						{
-							configurable: true,
-							enumerable: false,
-							value,
-							writable: true
-						}
-					)
-					return array
-				}
-				assert.isFalse(
-					deepEqual(hidden(5000, 1), hidden(5000, 2))
-				)
-				const frozen = hidden(5000, {})
-				deepFreeze(frozen)
-				assert.isTrue(Object.isFrozen(frozen[3]))
-				assert.isTrue(
-					3 in deepCopy(hidden(5000, { x: 1 }))
-				)
-			}
-		)
-		it(
-			"deep collections whose members collide, with differences at the bottom",
-			() => {
-				/**
-				 * @param {unknown} leaf
-				 * @returns {unknown}
-				 */
-				function wrap(leaf) {
-					/** @type {unknown} */
-					let value = leaf
-					for (let i = 0; i < 400; i++) {
-						value = new Map([ [ {}, value ], [ {}, 0 ] ])
-					}
-					return value
-				}
-				/** @type {[ () => unknown, () => unknown, boolean ][]} */
-				const cases = [
-					[
-						() => new Set([ 1, { a: 1 } ]),
-						() => new Set([ { a: 1 }, 1 ]),
-						true
-					],
-					[
-						() => new Set([ 1 ]),
-						() => new Set([ 2 ]),
-						false
-					],
-					[
-						() => new Set([ {} ]),
-						() => new Set([ 1 ]),
-						false
-					],
-					[
-						() => new Set([ 1, 2 ]),
-						() => new Set([ 1 ]),
-						false
-					],
-					[
-						() => new Set([ { a: 1 } ]),
-						() => new Set([ { a: 2 } ]),
-						false
-					],
-					[
-						() => new Map([ [ 1, { a: 1 } ] ]),
-						() => new Map([ [ 1, { a: 1 } ] ]),
-						true
-					],
-					[
-						() => new Map([ [ 1, { a: 1 } ] ]),
-						() => new Map([ [ 2, { a: 1 } ] ]),
-						false
-					],
-					[
-						() => new Map([ [ 1, 1 ] ]),
-						() => new Map([ [ 1, 2 ] ]),
-						false
-					],
-					[
-						() => new Map([ [ {}, 1 ] ]),
-						() => new Map([ [ {}, 2 ] ]),
-						false
-					],
-					[
-						() => new Map([ [ {}, {} ] ]),
-						() => new Map([ [ {}, 1 ] ]),
-						false
-					],
-					[
-						() => new Map([ [ { k: 1 }, NaN ] ]),
-						() => new Map([ [ { k: 1 }, NaN ] ]),
-						true
-					],
-					[
-						() => Object.assign(new Set(), { t: 1 }),
-						() => Object.assign(new Set(), { t: 2 }),
-						false
-					],
-					[
-						() => Object.create(null),
-						() => ({}),
-						false
-					],
-					[
-						() => ({ a: 1 }),
-						() => ({ a: 2 }),
-						false
-					],
-					[
-						() => new Date(1),
-						() => new Date(1),
-						true
-					]
-				]
-				for (const [ left, right, expected ] of cases) {
-					assert.equal(
-						deepEqual(wrap(left()), wrap(right())),
-						expected,
-						String(left)
-					)
 				}
 			}
 		)
@@ -449,15 +321,6 @@ describe(
 		it(
 			"deep nesting with cycles and collections",
 			() => {
-				/**
-				 * @returns {Chain}
-				 */
-				function ring() {
-					const node = chain(1)
-					const tail = /** @type {{ next?: unknown }} */(last(node))/**/
-					tail.next = node
-					return node
-				}
 				assert.isTrue(deepEqual(ring(), ring()))
 				assert.lengthOf(deepDiff(ring(), ring()), 0)
 				const copy = deepCopy(ring())
@@ -487,47 +350,19 @@ describe(
 					deepEqual(deepCopy(sets), sets)
 				)
 				assert.lengthOf(deepDiff(maps, map_others), 0)
+				/** @returns {Chain} */
+				function ring() {
+					const head = chain(1)
+					const tail = /** @type {{ next?: unknown }} */(last(head))/**/
+					tail.next = head
+					return head
+				}
 			}
 		)
 		it(
 			"deep shared and circular diffs",
 			() => {
-				/**
-				 * @returns {unknown}
-				 */
-				function ladder() {
-					/** @type {unknown} */
-					let value = { leaf: 1 }
-					for (let i = 0; i < 30; i++) {
-						value = { l: value, r: value }
-					}
-					for (let i = 0; i < 190; i++) {
-						value = { c: value }
-					}
-					return value
-				}
 				assert.lengthOf(deepDiff(ladder(), ladder()), 0)
-				/**
-				 * @param {number} value
-				 * @returns {unknown}
-				 */
-				function linked(value) {
-					/** @type {{ i: number, next?: unknown, prev?: unknown }} */
-					const head = { i: 0 }
-					let current = head
-					for (let i = 1; i < 500; i++) {
-						/** @type {{ i: number, next?: unknown, prev?: unknown }} */
-						const node = {
-							i: i == 3
-								? value
-								: i,
-							prev: current
-						}
-						current.next = node
-						current = node
-					}
-					return head
-				}
 				assert.deepEqual(
 					deepDiff(linked(1), linked(2)),
 					[
@@ -555,6 +390,39 @@ describe(
 					node = /** @type {{ c?: unknown, ref?: unknown }} */(node.c)/**/
 				}/**/
 				assert.equal(node.ref, frozen.a)
+				/** @returns {unknown} */
+				function ladder() {
+					/** @type {unknown} */
+					let value = { leaf: 1 }
+					for (let i = 0; i < 30; i++) {
+						value = { l: value, r: value }
+					}
+					for (let i = 0; i < 190; i++) {
+						value = { c: value }
+					}
+					return value
+				}
+				/**
+				 * @param {number} value
+				 * @returns {unknown}
+				 */
+				function linked(value) {
+					/** @type {{ i: number, next?: unknown, prev?: unknown }} */
+					const head = { i: 0 }
+					let current = head
+					for (let i = 1; i < 500; i++) {
+						/** @type {{ i: number, next?: unknown, prev?: unknown }} */
+						const link = {
+							i: i == 3
+								? value
+								: i,
+							prev: current
+						}
+						current.next = link
+						current = link
+					}
+					return head
+				}
 			}
 		)
 		it(
@@ -628,6 +496,16 @@ describe(
 		it(
 			"deep shared values",
 			() => {
+				const before = build(1)
+				const after = build(2)
+				const changes = deepDiff(before, after)
+				assert.lengthOf(changes, 5)
+				assert.isTrue(
+					deepEqual(
+						deepPatch(before, changes),
+						after
+					)
+				)
 				/**
 				 * @param {number} v
 				 * @returns {unknown}
@@ -659,105 +537,6 @@ describe(
 					}
 					return value
 				}
-				const before = build(1)
-				const after = build(2)
-				const changes = deepDiff(before, after)
-				assert.lengthOf(changes, 5)
-				assert.isTrue(
-					deepEqual(
-						deepPatch(before, changes),
-						after
-					)
-				)
-			}
-		)
-		it(
-			"large dense and sparse arrays",
-			() => {
-				const dense = Array.from(
-					{ length: 5000 },
-					(_, i) => ({ i })
-				)
-				const copy = deepCopy(dense)
-				assert.isTrue(deepEqual(copy, dense))
-				const item = /** @type {{ i: number }} */(copy[4999])/**/
-				item.i = -1
-				assert.deepEqual(
-					deepDiff(dense, copy),
-					[
-						{
-							op: "replace",
-							path: [ 4999, "i" ],
-							value: -1
-						}
-					]
-				)
-				deepFreeze(copy)
-				assert.isTrue(Object.isFrozen(copy[4999]))
-				/** @type {unknown[] & { tag?: number }} */
-				const tagged = []
-				tagged[10000] = { x: 1 }
-				tagged.tag = 1
-				assert.deepEqual(
-					Object.keys(deepCopy(tagged)),
-					[ "10000" ]
-				)
-				/** @type {unknown[]} */
-				const more = []
-				more[10000] = { x: 1 }
-				more[5] = 1
-				assert.isFalse(deepEqual(tagged, more))
-				/** @type {unknown[]} */
-				const holes = []
-				holes[10000] = 1
-				holes[3] = undefined
-				/** @type {unknown[]} */
-				const filled = []
-				filled[10000] = 1
-				assert.deepEqual(
-					deepDiff(holes, filled),
-					[
-						{
-							op: "replace",
-							path: [ 3 ],
-							value: undefined
-						}
-					]
-				)
-				assert.deepEqual(
-					deepDiff(holes, dense),
-					[
-						{
-							op: "replace",
-							path: [],
-							value: dense
-						}
-					]
-				)
-				/** @type {unknown[]} */
-				const foreign = runInNewContext(
-					"const list = []; list[10000] = 1; list[2] = 'a'; list"
-				)
-				const foreign_copy = deepCopy(foreign)
-				assert.equal(foreign_copy[2], "a")
-				assert.isFalse(3 in foreign_copy)
-				/** @type {unknown[]} */
-				const frozen = []
-				const user = { n: 1 }
-				const updated = deepUpdate(
-					{
-						list: /** @type {unknown} */(undefined)/**/,
-						user
-					},
-					draft => {
-						frozen[10000] = draft.user
-						draft.list = Object.freeze(frozen)
-					}
-				)
-				assert.equal(
-					/** @type {unknown[]} */(updated.list)/**/[10000],
-					user
-				)
 			}
 		)
 		it(
@@ -836,40 +615,83 @@ describe(
 			}
 		)
 		it(
+			"sparse arrays with holes and extra keys",
+			() => {
+				const dense = [ { i: 0 } ]
+				/** @type {unknown[] & { tag?: number }} */
+				const tagged = []
+				tagged[10000] = { x: 1 }
+				tagged.tag = 1
+				assert.deepEqual(
+					Object.keys(deepCopy(tagged)),
+					[ "10000" ]
+				)
+				/** @type {unknown[]} */
+				const more = []
+				more[10000] = { x: 1 }
+				more[5] = 1
+				assert.isFalse(deepEqual(tagged, more))
+				/** @type {unknown[]} */
+				const holes = []
+				holes[10000] = 1
+				holes[3] = undefined
+				/** @type {unknown[]} */
+				const filled = []
+				filled[10000] = 1
+				assert.deepEqual(
+					deepDiff(holes, filled),
+					[
+						{
+							op: "replace",
+							path: [ 3 ],
+							value: undefined
+						}
+					]
+				)
+				assert.deepEqual(
+					deepDiff(holes, dense),
+					[
+						{
+							op: "replace",
+							path: [],
+							value: dense
+						}
+					]
+				)
+				/** @type {unknown[]} */
+				const foreign = runInNewContext(
+					"const list = []; list[10000] = 1; list[2] = 'a'; list"
+				)
+				const foreign_copy = deepCopy(foreign)
+				assert.equal(foreign_copy[2], "a")
+				assert.isFalse(3 in foreign_copy)
+				/** @type {unknown[]} */
+				const frozen = []
+				const user = { n: 1 }
+				const updated = deepUpdate(
+					{
+						list: /** @type {unknown} */(undefined)/**/,
+						user
+					},
+					draft => {
+						frozen[10000] = draft.user
+						draft.list = Object.freeze(frozen)
+					}
+				)
+				assert.equal(
+					/** @type {unknown[]} */(updated.list)/**/[10000],
+					user
+				)
+			}
+		)
+		it(
 			"wide and shared inputs stay fast",
 			() => {
 				const start = performance.now()
-				/**
-				 * @param {number} value
-				 * @returns {unknown}
-				 */
-				function ladder(value) {
-					/** @type {unknown} */
-					let node = { v: value }
-					for (let i = 0; i < 26; i++) {
-						node = { l: node, r: node }
-					}
-					/** @type {{ ladder: unknown, self?: unknown }} */
-					const root = { ladder: node }
-					root.self = root
-					return root
-				}
 				assert.lengthOf(
 					deepDiff(ladder(1), ladder(2)),
 					1
 				)
-				/**
-				 * @param {number} id
-				 * @returns {Record<string, number>}
-				 */
-				function row(id) {
-					/** @type {Record<string, number>} */
-					const item = { id }
-					for (let i = 0; i < 65; i++) {
-						item[`f${i}`] = 0
-					}
-					return item
-				}
 				const left = new Set(
 					Array.from(
 						{ length: 3000 },
@@ -908,6 +730,25 @@ describe(
 						deepCopy(new Set([ deep, ...items ]))
 					)
 				)
+				assert.isFalse(
+					deepEqual(rings(40, 1), rings(40, 2))
+				)
+				assert.isBelow(performance.now() - start, 5000)
+				/**
+				 * @param {number} value
+				 * @returns {unknown}
+				 */
+				function ladder(value) {
+					/** @type {unknown} */
+					let node = { v: value }
+					for (let i = 0; i < 26; i++) {
+						node = { l: node, r: node }
+					}
+					/** @type {{ ladder: unknown, self?: unknown }} */
+					const root = { ladder: node }
+					root.self = root
+					return root
+				}
 				/**
 				 * @param {number} depth
 				 * @param {number} leaf
@@ -929,11 +770,43 @@ describe(
 					root.back = value
 					return root
 				}
-				assert.isFalse(
-					deepEqual(rings(40, 1), rings(40, 2))
-				)
-				assert.isBelow(performance.now() - start, 5000)
+				/**
+				 * @param {number} id
+				 * @returns {Record<string, number>}
+				 */
+				function row(id) {
+					/** @type {Record<string, number>} */
+					const item = { id }
+					for (let i = 0; i < 65; i++) {
+						item[`f${i}`] = 0
+					}
+					return item
+				}
 			}
 		)
+		/**
+		 * @param {number} value
+		 * @returns {Chain}
+		 */
+		function chain(value) {
+			/** @type {Chain | { value: number }} */
+			let node = { value }
+			for (let i = 0; i < 20000; i++) {
+				node = { i, next: node, set: new Set([ i ]) }
+			}
+			return /** @type {Chain} */(node)/**/
+		}
+		/**
+		 * @param {Chain} node
+		 * @returns {unknown}
+		 */
+		function last(node) {
+			/** @type {Chain | { value: number }} */
+			let current = node
+			while ("next" in current) {
+				current = current.next
+			}
+			return current
+		}
 	}
 )

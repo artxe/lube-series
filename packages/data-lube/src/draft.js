@@ -303,6 +303,161 @@ function snapshot(values) {
 	const dirty = []
 	/** @type {unknown[]} */
 	const stack = []
+	for (const value of values) {
+		if (typeof value == "object" && value !== null && contains_draft(value)) {
+			stack.push(value, undefined, undefined)
+		}
+	}
+	while (stack.length) {
+		const ctx = /** @type {DraftScope | undefined} */(stack.pop())/**/
+		const parent = /** @type {SnapshotNode | undefined} */(stack.pop())/**/
+		const item = /** @type {Prototype} */(stack.pop())/**/
+		const state = state_of(item)
+		if (state) {
+			if (parent) {
+				dirty.push(parent)
+			}
+			if (trusted && !state.scope.graph && !ctx?.drafts?.get(item)) {
+				const base = source_of(item)
+				if (base !== item && !state_of(base)) {
+					continue
+				}
+			}
+		}
+		const node = node_of(item, ctx)
+		if (!node) {
+			continue
+		}
+		if (parent) {
+			node.parents.push(parent)
+		}
+		if (ctx && !node.ctx && !node.seed) {
+			node.ctx = ctx
+			push_children(stack, node)
+		}
+		if (node.seen) {
+			continue
+		}
+		node.seen = true
+		if (node.seed) {
+			dirty.push(node)
+		}
+		push_children(stack, node)
+	}
+	/** @type {Map<SnapshotNode, Prototype>} */
+	const copies = new Map()
+	for (let node = dirty.pop(); node; node = dirty.pop()) {
+		if (copies.has(node)) {
+			continue
+		}
+		const { kind, source } = node
+		const proto = getPrototypeOf(source)
+		/** @type {Prototype} */
+		const shell = kind == "Array"
+			? new Array(
+				/** @type {unknown[]} */(source)/**/.length
+			)
+			: kind == "Map"
+				? new Map()
+				: kind == "Set"
+					? new Set()
+					: create(proto)
+		if (getPrototypeOf(shell) !== proto) {
+			setPrototypeOf(shell, proto)
+		}
+		copies.set(node, shell)
+		for (const parent of node.parents) {
+			dirty.push(parent)
+		}
+	}
+	for (const [ node, shell ] of copies) {
+		const { ctx, source } = node
+		/**
+		 * @param {unknown} value
+		 * @returns {unknown}
+		 */
+		function resolve(value) {
+			return current(value, ctx)
+		}
+		const proxied = state_of(source) !== undefined
+		switch (node.kind) {
+		case "Array": {
+			const array = /** @type {unknown[]} */(source)/**/
+			const target = /** @type {unknown[]} */(shell)/**/
+			const indices = sparse_indices(array)
+			if (indices) {
+				for (const i of indices) {
+					target[i] = resolve(array[i])
+				}
+			} else {
+				for (let i = 0; i < array.length; i++) {
+					if (i in array) {
+						target[i] = resolve(array[i])
+					}
+				}
+			}
+			if (getPrototypeOf(array) !== array_prototype) {
+				for (const key of keys(array)) {
+					if (!has_own.call(target, key)) {
+						target[/** @type {number} */(/** @type {unknown} */(key))/**/] = resolve(
+							array[/** @type {number} */(/** @type {unknown} */(key))/**/]
+						)
+					}
+				}
+			}
+			break
+		}
+		case "Map":
+			for (const [ key, entry ] of proxied
+				? /** @type {Map<unknown, unknown>} */(source)/**/.entries()
+				: map_entries.call(
+					/** @type {Map<unknown, unknown>} */(source)/**/
+				)) {
+				map_write.call(
+					/** @type {Map<unknown, unknown>} */(shell)/**/,
+					resolve(key),
+					resolve(entry)
+				)
+			}
+			own_properties(shell, source, resolve)
+			break
+		case "Object":
+			own_properties(shell, source, resolve)
+			break
+		default:
+			for (const entry of proxied
+				? /** @type {Set<unknown>} */(source)/**/.values()
+				: set_values.call(
+					/** @type {Set<unknown>} */(source)/**/
+				)) {
+				set_add.call(
+					/** @type {Set<unknown>} */(shell)/**/,
+					resolve(entry)
+				)
+			}
+			own_properties(shell, source, resolve)
+		}
+	}
+	return values.map(
+		value => current(value, undefined)
+	)
+	/**
+	 * @param {unknown} value
+	 * @param {DraftScope | undefined} ctx
+	 * @returns {unknown}
+	 */
+	function current(value, ctx) {
+		if (typeof value != "object" || value === null) {
+			return value
+		}
+		const found = find(value, ctx)
+		if (found) {
+			return copies.get(found) ?? found.original
+		}
+		return state_of(value)
+			? source_of(value)
+			: value
+	}
 	/**
 	 * @param {Prototype} item
 	 * @param {DraftScope | undefined} ctx
@@ -405,161 +560,6 @@ function snapshot(values) {
 		}
 		return node
 	}
-	for (const value of values) {
-		if (typeof value == "object" && value !== null && contains_draft(value)) {
-			stack.push(value, undefined, undefined)
-		}
-	}
-	while (stack.length) {
-		const ctx = /** @type {DraftScope | undefined} */(stack.pop())/**/
-		const parent = /** @type {SnapshotNode | undefined} */(stack.pop())/**/
-		const item = /** @type {Prototype} */(stack.pop())/**/
-		const state = state_of(item)
-		if (state) {
-			if (parent) {
-				dirty.push(parent)
-			}
-			if (trusted && !state.scope.graph && !ctx?.drafts?.get(item)) {
-				const base = source_of(item)
-				if (base !== item && !state_of(base)) {
-					continue
-				}
-			}
-		}
-		const node = node_of(item, ctx)
-		if (!node) {
-			continue
-		}
-		if (parent) {
-			node.parents.push(parent)
-		}
-		if (ctx && !node.ctx && !node.seed) {
-			node.ctx = ctx
-			push_children(stack, node)
-		}
-		if (node.seen) {
-			continue
-		}
-		node.seen = true
-		if (node.seed) {
-			dirty.push(node)
-		}
-		push_children(stack, node)
-	}
-	/** @type {Map<SnapshotNode, Prototype>} */
-	const copies = new Map()
-	for (let node = dirty.pop(); node; node = dirty.pop()) {
-		if (copies.has(node)) {
-			continue
-		}
-		const { kind, source } = node
-		const proto = getPrototypeOf(source)
-		/** @type {Prototype} */
-		const shell = kind == "Array"
-			? new Array(
-				/** @type {unknown[]} */(source)/**/.length
-			)
-			: kind == "Map"
-				? new Map()
-				: kind == "Set"
-					? new Set()
-					: create(proto)
-		if (getPrototypeOf(shell) !== proto) {
-			setPrototypeOf(shell, proto)
-		}
-		copies.set(node, shell)
-		for (const parent of node.parents) {
-			dirty.push(parent)
-		}
-	}
-	/**
-	 * @param {unknown} value
-	 * @param {DraftScope | undefined} ctx
-	 * @returns {unknown}
-	 */
-	function current(value, ctx) {
-		if (typeof value != "object" || value === null) {
-			return value
-		}
-		const found = find(value, ctx)
-		if (found) {
-			return copies.get(found) ?? found.original
-		}
-		return state_of(value)
-			? source_of(value)
-			: value
-	}
-	for (const [ node, shell ] of copies) {
-		const { ctx, source } = node
-		/**
-		 * @param {unknown} value
-		 * @returns {unknown}
-		 */
-		function resolve(value) {
-			return current(value, ctx)
-		}
-		const proxied = state_of(source) !== undefined
-		switch (node.kind) {
-		case "Array": {
-			const array = /** @type {unknown[]} */(source)/**/
-			const target = /** @type {unknown[]} */(shell)/**/
-			const indices = sparse_indices(array)
-			if (indices) {
-				for (const i of indices) {
-					target[i] = resolve(array[i])
-				}
-			} else {
-				for (let i = 0; i < array.length; i++) {
-					if (i in array) {
-						target[i] = resolve(array[i])
-					}
-				}
-			}
-			if (getPrototypeOf(array) !== array_prototype) {
-				for (const key of keys(array)) {
-					if (!has_own.call(target, key)) {
-						target[/** @type {number} */(/** @type {unknown} */(key))/**/] = resolve(
-							array[/** @type {number} */(/** @type {unknown} */(key))/**/]
-						)
-					}
-				}
-			}
-			break
-		}
-		case "Map":
-			for (const [ key, entry ] of proxied
-				? /** @type {Map<unknown, unknown>} */(source)/**/.entries()
-				: map_entries.call(
-					/** @type {Map<unknown, unknown>} */(source)/**/
-				)) {
-				map_write.call(
-				/** @type {Map<unknown, unknown>} */(shell)/**/,
-					resolve(key),
-					resolve(entry)
-				)
-			}
-			own_properties(shell, source, resolve)
-			break
-		case "Object":
-			own_properties(shell, source, resolve)
-			break
-		default:
-			for (const entry of proxied
-				? /** @type {Set<unknown>} */(source)/**/.values()
-				: set_values.call(
-					/** @type {Set<unknown>} */(source)/**/
-				)) {
-				set_add.call(
-				/** @type {Set<unknown>} */(shell)/**/,
-					resolve(entry)
-				)
-			}
-			own_properties(shell, source, resolve)
-		}
-	}
-	return values.map(
-		value => current(value, undefined)
-	)
 }
 /**
  * @param {Prototype} value

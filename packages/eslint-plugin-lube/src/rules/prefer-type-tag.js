@@ -25,27 +25,6 @@ export default {
 		const checker = program.getTypeChecker()
 		const source_code = context.sourceCode
 		const text = source_code.text
-		/**
-		 * @param {number} position
-		 * @returns {number}
-		 */
-		function line_start_of(position) {
-			let start = position
-			while (start > 0 && !line_terminator_regex.test(text.charAt(start - 1))) {
-				start--
-			}
-			return start
-		}
-		/**
-		 * @param {import("estree").Comment} comment
-		 * @returns {boolean}
-		 */
-		function starts_line(comment) {
-			const start = /** @type {import("eslint").AST.Range} */(comment.range)/**/[0]
-			return space_regex.test(
-				text.slice(line_start_of(start), start)
-			)
-		}
 		return {
 			VariableDeclaration(node) {
 				const [ declarator, other ] = node.declarations
@@ -64,13 +43,13 @@ export default {
 				const comment_range = comment?.range
 				if (
 					!comment
-					|| !comment_range
-					|| comment.type != "Block"
-					|| !type_regex.test(comment.value)
-					|| const_regex.test(comment.value)
-					|| !space_regex.test(
-						text.slice(comment_range[1], open.range[0])
-					)
+						|| !comment_range
+						|| comment.type != "Block"
+						|| !type_regex.test(comment.value)
+						|| const_regex.test(comment.value)
+						|| !space_regex.test(
+							text.slice(comment_range[1], open.range[0])
+						)
 				) {
 					return
 				}
@@ -92,7 +71,7 @@ export default {
 				const value_type = checker.getTypeAtLocation(cast.expression)
 				if (
 					!checker.isTypeAssignableTo(value_type, type)
-					|| type.isUnion() && !checker.isTypeAssignableTo(type, value_type)
+						|| type.isUnion() && !checker.isTypeAssignableTo(type, value_type)
 				) {
 					return
 				}
@@ -146,6 +125,27 @@ export default {
 					}
 				)
 			}
+		}
+		/**
+		 * @param {number} position
+		 * @returns {number}
+		 */
+		function line_start_of(position) {
+			let start = position
+			while (start > 0 && !line_terminator_regex.test(text.charAt(start - 1))) {
+				start--
+			}
+			return start
+		}
+		/**
+		 * @param {import("estree").Comment} comment
+		 * @returns {boolean}
+		 */
+		function starts_line(comment) {
+			const start = /** @type {import("eslint").AST.Range} */(comment.range)/**/[0]
+			return space_regex.test(
+				text.slice(line_start_of(start), start)
+			)
 		}
 	},
 	meta: {

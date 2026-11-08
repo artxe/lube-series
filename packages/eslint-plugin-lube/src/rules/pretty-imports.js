@@ -18,6 +18,28 @@ export default {
 		const source = create_source_text(source_code)
 		const text = source.text
 		const eol = source.eol
+		/** @type {import("../../private.js").RuleListener} */
+		const listener = {
+			ExportNamedDeclaration: node => {
+				if (check_exports) {
+					verify(
+						/** @type {import("../../private.js").AstNode & import("estree").ExportNamedDeclaration} */(node)/**/,
+						"ExportSpecifier",
+						"export"
+					)
+				}
+			},
+			ImportDeclaration: node => {
+				if (check_imports) {
+					verify(
+						/** @type {import("../../private.js").AstNode & import("estree").ImportDeclaration} */(node)/**/,
+						"ImportSpecifier",
+						"import"
+					)
+				}
+			}
+		}
+		return /** @type {import("eslint").Rule.RuleListener} */(/** @type {unknown} */(listener))/**/
 		/**
 		 * @param {number} start
 		 * @param {number} end
@@ -69,7 +91,7 @@ export default {
 			const end = detached ? tail_end : node.range[1]
 			const keeps_semicolon = !detached && (
 				semicolon
-				|| next_token?.value != "}" && next_token?.loc.start.line == end_token.loc.end.line
+					|| next_token?.value != "}" && next_token?.loc.start.line == end_token.loc.end.line
 			)
 			let length = 0
 			for (const specifier of specifiers) {
@@ -129,28 +151,6 @@ export default {
 				}
 			)
 		}
-		/** @type {import("../../private.js").RuleListener} */
-		const listener = {
-			ExportNamedDeclaration: node => {
-				if (check_exports) {
-					verify(
-					/** @type {import("../../private.js").AstNode & import("estree").ExportNamedDeclaration} */(node)/**/,
-						"ExportSpecifier",
-						"export"
-					)
-				}
-			},
-			ImportDeclaration: node => {
-				if (check_imports) {
-					verify(
-					/** @type {import("../../private.js").AstNode & import("estree").ImportDeclaration} */(node)/**/,
-						"ImportSpecifier",
-						"import"
-					)
-				}
-			}
-		}
-		return /** @type {import("eslint").Rule.RuleListener} */(/** @type {unknown} */(listener))/**/
 	},
 	meta: {
 		docs: {

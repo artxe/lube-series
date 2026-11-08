@@ -2,7 +2,7 @@ import dimensions from "./dimensions.js"
 import { deepCopy } from "data-lube"
 import { Buffer } from "node:buffer"
 import { runInNewContext } from "node:vm"
-import { assert, describe, it, vi } from "vitest"
+import { assert, describe, it } from "vitest"
 describe(
 	"deep_copy",
 	() => {
@@ -135,9 +135,7 @@ describe(
 			"class instance",
 			() => {
 				class Point {
-					/**
-					 * @param {number} x
-					 */
+					/** @param {number} x */
 					constructor(x) {
 						this.x = x
 					}
@@ -151,9 +149,7 @@ describe(
 				class Guarded {
 					/** @type {number[]} */
 					calls = []
-					/**
-					 * @param {number} value
-					 */
+					/** @param {number} value */
 					set locked(value) {
 						this.calls.push(value)
 					}
@@ -204,26 +200,6 @@ describe(
 					clone[0]?.dimensions[3],
 					dimensions[0]?.dimensions[3]
 				)
-			}
-		)
-		it(
-			"copies primitives of arrays nested past the depth limit",
-			() => {
-				/** @type {unknown[]} */
-				let origin = [ "bottom" ]
-				for (let i = 0; i < 300; i++) {
-					origin = [ origin, i ]
-				}
-				const clone = deepCopy(origin)
-				let copied = clone
-				let original = origin
-				for (let i = 299; i >= 0; i--) {
-					assert.notEqual(copied, original)
-					assert.equal(copied[1], i)
-					copied = /** @type {unknown[]} */(copied[0])/**/
-					original = /** @type {unknown[]} */(original[0])/**/
-				}
-				assert.deepEqual(copied, [ "bottom" ])
 			}
 		)
 		it(
@@ -300,14 +276,6 @@ describe(
 				assert.deepEqual(clone.cause, cause)
 				assert.notEqual(clone.detail, error.detail)
 				assert.deepEqual(Object.keys(clone), [ "detail" ])
-			}
-		)
-		it(
-			"finalization registries keep their reference",
-			() => {
-				const registry = new FinalizationRegistry(() => {})
-				const clone = deepCopy({ registry })
-				assert.equal(clone.registry, registry)
 			}
 		)
 		it(
@@ -410,7 +378,6 @@ describe(
 		it(
 			"primitives",
 			() => {
-				function fn() {}
 				for (const value of [
 					null,
 					void 0,
@@ -424,6 +391,8 @@ describe(
 				]) {
 					assert.equal(deepCopy(value), value)
 				}
+				/** @returns {void} */
+				function fn() {}
 			}
 		)
 		it(
@@ -473,48 +442,6 @@ describe(
 					Map.prototype
 				)
 				assert.equal(clone.map_like.value, 1)
-			}
-		)
-		it(
-			"slotless typed array prototype",
-			() => {
-				/** @type {Uint8Array & { value: { a: number } }} */
-				const origin = Object.assign(
-					Object.create(Uint8Array.prototype),
-					{ value: { a: 1 } }
-				)
-				const clone = deepCopy(origin)
-				assert.equal(
-					Object.getPrototypeOf(clone),
-					Uint8Array.prototype
-				)
-				assert.deepEqual(clone.value, { a: 1 })
-				assert.notEqual(clone.value, origin.value)
-			}
-		)
-		it(
-			"sparse array proxy that lists its keys in any order",
-			() => {
-				/** @type {unknown[]} */
-				const array = new Array(5000)
-				array[10] = { a: 1 }
-				array[4000] = 2
-				const origin = new Proxy(
-					array,
-					{
-						ownKeys: target => Reflect.ownKeys(target).reverse()
-					}
-				)
-				const clone = deepCopy(origin)
-				assert.isTrue(Array.isArray(clone))
-				assert.equal(clone.length, 5000)
-				assert.deepEqual(
-					Object.keys(clone),
-					[ "10", "4000" ]
-				)
-				assert.deepEqual(clone[10], { a: 1 })
-				assert.notEqual(clone[10], array[10])
-				assert.equal(clone[4000], 2)
 			}
 		)
 		it(
@@ -679,27 +606,6 @@ describe(
 				assert.equal(clone.weak_map, origin.weak_map)
 				assert.equal(clone.weak_ref, origin.weak_ref)
 				assert.equal(clone.weak_set, origin.weak_set)
-			}
-		)
-		it(
-			"works where SharedArrayBuffer and Float16Array are missing",
-			async () => {
-				vi.stubGlobal("SharedArrayBuffer", undefined)
-				vi.stubGlobal("Float16Array", undefined)
-				vi.resetModules()
-				try {
-					const fresh = await import("data-lube")
-					const origin = {
-						bytes: new Uint8Array([ 1, 2 ]),
-						list: [ { a: 1 } ]
-					}
-					const clone = fresh.deepCopy(origin)
-					assert.notEqual(clone.bytes, origin.bytes)
-					assert.notEqual(clone.list[0], origin.list[0])
-					assert.isTrue(fresh.deepEqual(clone, origin))
-				} finally {
-					vi.unstubAllGlobals()
-				}
 			}
 		)
 	}

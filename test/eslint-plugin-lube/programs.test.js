@@ -107,6 +107,17 @@ function generate(seed) {
 	/** @type {string[]} */
 	const tdz = []
 	let counter = 0
+	for (let count = 4 + int(10); count > 0; count--) {
+		statement()
+	}
+	return [
+		"import { readCounter, fixedLimit, counterValue, bumpCounter } from \"./lib.js\"",
+		"import defaultHelper from \"./lib.js\"",
+		"import * as lib from \"./lib.js\"",
+		prelude + "class Thing { constructor(v) { this.v = v; log(\"Thing\") } }",
+		...lines,
+		lets.length ? `log(show({ ${lets.join(", ")} }))` : ""
+	].join("\n")
 	/**
 	 * @param {number} probability
 	 * @returns {boolean}
@@ -455,17 +466,6 @@ function generate(seed) {
 		}
 		return /** @type {[string, number]} */(items.at(-1))/**/[0]
 	}
-	for (let count = 4 + int(10); count > 0; count--) {
-		statement()
-	}
-	return [
-		"import { readCounter, fixedLimit, counterValue, bumpCounter } from \"./lib.js\"",
-		"import defaultHelper from \"./lib.js\"",
-		"import * as lib from \"./lib.js\"",
-		prelude + "class Thing { constructor(v) { this.v = v; log(\"Thing\") } }",
-		...lines,
-		lets.length ? `log(show({ ${lets.join(", ")} }))` : ""
-	].join("\n")
 }
 describe(
 	"programs",

@@ -1,23 +1,15 @@
-const closers_set = new Set([ ")", "]", "}" ])
-const continuation_regex = /^(?:[([{]|=>|(?:[-%&*+/^|]|\*\*|<<|>>>?|&&|\|\||\?\?)?=)$/
+import {
+	get_indent_model,
+	read_indent_options
+} from "./indent_model.js"
+import { get_rule_options } from "./rule_options.js"
 const line_break_regex = /[\n\r\u2028\u2029]/
 const line_terminator_regex = /\r\n|[\n\r\u2028\u2029]/g
-const openers_set = new Set([ "(", "[", "{" ])
 const quote_regex = /^["']/
-const text_token_types = new Set([ "HTMLText", "JSXText" ])
 const space_regex = /\s/
-const statement_lists = new Set(
-	[
-		"BlockStatement",
-		"ClassBody",
-		"Program",
-		"StaticBlock",
-		"SwitchCase",
-		"TSModuleBlock"
-	]
-)
 /**
  * @param {import("eslint").SourceCode} source_code
+ * @returns {{ comment_by_end: Map<number, import("../../private.js").Comment>; comment_by_start: Map<number, import("../../private.js").Comment>; count_comments(start: number, end: number): number; crosses_edit(position: number): boolean; edit(start: number, end: number, value: string): void; eol: string; get_indent(index: number): string; get_line_start: (index: number) => number; get_token_indent(position: number, indent: string): string; has_multiline_literal(start: number, end: number): boolean; is_space: (code: number) => boolean; render(start: number, end: number): string; skip_left(position: number, limit: number): number; skip_right(position: number, limit: number): number; text: string; to_lf(value: string): string; }}
  */
 function create_source_text(source_code) {
 	const text = source_code.text
@@ -32,10 +24,6 @@ function create_source_text(source_code) {
 	}
 	/** @type {{ end: number, start: number, text: string }[]} */
 	const edits = []
-	/** @type {number[] | undefined} */
-	let anchors
-	/** @type {number[]} */
-	const enclosers = []
 	/** @type {number[]} */
 	const line_starts = [ 0 ]
 	for (const match of text.matchAll(line_terminator_regex)) {
@@ -51,84 +39,6 @@ function create_source_text(source_code) {
 				/** @type {[number, number]} */(token.range)/**/
 			)
 		}
-	}
-	/**
-	 * @returns {number[]}
-	 */
-	function build_anchors() {
-		if (anchors) {
-			return anchors
-		}
-		const tokens = source_code.ast.tokens
-		anchors = []
-		/** @type {number[]} */
-		const openers = []
-		let previous_line = 0
-		for (const [ index, token ] of tokens.entries()) {
-			let anchor = token.loc.start.line == previous_line
-				? /** @type {number} */(anchors[index - 1])/**/
-				: index
-			let encloser = openers[openers.length - 1]
-			if (token.type == "Punctuator") {
-				if (openers_set.has(token.value)) {
-					openers.push(index)
-				} else if (closers_set.has(token.value)) {
-					const opener = openers.pop()
-					if (opener != null && anchor != index) {
-						anchor = /** @type {number} */(anchors[opener])/**/
-					}/**/
-					encloser = openers[openers.length - 1]
-				}
-			}
-			anchors.push(anchor)
-			enclosers.push(encloser ?? -1)
-			previous_line = text_token_types.has(token.type)
-				? token.loc.start.line
-				: token.loc.end.line
-		}
-		return anchors
-	}
-	/**
-	 * @param {{ end: number, start: number }} edit
-	 * @returns {number}
-	 */
-	function get_edit_key(edit) {
-		return -edit.start
-	}
-	/**
-	 * @param {number} index
-	 * @returns {number}
-	 */
-	function get_line_start(index) {
-		return /** @type {number} */(line_starts[lower_bound(line_starts, identity, index + 1) - 1])/**/
-	}
-	/**
-	 * @param {import("../../private.js").AstNode} node
-	 * @returns {number}
-	 */
-	function get_node_start(node) {
-		return node.range[0]
-	}
-	/**
-	 * @param {[number, number]} range
-	 * @returns {number}
-	 */
-	function get_range_end(range) {
-		return range[1]
-	}
-	/**
-	 * @param {import("../../private.js").Comment} comment
-	 * @returns {number}
-	 */
-	function get_range_start(comment) {
-		return comment.range[0]
-	}
-	/**
-	 * @param {import("eslint").AST.Token} token
-	 * @returns {number}
-	 */
-	function get_token_start(token) {
-		return token.range[0]
 	}
 	return {
 		comment_by_end,
@@ -169,35 +79,6 @@ function create_source_text(source_code) {
 		},
 		eol: text.match(line_terminator_regex)?.[0] ?? "\n",
 		/**
-		 * @param {number} position
-		 * @returns {number}
-		 */
-		get_anchor(position) {
-			const tokens = source_code.ast.tokens
-			const indexes = build_anchors()
-			const index = lower_bound(tokens, get_token_start, position)
-			const anchor = tokens[index]?.range[0] == position
-				? tokens[/** @type {number} */(indexes[index])/**/]
-				: undefined
-			return anchor ? anchor.range[0] : position
-		},
-		/**
-		 * @param {number} position
-		 * @returns {number}
-		 */
-		get_encloser(position) {
-			const tokens = source_code.ast.tokens
-			build_anchors()
-			const index = lower_bound(tokens, get_token_start, position)
-			if (tokens[index]?.range[0] != position) {
-				return -1
-			}
-			const encloser = /** @type {number} */(enclosers[index])/**/
-			return encloser < 0
-				? -1
-				: /** @type {import("eslint").AST.Token} */(tokens[encloser])/**/.range[0]
-		},
-		/**
 		 * @param {number} index
 		 * @returns {string}
 		 */
@@ -209,148 +90,64 @@ function create_source_text(source_code) {
 			}
 			return text.slice(line_start, position)
 		},
+		get_line_start,
 		/**
-		 * @param {import("../../private.js").AstNode} node
 		 * @param {number} position
 		 * @param {string} indent
 		 * @returns {string}
 		 */
-		get_line_indent(node, position, indent) {
-			const line_start = get_line_start(position)
-			const line_indent = this.get_indent(position)
-			const comment = comments[lower_bound(
-				comments,
-				get_range_start,
-				line_start
-			) - 1]
-			let statement = node
-			while (statement.parent && !statement_lists.has(statement.parent.type)) {
-				statement = statement.parent
+		get_token_indent(position, indent) {
+			const options = get_rule_options(source_code, "indent")
+			if (options) {
+				return get_indent_model(
+					source_code,
+					read_indent_options(options)
+				).get_token_indent(position)
 			}
-			const before = source_code.getTokenBefore(
-				/** @type {import("estree").Node} */(statement)/**/
+			const model = get_indent_model(
+				source_code,
+				{
+					...read_indent_options([]),
+					unit: indent
+				}
 			)
-			const line_first = line_start + line_indent.length
-			if (
-				comment_by_start.has(line_first)
-				&& this.skip_right(line_first, position) == position
-				&& statement.range[0] < line_start
-			) {
-				const previous = source_code.getTokenBefore(
-					/** @type {import("eslint").AST.Token} */(source_code.getTokenByRangeStart(position))/**/
-				)
-				const previous_anchor = previous && continuation_regex.test(previous.value) && previous.range[1] <= line_start
-					? this.get_anchor(previous.range[0])
-					: -1
-				if (previous_anchor >= 0 && this.get_indent(previous_anchor) == line_indent) {
-					return this.get_line_indent(node, previous_anchor, indent) + indent
+			let line_start = get_line_start(position)
+			for (;;) {
+				const comment = comments[lower_bound(
+					comments,
+					get_range_start,
+					line_start
+				) - 1]
+				const literal = multiline_literals[lower_bound(
+					multiline_literals,
+					get_range_end,
+					line_start + 1
+				)]
+				const opener = comment && comment.range[1] > line_start
+					? comment.range[0]
+					: literal && literal[0] < line_start
+						? literal[0]
+						: -1
+				if (opener < 0) {
+					break
 				}
+				line_start = get_line_start(opener)
 			}
-			if (comment && comment.range[1] > line_start && comment.range[1] <= position) {
-				let opener = this.get_encloser(position)
-				while (opener >= line_start) {
-					opener = this.get_encloser(opener)
-				}
-				const statement_start = statement.range[0]
-				if (opener > statement_start) {
-					return this.get_line_indent(
-						node,
-						this.get_anchor(opener),
-						indent
-					) + indent
-				}
-				if (statement_start < line_start) {
-					return this.get_line_indent(
-						statement,
-						this.get_anchor(statement_start),
-						indent
-					) + indent
-				}
+			let line_first = line_start
+			while (text[line_first] == " " || text[line_first] == "\t") {
+				line_first++
 			}
-			const line_comment = comment_by_start.get(line_first)
-			if (
-				text[line_start + line_indent.length] == ";"
-				|| comment && comment.range[1] > line_start
-				|| !!before && before.range[1] > line_start && get_line_start(statement.range[0]) == line_start
-				|| !!line_comment && line_comment.range[1] <= statement.range[0] && get_line_start(statement.range[0]) == line_start
-			) {
-				const container = /** @type {import("../../private.js").AstNode & { body: import("../../private.js").AstNode[] } | undefined} */(/** @type {unknown} */(statement.parent))/**/
-				if (!container || container.type == "Program") {
-					return ""
-				}
-				let opener = container.range[0]
-				/** @type {import("../../private.js").AstNode} */
-				let owner = container
-				if (container.type != "SwitchCase") {
-					const body = container.body
-					const previous = body[lower_bound(
-						body,
-						get_node_start,
-						statement.range[0]
-					) - 1]
-					opener = /** @type {import("eslint").AST.Token} */(source_code.getFirstToken(
-						/** @type {import("estree").Node} */(container)/**/,
-						{
-							filter: token => token.value == "{"
-						}
-					))/**/.range[0]
-					if (previous && get_line_start(previous.range[1] - 1) > get_line_start(opener)) {
-						return this.get_line_indent(
-							previous,
-							previous.range[0],
-							indent
-						)
-					}
-					if (container.type == "BlockStatement" && !statement_lists.has(container.parent.type)) {
-						owner = container.parent
-					}
-				}
-				const container_indent = this.get_line_indent(owner, owner.range[0], indent)
-				return get_line_start(opener) == line_start
-					? container_indent
-					: container_indent + indent
+			const physical = text.slice(line_start, line_first)
+			const line_indent = model.get_token_indent(line_start)
+			const token_indent = model.get_token_indent(position)
+			if (token_indent.startsWith(line_indent)) {
+				return physical + token_indent.slice(line_indent.length)
 			}
-			let child = node
-			for (let parent = node.parent; parent && !statement_lists.has(parent.type); parent = parent.parent) {
-				if (
-					parent.type == "ForStatement"
-					&& child != parent.body
-					&& get_line_start(child.range[0]) == line_start
-					&& get_line_start(parent.range[0]) != line_start
-				) {
-					return this.get_line_indent(parent, parent.range[0], indent) + indent
-				}
-				if (
-					(parent.type == "BinaryExpression" || parent.type == "LogicalExpression")
-					&& child == parent.right
-					&& parent.range[0] < line_start
-				) {
-					/** @type {string} */
-					const operator = parent.operator
-					const operator_start = /** @type {import("eslint").AST.Token} */(source_code.getTokenBefore(
-						/** @type {import("estree").Node} */(parent.right)/**/,
-						{
-							filter: token => token.value == operator
-						}
-					))/**/.range[0]
-					if (operator_start > line_start + line_indent.length && operator_start < node.range[0]) {
-						return this.get_line_indent(parent, parent.range[0], indent)
-					}
-				}
-				child = parent
-			}
-			for (let parent = node.parent; parent && !statement_lists.has(parent.type); parent = parent.parent) {
-				if (parent.type == "VariableDeclaration") {
-					const declaration_start = get_line_start(parent.range[0])
-					const last = /** @type {import("../../private.js").AstNode | undefined} */(parent.declarations[parent.declarations.length - 1])/**/
-					return declaration_start == line_start && !!last && get_line_start(last.range[0]) > declaration_start
-						? line_indent + indent
-						: line_indent
-				}
-			}
-			return line_indent
+			const excess = line_indent.length - token_indent.length
+			return line_indent.startsWith(token_indent) && physical.length >= excess
+				? physical.slice(0, physical.length - excess)
+				: physical
 		},
-		get_line_start,
 		/**
 		 * @param {number} start
 		 * @param {number} end
@@ -429,6 +226,34 @@ function create_source_text(source_code) {
 		to_lf(value) {
 			return value.replace(line_terminator_regex, "\n")
 		}
+	}
+	/**
+	 * @param {{ end: number, start: number }} edit
+	 * @returns {number}
+	 */
+	function get_edit_key(edit) {
+		return -edit.start
+	}
+	/**
+	 * @param {number} index
+	 * @returns {number}
+	 */
+	function get_line_start(index) {
+		return /** @type {number} */(line_starts[lower_bound(line_starts, identity, index + 1) - 1])/**/
+	}
+	/**
+	 * @param {[number, number]} range
+	 * @returns {number}
+	 */
+	function get_range_end(range) {
+		return range[1]
+	}
+	/**
+	 * @param {import("../../private.js").Comment} comment
+	 * @returns {number}
+	 */
+	function get_range_start(comment) {
+		return comment.range[0]
 	}
 }
 /**

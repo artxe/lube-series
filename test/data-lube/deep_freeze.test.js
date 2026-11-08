@@ -5,22 +5,6 @@ import { assert, describe, it } from "vitest"
 describe(
 	"deep_freeze",
 	() => {
-		/**
-		 * @param {unknown} obj
-		 * @returns {boolean}
-		 */
-		function is_deep_frozen(obj) {
-			if (!Object.isFrozen(obj)) {
-				return false
-			}
-			for (const key in /** @type {Readonly<Record<string, unknown>>} */(obj)/**/) {
-				const o = /** @type {Readonly<Record<string, unknown>>} */(obj)/**/[key]
-				if (o && typeof o == "object" && !ArrayBuffer.isView(o) && !is_deep_frozen(o)) {
-					return false
-				}
-			}
-			return true
-		}
 		it(
 			"circular reference",
 			() => {
@@ -178,5 +162,21 @@ describe(
 				assert.isFalse(Object.isFrozen(origin.bytes))
 			}
 		)
+		/**
+		 * @param {unknown} obj
+		 * @returns {boolean}
+		 */
+		function is_deep_frozen(obj) {
+			if (!Object.isFrozen(obj)) {
+				return false
+			}
+			for (const key in /** @type {Readonly<Record<string, unknown>>} */(obj)/**/) {
+				const o = /** @type {Readonly<Record<string, unknown>>} */(obj)/**/[key]
+				if (o && typeof o == "object" && !ArrayBuffer.isView(o) && !is_deep_frozen(o)) {
+					return false
+				}
+			}
+			return true
+		}
 	}
 )

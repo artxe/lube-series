@@ -66,7 +66,8 @@ function assign(clone, value, copies, plain) {
 				}
 			)
 		} else {
-			/** @type {Record<PropertyKey, unknown>} */(clone)/**/[key] = result
+			const record = /** @type {Record<PropertyKey, unknown>} */(clone)/**/
+			record[key] = result
 		}
 	}
 }
@@ -487,9 +488,7 @@ function later(task) {
 	pending ??= []
 	pending.push(task)
 }
-/**
- * @returns {(() => void) | undefined}
- */
+/** @returns {(() => void) | undefined} */
 function next_task() {
 	return pending?.pop()
 }

@@ -138,7 +138,8 @@ function diff(a, b, state) {
 	}
 	expand(a, b, kind, state)
 	if (deep) {
-		/** @type {Map<WeakKey, Set<WeakKey>>} */(state.active)/**/.get(a)?.delete(b)
+		const active = /** @type {Map<WeakKey, Set<WeakKey>>} */(state.active)/**/
+		active.get(a)?.delete(b)
 	} else {
 		trail.length = depth
 	}
@@ -598,7 +599,9 @@ function push(state, op, value) {
  */
 export default function(before, after) {
 	if (drafts.active) {
-		[ before, after ] = snapshot([ before, after ])
+		const snapped = snapshot([ before, after ])
+		before = snapped[0]
+		after = snapped[1]
 	}
 	/** @type {DiffState} */
 	const state = {

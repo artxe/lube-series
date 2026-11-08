@@ -49,8 +49,6 @@ export default {
 		const svelte_shorthands = new Set()
 		/** @type {Map<string, (import("../../private.js").AstNode & import("estree").Identifier)[]>} */
 		const declarations = new Map()
-		/** @type {Set<import("../../private.js").AstNode>} */
-		const default_exports = new Set()
 		/** @type {Map<string, (import("../../private.js").AstNode & import("estree").Identifier)[]>} */
 		const export_locals = new Map()
 		/** @type {Set<import("../../private.js").AstNode>} */
@@ -67,6 +65,504 @@ export default {
 		const visited = new Set()
 		/** @type {import("../../private.js").DisableDirective[] | undefined} */
 		let disable_directives
+		/** @type {import("../../private.js").RuleListener} */
+		const listener = {
+			/** @param {import("../../private.js").AstNode & import("estree").Identifier} node */
+			Identifier(node) {
+				const name = node.name
+				if (store_regex.test(name)) {
+					const store = name.slice(1)
+					if (is_svelte) {
+						const nodes = store_usages.get(store)
+						if (nodes) {
+							nodes.push(node)
+						} else {
+							store_usages.set(store, [ node ])
+						}
+					} else {
+						blocked.add(store)
+					}
+				}
+				if (allow_regex.test(name) || visited.has(node)) {
+					return
+				}
+				visited.add(node)
+				const parent = /** @type {import("../../private.js").NamingParent} */(node.parent)/**/
+				switch (parent.type) {
+				case "AccessorProperty":
+				case "TSAbstractAccessorProperty":
+				case "TSAbstractMethodDefinition":
+				case "TSAbstractPropertyDefinition":
+				case "TSMethodSignature":
+				case "TSPropertySignature":
+					if (parent.computed || parent.value == node) {
+						defer(node)
+					}
+					break
+				case "ArrayExpression":
+					defer(node)
+					break
+				case "ArrayPattern":
+					if (is_declaration(node)) {
+						declare(node)
+					} else {
+						defer(node)
+					}
+					break
+				case "ArrowFunctionExpression":
+					if (parent.body == node) {
+						defer(node)
+					} else {
+						declare(node)
+					}
+					break
+				case "AssignmentExpression":
+					defer(node)
+					break
+				case "AssignmentPattern":
+					if (parent.left != node) {
+						defer(node)
+					} else if (parent.parent?.type == "Property" && parent.parent.shorthand) {
+						shorthand_properties.add(node)
+						defer(node)
+					} else if (is_declaration(node)) {
+						declare(node)
+					} else {
+						defer(node)
+					}
+					break
+				case "AwaitExpression":
+					defer(node)
+					break
+				case "BinaryExpression":
+				case "Decorator":
+				case "JSXExpressionContainer":
+				case "JSXSpreadAttribute":
+				case "JSXSpreadChild":
+				case "TSAsExpression":
+				case "TSExportAssignment":
+				case "TSInstantiationExpression":
+				case "TSNonNullExpression":
+				case "TSSatisfiesExpression":
+				case "TSTypeAssertion":
+				case "TSTypePredicate":
+				case "TSTypeQuery":
+				case "WithStatement":
+					defer(node)
+					break
+				case "BreakStatement":
+				case "ContinueStatement":
+				case "ImportAttribute":
+				case "LabeledStatement":
+				case "MetaProperty":
+				case "TSCallSignatureDeclaration":
+				case "TSConstructSignatureDeclaration":
+				case "TSConstructorType":
+				case "TSEmptyBodyFunctionExpression":
+				case "TSEnumDeclaration":
+				case "TSFunctionType":
+				case "TSIndexSignature":
+				case "TSInterfaceDeclaration":
+				case "TSMappedType":
+				case "TSModuleDeclaration":
+				case "TSNamespaceExportDeclaration":
+				case "TSTypeAliasDeclaration":
+				case "TSTypeParameter":
+					break
+				case "CallExpression":
+					defer(node)
+					break
+				case "CatchClause":
+					declare(node)
+					break
+				case "ClassDeclaration":
+				case "ClassExpression":
+					if (parent.id == node) {
+						declare(node)
+					} else {
+						defer(node)
+					}
+					break
+				case "ConditionalExpression":
+					defer(node)
+					break
+				case "DoWhileStatement":
+					defer(node)
+					break
+				case "ExportAllDeclaration":
+					break
+				case "ExportDefaultDeclaration":
+					defer(node)
+					break
+				case "ExportSpecifier":
+					if (parent.local == node && !(/** @type {import("estree").ExportNamedDeclaration} */(parent.parent)/**/).source) {
+						const is_shorthand = parent.exported == node || parent.exported.range?.[0] == node.range[0]
+						if (is_shorthand) {
+							export_shorthands.add(node)
+						}
+						add(export_locals, node)
+					}
+					break
+				case "ExpressionStatement":
+					defer(node)
+					break
+				case "ForInStatement":
+					defer(node)
+					break
+				case "ForOfStatement":
+					defer(node)
+					break
+				case "ForStatement":
+					defer(node)
+					break
+				case "FunctionDeclaration":
+				case "TSDeclareFunction":
+					if (parent.id != node) {
+						if (parent.type == "FunctionDeclaration") {
+							declare(node)
+						}
+					} else if (parent.parent?.type != "ExportNamedDeclaration" || !camel_case_regex.test(name)) {
+						declare(node)
+					}
+					break
+				case "FunctionExpression":
+					declare(node)
+					break
+				case "IfStatement":
+					defer(node)
+					break
+				case "ImportDefaultSpecifier":
+					declare(node)
+					break
+				case "ImportExpression":
+					defer(node)
+					break
+				case "ImportNamespaceSpecifier":
+					declare(node)
+					break
+				case "ImportSpecifier":
+					if (parent.local == node) {
+						if (parent.imported.type == "Identifier" && parent.imported.name == name) {
+							import_shorthands.add(node)
+							defer(node)
+						} else {
+							declare(node)
+						}
+					}
+					break
+				case "LogicalExpression":
+					defer(node)
+					break
+				case "MemberExpression":
+					if (parent.object == node || parent.computed) {
+						defer(node)
+					}
+					break
+				case "MethodDefinition":
+					if (parent.computed) {
+						defer(node)
+					}
+					break
+				case "NewExpression":
+					defer(node)
+					break
+				case "Property":
+					if (parent.value == node) {
+						const is_shorthand = parent.shorthand
+						if (is_shorthand) {
+							shorthand_properties.add(node)
+						}
+						const declares = !is_shorthand && parent.parent?.type == "ObjectPattern" && is_declaration(node)
+						if (declares) {
+							declare(node)
+						} else {
+							defer(node)
+						}
+					} else if (parent.computed) {
+						defer(node)
+					}
+					break
+				case "PropertyDefinition":
+					if (parent.value == node || parent.computed) {
+						defer(node)
+					}
+					break
+				case "RestElement":
+					if (is_declaration(node)) {
+						declare(node)
+					} else {
+						defer(node)
+					}
+					break
+				case "ReturnStatement":
+					defer(node)
+					break
+				case "SequenceExpression":
+					defer(node)
+					break
+				case "SpreadElement":
+					defer(node)
+					break
+				case "SwitchCase":
+					defer(node)
+					break
+				case "SwitchStatement":
+					defer(node)
+					break
+				case "TSEnumMember":
+					if (parent.initializer == node) {
+						defer(node)
+					}
+					break
+				case "TSImportEqualsDeclaration":
+					if (parent.id == node) {
+						declare(node)
+					} else {
+						defer(node)
+					}
+					break
+				case "TSQualifiedName":
+					if (parent.left == node) {
+						defer(node)
+					}
+					break
+				case "TaggedTemplateExpression":
+					defer(node)
+					break
+				case "TemplateLiteral":
+					defer(node)
+					break
+				case "ThrowStatement":
+					defer(node)
+					break
+				case "UnaryExpression":
+					defer(node)
+					break
+				case "UpdateExpression":
+					defer(node)
+					break
+				case "VariableDeclarator":
+					if (parent.id == node) {
+						if (
+							parent.parent?.parent?.type != "ExportNamedDeclaration"
+								|| !camel_case_regex.test(name)
+						) {
+							declare(node)
+						}
+					} else {
+						defer(node)
+					}
+					break
+				case "WhileStatement":
+					defer(node)
+					break
+				case "YieldExpression":
+					defer(node)
+					break
+				default: {
+					/** @type {string} */
+					const type = parent.type
+					const svelte_parent = /** @type {{ expression?: unknown, kind?: string, value?: unknown }} */(/** @type {unknown} */(parent))/**/
+					if (type == "SvelteShorthandAttribute") {
+						if (svelte_parent.value == node) {
+							svelte_shorthands.add(node)
+							defer(node)
+						}
+					} else if (
+						svelte_usage_parents.has(type)
+							|| type == "SvelteDirective" && svelte_parent.kind != "Let"
+							|| svelte_expression_parents.has(type) && svelte_parent.expression == node
+					) {
+						defer(node)
+					} else {
+						blocked.add(name)
+					}
+				}
+				}
+			},
+			/** @param {import("../../private.js").AstNode & import("estree").Identifier} node */
+			JSXIdentifier(node) {
+				const name = node.name
+				/** @type {{ object?: unknown, type: string }} */
+				const parent = node.parent
+				if (parent.type == "JSXMemberExpression" && parent.object == node) {
+					if (allow_regex.test(name)) {
+						return
+					}
+					jsx_objects.add(node)
+					defer(node)
+				} else if ((parent.type == "JSXOpeningElement" || parent.type == "JSXClosingElement") && !lowercase_regex.test(name)) {
+					blocked.add(name)
+				}
+			},
+			"Program:exit": () => {
+				if (!declarations.size) {
+					return
+				}
+				/** @type {Map<import("../../private.js").AstNode, import("eslint").Scope.Variable | null>} */
+				const resolution = new Map()
+				/** @type {Map<string, import("eslint").Scope.Variable[]>} */
+				const variables_by_name = new Map()
+				const scopes = /** @type {import("eslint").Scope.ScopeManager} */(source.scopeManager)/**/.scopes
+				for (const scope of scopes) {
+					for (const variable of scope.variables) {
+						const same_names = variables_by_name.get(variable.name)
+						if (same_names) {
+							same_names.push(variable)
+						} else {
+							variables_by_name.set(variable.name, [ variable ])
+						}
+						for (const identifier of variable.identifiers) {
+							resolution.set(
+								/** @type {import("../../private.js").AstNode} */(/** @type {unknown} */(identifier))/**/,
+								variable
+							)
+						}
+					}
+				}
+				for (const scope of scopes) {
+					for (const reference of scope.references) {
+						const identifier = /** @type {import("../../private.js").AstNode} */(/** @type {unknown} */(reference.identifier))/**/
+						if (!resolution.has(identifier)) {
+							resolution.set(identifier, reference.resolved)
+						}
+					}
+				}
+				for (const node of jsx_objects) {
+					if (!resolution.has(node)) {
+						blocked.add(node.name)
+					}
+				}
+				/** @type {Set<import("eslint").Scope.Variable>} */
+				const renamable = new Set()
+				/** @type {Set<import("../../private.js").AstNode>} */
+				const declared = new Set()
+				for (const nodes of declarations.values()) {
+					for (const node of nodes) {
+						declared.add(node)
+						renamable.add(
+							/** @type {import("eslint").Scope.Variable} */(resolution.get(node))/**/
+						)
+					}
+				}
+				/** @type {import("../../private.js").RenameEdit[]} */
+				const edits = []
+				/** @type {import("../../private.js").NamingIdentifier | undefined} */
+				let fix_node
+				/** @type {Set<string>} */
+				const targets = new Set()
+				/** @type {Map<string, import("../../private.js").NamingIdentifier[]>} */
+				const reported_usages = new Map()
+				for (const [ name, nodes ] of declarations) {
+					const exported = (export_locals.get(name) ?? []).filter(belongs)
+					const used = (usages.get(name) ?? []).filter(belongs)
+					reported_usages.set(name, [ ...exported, ...used ])
+					const renamed = [
+						...exported,
+						...used,
+						...store_usages.get(name) ?? []
+					]
+					const target = to_snake_case(name)
+					if (
+						targets.has(target)
+							|| blocked.has(name)
+							|| !fixable_name_regex.test(name)
+							|| collides(name)
+							|| has_foreign_declaration(name)
+							|| [ ...nodes, ...renamed ].some(is_disabled)
+					) {
+						continue
+					}
+					targets.add(target)
+					fix_node ??= nodes[0]
+					edits.push(
+						...nodes.flatMap(
+							node => declaration_edits(node, resolution)
+						),
+						...renamed.map(rename_edit)
+					)
+				}
+				for (const [ name, nodes ] of declarations) {
+					for (const node of nodes) {
+						report(
+							node,
+							node == fix_node ? edits : null
+						)
+					}
+					if (!fix_same_names) {
+						continue
+					}
+					for (const node of /** @type {import("../../private.js").NamingIdentifier[]} */(reported_usages.get(name))/**/) {
+						report(node, null)
+					}
+				}
+				/**
+				 * @param {import("../../private.js").AstNode} node
+				 * @returns {boolean}
+				 */
+				function belongs(node) {
+					if (!resolution.has(node)) {
+						return true
+					}
+					const variable = resolution.get(node)
+					return !!variable && renamable.has(variable)
+				}
+				/**
+				 * @param {string} name
+				 * @returns {boolean}
+				 */
+				function collides(name) {
+					const others = variables_by_name.get(to_snake_case(name)) ?? []
+					if (!others.length) {
+						return false
+					}
+					for (const variable of /** @type {import("eslint").Scope.Variable[]} */(variables_by_name.get(name))/**/) {
+						if (!renamable.has(variable)) {
+							continue
+						}
+						for (const scope of [
+							variable.scope,
+							...variable.references.map(reference => reference.from)
+						]) {
+							for (let current = /** @type {import("eslint").Scope.Scope | null} */(scope)/**/; current; current = current.upper) {
+								if (others.some(
+									other => other.scope == current
+								)) {
+									return true
+								}
+								if (current == variable.scope) {
+									break
+								}
+							}
+						}
+						for (const other of others) {
+							for (const reference of other.references) {
+								for (let current = /** @type {import("eslint").Scope.Scope | null} */(reference.from)/**/; current && current != other.scope; current = current.upper) {
+									if (current == variable.scope) {
+										return true
+									}
+								}
+							}
+						}
+					}
+					return false
+				}
+				/**
+				 * @param {string} name
+				 * @returns {boolean}
+				 */
+				function has_foreign_declaration(name) {
+					return /** @type {import("eslint").Scope.Variable[]} */(variables_by_name.get(name))/**/.some(
+						variable => renamable.has(variable) && variable.identifiers.some(
+							identifier => !declared.has(
+								/** @type {import("../../private.js").AstNode} */(/** @type {unknown} */(identifier))/**/
+							)
+						)
+					)
+				}
+			}
+		}
+		return /** @type {import("eslint").Rule.RuleListener} */(/** @type {unknown} */(listener))/**/
 		/**
 		 * @param {Map<string, (import("../../private.js").AstNode & import("estree").Identifier)[]>} map
 		 * @param {import("../../private.js").AstNode & import("estree").Identifier} node
@@ -445,604 +941,6 @@ export default {
 		function to_snake_case(name) {
 			return name.replace(fix_regex, fix_handler)
 		}
-		/** @type {import("../../private.js").RuleListener} */
-		const listener = {
-			/** @param {import("../../private.js").AstNode & import("estree").Identifier} node */
-			Identifier(node) {
-				const name = node.name
-				if (store_regex.test(name)) {
-					const store = name.slice(1)
-					if (is_svelte) {
-						const nodes = store_usages.get(store)
-						if (nodes) {
-							nodes.push(node)
-						} else {
-							store_usages.set(store, [ node ])
-						}
-					} else {
-						blocked.add(store)
-					}
-				}
-				if (allow_regex.test(name) || visited.has(node)) {
-					return
-				}
-				visited.add(node)
-				const parent = /** @type {import("../../private.js").NamingParent} */(node.parent)/**/
-				switch (parent.type) {
-				case "AccessorProperty":
-				case "TSAbstractAccessorProperty":
-				case "TSAbstractMethodDefinition":
-				case "TSAbstractPropertyDefinition":
-				case "TSMethodSignature":
-				case "TSPropertySignature":
-					if (parent.computed || parent.value == node) {
-						defer(node)
-					}
-					break
-				case "ArrayExpression":
-					defer(node)
-					break
-				case "ArrayPattern":
-					if (is_declaration(node)) {
-						declare(node)
-					} else {
-						defer(node)
-					}
-					break
-				case "ArrowFunctionExpression":
-					if (parent.body == node) {
-						defer(node)
-					} else {
-						declare(node)
-					}
-					break
-				case "AssignmentExpression":
-					defer(node)
-					break
-				case "AssignmentPattern":
-					if (parent.left != node) {
-						defer(node)
-					} else if (parent.parent?.type == "Property" && parent.parent.shorthand) {
-						shorthand_properties.add(node)
-						defer(node)
-					} else if (is_declaration(node)) {
-						declare(node)
-					} else {
-						defer(node)
-					}
-					break
-				case "AwaitExpression":
-					defer(node)
-					break
-				case "BinaryExpression":
-				case "Decorator":
-				case "JSXExpressionContainer":
-				case "JSXSpreadAttribute":
-				case "JSXSpreadChild":
-				case "TSAsExpression":
-				case "TSExportAssignment":
-				case "TSInstantiationExpression":
-				case "TSNonNullExpression":
-				case "TSSatisfiesExpression":
-				case "TSTypeAssertion":
-				case "TSTypePredicate":
-				case "TSTypeQuery":
-				case "WithStatement":
-					defer(node)
-					break
-				case "BreakStatement":
-				case "ContinueStatement":
-				case "ImportAttribute":
-				case "LabeledStatement":
-				case "MetaProperty":
-				case "TSCallSignatureDeclaration":
-				case "TSConstructSignatureDeclaration":
-				case "TSConstructorType":
-				case "TSEmptyBodyFunctionExpression":
-				case "TSEnumDeclaration":
-				case "TSFunctionType":
-				case "TSIndexSignature":
-				case "TSInterfaceDeclaration":
-				case "TSMappedType":
-				case "TSModuleDeclaration":
-				case "TSNamespaceExportDeclaration":
-				case "TSTypeAliasDeclaration":
-				case "TSTypeParameter":
-					break
-				case "CallExpression":
-					defer(node)
-					break
-				case "CatchClause":
-					declare(node)
-					break
-				case "ClassDeclaration":
-				case "ClassExpression":
-					if (parent.id == node) {
-						declare(node)
-					} else {
-						defer(node)
-					}
-					break
-				case "ConditionalExpression":
-					defer(node)
-					break
-				case "DoWhileStatement":
-					defer(node)
-					break
-				case "ExportAllDeclaration":
-					break
-				case "ExportDefaultDeclaration":
-					default_exports.add(node)
-					defer(node)
-					break
-				case "ExportSpecifier":
-					if (parent.local == node && !(/** @type {import("estree").ExportNamedDeclaration} */(parent.parent)/**/).source) {
-						const is_shorthand = parent.exported == node || parent.exported.range?.[0] == node.range[0]
-						if (is_shorthand) {
-							export_shorthands.add(node)
-						}
-						add(export_locals, node)
-					}
-					break
-				case "ExpressionStatement":
-					defer(node)
-					break
-				case "ForInStatement":
-					defer(node)
-					break
-				case "ForOfStatement":
-					defer(node)
-					break
-				case "ForStatement":
-					defer(node)
-					break
-				case "FunctionDeclaration":
-				case "TSDeclareFunction":
-					if (parent.id != node) {
-						if (parent.type == "FunctionDeclaration") {
-							declare(node)
-						}
-					} else if (parent.parent?.type != "ExportNamedDeclaration" || !camel_case_regex.test(name)) {
-						declare(node)
-					}
-					break
-				case "FunctionExpression":
-					declare(node)
-					break
-				case "IfStatement":
-					defer(node)
-					break
-				case "ImportDefaultSpecifier":
-					declare(node)
-					break
-				case "ImportExpression":
-					defer(node)
-					break
-				case "ImportNamespaceSpecifier":
-					declare(node)
-					break
-				case "ImportSpecifier":
-					if (parent.local == node) {
-						if (parent.imported.type == "Identifier" && parent.imported.name == name) {
-							import_shorthands.add(node)
-							defer(node)
-						} else {
-							declare(node)
-						}
-					}
-					break
-				case "LogicalExpression":
-					defer(node)
-					break
-				case "MemberExpression":
-					if (parent.object == node || parent.computed) {
-						defer(node)
-					}
-					break
-				case "MethodDefinition":
-					if (parent.computed) {
-						defer(node)
-					}
-					break
-				case "NewExpression":
-					defer(node)
-					break
-				case "Property":
-					if (parent.value == node) {
-						const is_shorthand = parent.shorthand
-						if (is_shorthand) {
-							shorthand_properties.add(node)
-						}
-						const declares = !is_shorthand && parent.parent?.type == "ObjectPattern" && is_declaration(node)
-						if (declares) {
-							declare(node)
-						} else {
-							defer(node)
-						}
-					} else if (parent.computed) {
-						defer(node)
-					}
-					break
-				case "PropertyDefinition":
-					if (parent.value == node || parent.computed) {
-						defer(node)
-					}
-					break
-				case "RestElement":
-					if (is_declaration(node)) {
-						declare(node)
-					} else {
-						defer(node)
-					}
-					break
-				case "ReturnStatement":
-					defer(node)
-					break
-				case "SequenceExpression":
-					defer(node)
-					break
-				case "SpreadElement":
-					defer(node)
-					break
-				case "SwitchCase":
-					defer(node)
-					break
-				case "SwitchStatement":
-					defer(node)
-					break
-				case "TSEnumMember":
-					if (parent.initializer == node) {
-						defer(node)
-					}
-					break
-				case "TSImportEqualsDeclaration":
-					if (parent.id == node) {
-						declare(node)
-					} else {
-						defer(node)
-					}
-					break
-				case "TSQualifiedName":
-					if (parent.left == node) {
-						defer(node)
-					}
-					break
-				case "TaggedTemplateExpression":
-					defer(node)
-					break
-				case "TemplateLiteral":
-					defer(node)
-					break
-				case "ThrowStatement":
-					defer(node)
-					break
-				case "UnaryExpression":
-					defer(node)
-					break
-				case "UpdateExpression":
-					defer(node)
-					break
-				case "VariableDeclarator":
-					if (parent.id == node) {
-						if (
-							parent.parent?.parent?.type != "ExportNamedDeclaration"
-							|| !camel_case_regex.test(name)
-						) {
-							declare(node)
-						}
-					} else {
-						defer(node)
-					}
-					break
-				case "WhileStatement":
-					defer(node)
-					break
-				case "YieldExpression":
-					defer(node)
-					break
-				default: {
-					/** @type {string} */
-					const type = parent.type
-					const svelte_parent = /** @type {{ expression?: unknown, kind?: string, value?: unknown }} */(/** @type {unknown} */(parent))/**/
-					if (type == "SvelteShorthandAttribute") {
-						if (svelte_parent.value == node) {
-							svelte_shorthands.add(node)
-							defer(node)
-						}
-					} else if (
-						svelte_usage_parents.has(type)
-						|| type == "SvelteDirective" && svelte_parent.kind != "Let"
-						|| svelte_expression_parents.has(type) && svelte_parent.expression == node
-					) {
-						defer(node)
-					} else {
-						blocked.add(name)
-					}
-				}
-				}
-			},
-			/** @param {import("../../private.js").AstNode & import("estree").Identifier} node */
-			JSXIdentifier(node) {
-				const name = node.name
-				/** @type {{ object?: unknown, type: string }} */
-				const parent = node.parent
-				if (parent.type == "JSXMemberExpression" && parent.object == node) {
-					if (allow_regex.test(name)) {
-						return
-					}
-					jsx_objects.add(node)
-					defer(node)
-				} else if ((parent.type == "JSXOpeningElement" || parent.type == "JSXClosingElement") && !lowercase_regex.test(name)) {
-					blocked.add(name)
-				}
-			},
-			"Program:exit": () => {
-				if (!declarations.size) {
-					return
-				}
-				/** @type {Map<import("../../private.js").AstNode, import("eslint").Scope.Variable | null>} */
-				const resolution = new Map()
-				/** @type {Map<string, import("eslint").Scope.Variable[]>} */
-				const variables_by_name = new Map()
-				const scopes = /** @type {import("eslint").Scope.ScopeManager} */(source.scopeManager)/**/.scopes
-				for (const scope of scopes) {
-					for (const variable of scope.variables) {
-						const same_names = variables_by_name.get(variable.name)
-						if (same_names) {
-							same_names.push(variable)
-						} else {
-							variables_by_name.set(variable.name, [ variable ])
-						}
-						for (const identifier of variable.identifiers) {
-							resolution.set(
-							/** @type {import("../../private.js").AstNode} */(/** @type {unknown} */(identifier))/**/,
-								variable
-							)
-						}
-					}
-				}
-				for (const scope of scopes) {
-					for (const reference of scope.references) {
-						const identifier = /** @type {import("../../private.js").AstNode} */(/** @type {unknown} */(reference.identifier))/**/
-						if (!resolution.has(identifier)) {
-							resolution.set(identifier, reference.resolved)
-						}
-					}
-				}
-				for (const node of jsx_objects) {
-					if (!resolution.has(node)) {
-						blocked.add(node.name)
-					}
-				}
-				/** @type {Set<import("eslint").Scope.Variable>} */
-				const renamable = new Set()
-				/** @type {Set<import("../../private.js").AstNode>} */
-				const declared = new Set()
-				for (const nodes of declarations.values()) {
-					for (const node of nodes) {
-						declared.add(node)
-						renamable.add(
-							/** @type {import("eslint").Scope.Variable} */(resolution.get(node))/**/
-						)
-					}
-				}
-				/** @type {Map<string, Set<import("eslint").Scope.Scope>>} */
-				const scopes_by_target = new Map()
-				for (const variable of renamable) {
-					const target = to_snake_case(variable.name)
-					const target_scopes = scopes_by_target.get(target)
-					if (target_scopes) {
-						target_scopes.add(variable.scope)
-					} else {
-						scopes_by_target.set(
-							target,
-							new Set([ variable.scope ])
-						)
-					}
-				}
-				/** @type {Set<string>} */
-				const nested_targets = new Set()
-				for (const variable of renamable) {
-					const target = to_snake_case(variable.name)
-					const target_scopes = /** @type {Set<import("eslint").Scope.Scope>} */(scopes_by_target.get(target))/**/
-					for (let scope = variable.scope.upper; scope; scope = scope.upper) {
-						if (target_scopes.has(scope)) {
-							nested_targets.add(target)
-						}
-					}
-				}
-				/**
-				 * @param {import("../../private.js").AstNode} node
-				 * @returns {boolean}
-				 */
-				function belongs(node) {
-					if (!resolution.has(node)) {
-						return true
-					}
-					const variable = resolution.get(node)
-					return !!variable && renamable.has(variable)
-				}
-				/**
-				 * @param {string} name
-				 * @returns {boolean}
-				 */
-				function collides(name) {
-					const others = variables_by_name.get(to_snake_case(name)) ?? []
-					if (!others.length) {
-						return false
-					}
-					for (const variable of /** @type {import("eslint").Scope.Variable[]} */(variables_by_name.get(name))/**/) {
-						if (!renamable.has(variable)) {
-							continue
-						}
-						for (const scope of [
-							variable.scope,
-							...variable.references.map(reference => reference.from)
-						]) {
-							for (let current = /** @type {import("eslint").Scope.Scope | null} */(scope)/**/; current; current = current.upper) {
-								if (others.some(
-									other => other.scope == current
-								)) {
-									return true
-								}
-								if (current == variable.scope) {
-									break
-								}
-							}
-						}
-						for (const other of others) {
-							for (const reference of other.references) {
-								for (let current = /** @type {import("eslint").Scope.Scope | null} */(reference.from)/**/; current && current != other.scope; current = current.upper) {
-									if (current == variable.scope) {
-										return true
-									}
-								}
-							}
-						}
-					}
-					return false
-				}
-				/**
-				 * @param {string} name
-				 * @returns {boolean}
-				 */
-				function has_foreign_declaration(name) {
-					return /** @type {import("eslint").Scope.Variable[]} */(variables_by_name.get(name))/**/.some(
-						variable => renamable.has(variable) && variable.identifiers.some(
-							identifier => !declared.has(
-								/** @type {import("../../private.js").AstNode} */(/** @type {unknown} */(identifier))/**/
-							)
-						)
-					)
-				}
-				/** @type {Set<import("../../private.js").AstNode>} */
-				const held = new Set(default_exports)
-				for (const variable of renamable) {
-					for (const reference of variable.references) {
-						if (reference.isWrite() && !reference.init) {
-							held.add(
-							/** @type {import("../../private.js").AstNode} */(/** @type {unknown} */(reference.identifier))/**/
-							)
-						}
-					}
-				}
-				/** @type {Map<string, import("../../private.js").RenamePlan>} */
-				const plans = new Map()
-				for (const [ name, nodes ] of declarations) {
-					const target = to_snake_case(name)
-					const used = (usages.get(name) ?? []).filter(belongs)
-					plans.set(
-						name,
-						{
-							atomic: !fix_same_names || nodes.length > 1 || variables_by_name.has(target) || nested_targets.has(target) || store_usages.has(name),
-							exported: (export_locals.get(name) ?? []).filter(belongs),
-							fixable: !blocked.has(name)
-								&& fixable_name_regex.test(name)
-								&& !collides(name)
-								&& !has_foreign_declaration(name)
-								&& !nodes.some(is_disabled),
-							held: used.filter(node => held.has(node)),
-							used: used.filter(node => !held.has(node))
-						}
-					)
-				}
-				/**
-				 * @param {import("../../private.js").NamingIdentifier} node
-				 * @param {import("../../private.js").NamingIdentifier[]} usages_held
-				 * @returns {import("../../private.js").RenameEdit[]}
-				 */
-				function declaration_fix(node, usages_held) {
-					const variable = resolution.get(node)
-					return [
-						...declaration_edits(node, resolution),
-						...usages_held.filter(
-							usage => resolution.get(usage) == variable
-						).map(rename_edit)
-					]
-				}
-				/** @type {import("../../private.js").RenameEdit[]} */
-				const atomic = []
-				/** @type {import("../../private.js").NamingIdentifier | undefined} */
-				let atomic_node
-				for (const [ name, nodes ] of declarations) {
-					const plan = /** @type {import("../../private.js").RenamePlan} */(plans.get(name))/**/
-					if (!plan.exported.length || !plan.fixable || !plan.atomic && plan.used.length) {
-						continue
-					}
-					atomic_node ??= nodes[0]
-					for (const node of nodes) {
-						atomic.push(
-							...declaration_edits(node, resolution)
-						)
-					}
-					for (const node of [
-						...plan.exported,
-						...plan.used,
-						...plan.held,
-						...store_usages.get(name) ?? []
-					]) {
-						atomic.push(rename_edit(node))
-					}
-				}
-				for (const [ name, nodes ] of declarations) {
-					const {
-						atomic: renames_at_once,
-						exported,
-						fixable,
-						held: usages_held,
-						used
-					} = /** @type {import("../../private.js").RenamePlan} */(plans.get(name))/**/
-					if (exported.length) {
-						for (const node of nodes) {
-							report(
-								node,
-								node == atomic_node ? atomic : null
-							)
-						}
-					} else if (!renames_at_once) {
-						for (const node of nodes) {
-							report(
-								node,
-								fixable && !used.length ? declaration_fix(node, usages_held) : null
-							)
-						}
-					} else {
-						report(
-							/** @type {import("../../private.js").NamingIdentifier} */(nodes[0])/**/,
-							fixable
-								? [
-									...nodes.flatMap(
-										node => declaration_edits(node, resolution)
-									),
-									...used.map(rename_edit),
-									...usages_held.map(rename_edit),
-									...(store_usages.get(name) ?? []).map(rename_edit)
-								]
-								: null
-						)
-						for (const node of nodes.slice(1)) {
-							report(node, null)
-						}
-					}
-					if (!fix_same_names) {
-						continue
-					}
-					for (const node of exported) {
-						report(node, null)
-					}
-					for (const node of usages_held) {
-						report(node, null)
-					}
-					for (const node of used) {
-						report(
-							node,
-							fixable && !renames_at_once ? [ rename_edit(node) ] : null
-						)
-					}
-				}
-			}
-		}
-		return /** @type {import("eslint").Rule.RuleListener} */(/** @type {unknown} */(listener))/**/
 	},
 	meta: {
 		docs: {

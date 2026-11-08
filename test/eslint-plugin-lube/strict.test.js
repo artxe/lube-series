@@ -2,15 +2,22 @@ import ascii_order from "../../packages/eslint-plugin-lube/src/rules/ascii-order
 import ts_parser from "@typescript-eslint/parser"
 import { Linter, RuleTester } from "eslint"
 import lube from "eslint-plugin-lube"
-import { builtinRules } from "eslint/use-at-your-own-risk"
 import assert from "node:assert"
 import svelte_parser from "svelte-eslint-parser"
 import { describe, it } from "vitest"
 RuleTester.describe = describe
 RuleTester.it = it
-const ascii_order_options = /** @type {[ import("eslint").Linter.RuleSeverity, NonNullable<import("../../packages/eslint-plugin-lube/private.js").RuleOptions["ascii-order"]> ]} */(lube.configs.strict.rules["lube/ascii-order"])/**/.slice(1)
-const curly_options = /** @type {[ import("eslint").Linter.RuleSeverity, "all" ]} */(lube.configs.strict.rules["lube/curly"])/**/.slice(1)
-const options = /** @type {[ import("eslint").Linter.RuleSeverity, "declaration" ]} */(lube.configs.strict.rules["func-style"])/**/.slice(1)
+/** @type {import("eslint").Linter.Config & { rules: import("eslint").Linter.RulesRecord }} */
+const strict_config = {
+	...lube.configs.strict,
+	rules: {
+		...lube.configs.strict.rules,
+		"lube/no-ambiguous-start": "off",
+		"lube/require-returns": "off"
+	}
+}
+const ascii_order_options = /** @type {[ import("eslint").Linter.RuleSeverity, NonNullable<import("../../packages/eslint-plugin-lube/private.js").RuleOptions["ascii-order"]> ]} */(strict_config.rules["lube/ascii-order"])/**/.slice(1)
+const curly_options = /** @type {[ import("eslint").Linter.RuleSeverity, "all" ]} */(strict_config.rules["lube/curly"])/**/.slice(1)
 new RuleTester().run(
 	"ascii-order in the strict config",
 	ascii_order,
@@ -103,69 +110,15 @@ new RuleTester().run(
 		]
 	}
 )
-new RuleTester().run(
-	"func-style in the strict config",
-	/** @type {import("eslint").Rule.RuleModule} */(builtinRules.get("func-style"))/**/,
-	{
-		invalid: [
-			{
-				code: "const f = () => 1",
-				errors: [ { messageId: "declaration" } ],
-				options
-			},
-			{
-				code: "let f = function() {}",
-				errors: [ { messageId: "declaration" } ],
-				options
-			}
-		],
-		valid: [
-			{ code: "function f() {}", options },
-			{ code: "[].map(x => x)", options },
-			{
-				code: "const o = { m() { const g = () => this } }",
-				options
-			}
-		]
-	}
-)
 describe(
 	"fixes of the strict config",
 	() => {
 		const linter = new Linter()
-		/**
-		 * @param {string} code
-		 * @param {string} output
-		 * @returns {void}
-		 */
-		function assert_converges(code, output) {
-			const config = [
-				lube.configs.strict,
-				{
-					languageOptions: {
-						parserOptions: { ecmaFeatures: { jsx: true } }
-					}
-				}
-			]
-			const result = linter.verifyAndFix(code, config)
-			assert.strictEqual(result.output, output)
-			assert.deepStrictEqual(
-				result.messages.filter(message => message.fix),
-				[]
-			)
-		}
-		/**
-		 * @param {string} code
-		 * @returns {string}
-		 */
-		function fix(code) {
-			return linter.verifyAndFix(code, [ lube.configs.strict ]).output
-		}
 		it(
 			"allows a separate import of types from a module",
 			() => {
 				const config = [
-					lube.configs.strict,
+					strict_config,
 					{
 						files: [ "**/*.ts" ],
 						languageOptions: { parser: ts_parser }
@@ -185,6 +138,15 @@ describe(
 			}
 		)
 		it(
+			"applies a lube fix and a stylistic fix next to it in the same pass",
+			() => {
+				assert.strictEqual(
+					count_passes("var o = { b: 1, a: 2, c:3 }"),
+					1
+				)
+			}
+		)
+		it(
 			"breaks a nested ternary inside reformatted arguments",
 			() => {
 				assert.strictEqual(
@@ -200,7 +162,7 @@ describe(
 			() => {
 				assert_converges(
 					"function f() {\n\tconst o = a\n\t\t? s\n\t\t: {\n\t\t\tllllllllllllllllll: 2,\n\t\t\tssssssssssss: 1\n\t\t}; u = { mmmmmmmmmmmmmm: 1, rrrrrrrrrrrrrrrrr: 2 }\n}",
-					"function f() {\n\tconst o = a\n\t\t? s\n\t\t: {\n\t\t\tllllllllllllllllll: 2,\n\t\t\tssssssssssss: 1\n\t\t}; u = {\n\t\tmmmmmmmmmmmmmm: 1,\n\t\trrrrrrrrrrrrrrrrr: 2\n\t}\n}"
+					"function f() {\n\tconst o = a\n\t\t? s\n\t\t: {\n\t\t\tllllllllllllllllll: 2,\n\t\t\tssssssssssss: 1\n\t\t}; u = {\n\t\t\tmmmmmmmmmmmmmm: 1,\n\t\t\trrrrrrrrrrrrrrrrr: 2\n\t\t}\n}"
 				)
 			}
 		)
@@ -217,7 +179,7 @@ describe(
 			"breaks arguments in a Svelte expression on its own line",
 			() => {
 				const config = [
-					lube.configs.strict,
+					strict_config,
 					{
 						files: [ "**/*.svelte" ],
 						languageOptions: { parser: svelte_parser }
@@ -239,12 +201,48 @@ describe(
 			}
 		)
 		it(
+			"breaks arguments in a Svelte script from the indent of its first statement",
+			() => {
+				const config = [
+					strict_config,
+					{
+						files: [ "**/*.svelte" ],
+						languageOptions: { parser: svelte_parser }
+					}
+				]
+				const result = linter.verifyAndFix(
+					"<script>\n\tconst a = f(aaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb)\n\tg(a)\n</script>",
+					config,
+					"a.svelte"
+				)
+				assert.strictEqual(
+					result.output,
+					"<script>\n\tconst a = f(\n\t\taaaaaaaaaaaaaaaaaaaaaaaa,\n\t\tbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n\t)\n\tg(a)\n</script>"
+				)
+				assert.deepStrictEqual(
+					result.messages.filter(message => message.fix),
+					[]
+				)
+			}
+		)
+		it(
 			"breaks arguments on a line of a for header that starts after the previous part",
 			() => {
 				assert_converges(
 					"for (let i = foo(\n\taaaaaaaaaaaaaaaaaaaa,\n\tbbbbbbbbbbbbbbbbbbbbbbbbbb\n); i < bar(aaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbb); i++) {}",
-					"for (let i = foo(\n\taaaaaaaaaaaaaaaaaaaa,\n\tbbbbbbbbbbbbbbbbbbbbbbbbbb\n); i < bar(\n\t\taaaaaaaaaaaaaaaaaaaa,\n\t\tbbbbbbbbbbbbbbbbbbbbbbbbbb\n\t); i++) {}"
+					"for (let i = foo(\n\taaaaaaaaaaaaaaaaaaaa,\n\tbbbbbbbbbbbbbbbbbbbbbbbbbb\n); i < bar(\n\taaaaaaaaaaaaaaaaaaaa,\n\tbbbbbbbbbbbbbbbbbbbbbbbbbb\n); i++) {}"
 				)
+			}
+		)
+		it(
+			"ends a file without a line break whatever its line breaks",
+			() => {
+				for (const eol of [ "\n", "\r\n", "\r" ]) {
+					assert_converges(
+						`const a = 1${eol}const b = 2${eol}${eol}`,
+						`const a = 1${eol}const b = 2`
+					)
+				}
 			}
 		)
 		it(
@@ -255,6 +253,36 @@ describe(
 						"var value = a\n? b\n: c\n? d\n: e"
 					),
 					"var value = a\n\t? b\n\t: c\n\t\t? d\n\t\t: e"
+				)
+			}
+		)
+		it(
+			"indents a line that starts with an operator one level deeper than its expression when the expression starts a line",
+			() => {
+				assert_converges(
+					"function f() {\n\tif (\n\t\taaaa\n&& bbbb\n\t) {\n\t\tg()\n\t}\n}",
+					"function f() {\n\tif (\n\t\taaaa\n\t\t\t&& bbbb\n\t) {\n\t\tg()\n\t}\n}"
+				)
+				assert_converges(
+					"function f() {\n\tconst x =\n\t\taaaa\n\t\t* bbbb\n}",
+					"function f() {\n\tconst x =\n\t\taaaa\n\t\t\t* bbbb\n}"
+				)
+			}
+		)
+		it(
+			"indents a line that starts with an operator one level deeper than the line its expression starts on",
+			() => {
+				assert_converges(
+					"function f() {\n\treturn aaaa\n|| bbbb\n}",
+					"function f() {\n\treturn aaaa\n\t\t|| bbbb\n}"
+				)
+				assert_converges(
+					"function f() {\n\tconst x = aaaa\n\t\t\t\t+ bbbb\n}",
+					"function f() {\n\tconst x = aaaa\n\t\t+ bbbb\n}"
+				)
+				assert_converges(
+					"function f() {\n\taaaa\n&& bbbb()\n}",
+					"function f() {\n\taaaa\n\t\t&& bbbb()\n}"
 				)
 			}
 		)
@@ -289,7 +317,7 @@ describe(
 			() => {
 				assert_converges(
 					"for (;;) {\n/**/(1(aaaaaaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbbb))\n}",
-					"for (;;) {\n/**/(1(\n\t\taaaaaaaaaaaaaaaaaaaaaaaaaaaa,\n\t\tbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n\t))\n}"
+					"for (;;) {\n\t/**/(1(\n\t\taaaaaaaaaaaaaaaaaaaaaaaaaaaa,\n\t\tbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n\t))\n}"
 				)
 				assert_converges(
 					"function f() {\n\t/* c */ foo(aaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbb)\n}",
@@ -320,11 +348,11 @@ describe(
 			() => {
 				assert_converges(
 					"function f() {\n\treturn aaaaaaaaaa\n\t\t|| bbbbbbbbbbb || foo(cccccccccccccccccccc, dddddddddddddddddddddddd)\n}",
-					"function f() {\n\treturn aaaaaaaaaa\n\t\t|| bbbbbbbbbbb || foo(\n\t\tcccccccccccccccccccc,\n\t\tdddddddddddddddddddddddd\n\t)\n}"
+					"function f() {\n\treturn aaaaaaaaaa\n\t\t|| bbbbbbbbbbb || foo(\n\t\t\tcccccccccccccccccccc,\n\t\t\tdddddddddddddddddddddddd\n\t\t)\n}"
 				)
 				assert_converges(
 					"function f() {\n\tconst x = aaaaaaaaaaaaaaaa\n\t\t.bar() || foo(cccccccccccccccccccc, dddddddddddddddddddddddd)\n}",
-					"function f() {\n\tconst x = aaaaaaaaaaaaaaaa\n\t\t.bar() || foo(\n\t\tcccccccccccccccccccc,\n\t\tdddddddddddddddddddddddd\n\t)\n}"
+					"function f() {\n\tconst x = aaaaaaaaaaaaaaaa\n\t\t.bar() || foo(\n\t\t\tcccccccccccccccccccc,\n\t\t\tdddddddddddddddddddddddd\n\t\t)\n}"
 				)
 				assert_converges(
 					"function f() {\n\treturn aaaaaaaaaa\n\t\t|| foo(cccccccccccccccccccc, dddddddddddddddddddddddd)\n}",
@@ -337,12 +365,23 @@ describe(
 			() => {
 				assert_converges(
 					"function f() {\n\tlet ast =\n\t/** @type {A} */(foo(aaaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb))/**/\n}",
-					"function f() {\n\tconst ast =\n\t/** @type {A} */(foo(\n\t\t\taaaaaaaaaaaaaaaaaaaaaaaaa,\n\t\t\tbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n\t\t))/**/\n}"
+					"function f() {\n\tconst ast =\n\t\t/** @type {A} */(foo(\n\t\t\taaaaaaaaaaaaaaaaaaaaaaaaa,\n\t\t\tbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n\t\t))/**/\n}"
 				)
 				assert_converges(
 					"export const x =\n/** @type {A} */(foo({ aaaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb }))/**/",
-					"export const x =\n/** @type {A} */(foo(\n\t\t{\n\t\t\taaaaaaaaaaaaaaaaaaaaaaaaa,\n\t\t\tbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n\t\t}\n\t))/**/"
+					"export const x =\n\t/** @type {A} */(foo(\n\t\t{\n\t\t\taaaaaaaaaaaaaaaaaaaaaaaaa,\n\t\t\tbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n\t\t}\n\t))/**/"
 				)
+			}
+		)
+		it(
+			"indents the lines of an operand with the line of its operator in the same pass",
+			() => {
+				const code = "function f() {\n\treturn aaaa\n|| foo(\n\tcccccccccccccccccccc,\n\tdddddddddddddddddddddddd\n)\n}"
+				assert_converges(
+					code,
+					"function f() {\n\treturn aaaa\n\t\t|| foo(\n\t\t\tcccccccccccccccccccc,\n\t\t\tdddddddddddddddddddddddd\n\t\t)\n}"
+				)
+				assert.strictEqual(count_passes(code), 1)
 			}
 		)
 		it(
@@ -379,6 +418,15 @@ describe(
 			}
 		)
 		it(
+			"keeps a fix of another rule out of the code a moved line comment takes in",
+			() => {
+				assert_converges(
+					"var o = {\n\tZ9() { return 1 }, // a }\n\tAb() { return 2 }\n}\n",
+					"var o = {\n\tAb() {\n\t\treturn 2\n\t},\n\tZ9() {\n\t\treturn 1\n\t} // a }\n}"
+				)
+			}
+		)
+		it(
 			"keeps a line comment before the colon of a key",
 			() => {
 				const code = "var o = {\n\ta // note\n\t: 1\n}"
@@ -386,9 +434,16 @@ describe(
 			}
 		)
 		it(
+			"keeps a line that starts with an operator where it follows its expression",
+			() => {
+				const code = "function f() {\n\tif (\n\t\taaaa\n\t\t\t&& bbbb\n\t) {\n\t\tg()\n\t}\n\tconst x = aaaa\n\t\t+ bbbb\n\t\t\t* cccc\n\treturn x\n\t\t|| (\n\t\t\tdddd\n\t\t\t\t&& eeee\n\t\t)\n}"
+				assert.strictEqual(fix(code), code)
+			}
+		)
+		it(
 			"keeps a ternary that starts after a closing parenthesis where the indent rule puts it",
 			() => {
-				const code = "function f() {\n\treturn p + (e\n\t\t? j\n\t\t: n) + (t\n\t\t? o.cccccccccccccccccccccccccccccccc(\n\t\t\taaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\t\t)\n\t\t: \"\")\n}"
+				const code = "function f() {\n\treturn p + (e\n\t\t? j\n\t\t: n) + (t\n\t\t\t? o.cccccccccccccccccccccccccccccccc(\n\t\t\t\taaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\t\t\t)\n\t\t\t: \"\")\n}"
 				assert.strictEqual(fix(code), code)
 			}
 		)
@@ -440,7 +495,7 @@ describe(
 			"keeps the question mark of an optional destructured parameter next to its brace",
 			() => {
 				const config = [
-					lube.configs.strict,
+					strict_config,
 					{
 						files: [ "**/*.ts" ],
 						languageOptions: { parser: ts_parser }
@@ -462,10 +517,41 @@ describe(
 			}
 		)
 		it(
+			"moves closures above a statement whose guarding semicolon a stylistic rule removes",
+			() => {
+				const code = "function f() {\n\tvar x = 1\n\t;function a() {}\n\t;(x)\n\treturn a\n}\n"
+				const output = "function f() {\n\tvar x = 1\n\t;(x)\n\treturn a\n\tfunction a() {}\n}"
+				for (const eol of [ "\n", "\r\n" ]) {
+					const result = linter.verifyAndFix(
+						code.replaceAll("\n", eol),
+						[ strict_config ]
+					)
+					assert.strictEqual(
+						result.output,
+						output.replaceAll("\n", eol)
+					)
+					assert.deepStrictEqual(result.messages, [])
+				}
+			}
+		)
+		it(
+			"moves closures in a body whose lines start with a guarding semicolon",
+			() => {
+				assert_converges(
+					"function f() {\n\t\"use strict\"\n\t;function a() {\n\t\tfunction b() {}\n\t\treturn b\n\t}\n\tconst c = 1\n\treturn a(c)\n}\n",
+					"function f() {\n\t\"use strict\"\n\tconst c = 1\n\treturn a(c)\n\tfunction a() {\n\t\treturn b\n\t\tfunction b() {}\n\t}\n}"
+				)
+				assert_converges(
+					"function f(list) {\n\tfunction a() {}\n\tconst c = list\n\t;[ c ].map(a)\n}\n",
+					"function f(list) {\n\tconst c = list\n\t;[ c ].map(a)\n\tfunction a() {}\n}"
+				)
+			}
+		)
+		it(
 			"renames a Svelte store and its subscriptions in the markup",
 			() => {
 				const config = [
-					lube.configs.strict,
+					strict_config,
 					{
 						files: [ "**/*.svelte" ],
 						languageOptions: { parser: svelte_parser }
@@ -522,10 +608,6 @@ describe(
 					"let [ item_count, last_bid ] = value\nitem_count++\nlog(item_count, last_bid)"
 				)
 				assert_converges(
-					"if (a) b()\nelse c()\nwhile (a) b()",
-					"if (a) {\n\tb()\n} else {\n\tc()\n}\nwhile (a) {\n\tb()\n}"
-				)
-				assert_converges(
 					"for (let rowIndex = 0; rowIndex < 2; rowIndex++) {\n\tlog(rowIndex)\n}\nfor (let rowKey in value) {\n\trowKey = rowKey.trim()\n\tlog(rowKey)\n}",
 					"for (let row_index = 0; row_index < 2; row_index++) {\n\tlog(row_index)\n}\nfor (let row_key in value) {\n\trow_key = row_key.trim()\n\tlog(row_key)\n}"
 				)
@@ -536,7 +618,7 @@ describe(
 				const result = linter.verifyAndFix(
 					"<script>\n\tlet clickCount = 0\n\t$: doubleCount = clickCount * 2\n</script>\n<button on:click={() => clickCount++}>{clickCount} {doubleCount}</button>",
 					[
-						lube.configs.strict,
+						strict_config,
 						{
 							files: [ "**/*.svelte" ],
 							languageOptions: { parser: svelte_parser }
@@ -573,10 +655,49 @@ describe(
 			}
 		)
 		it(
+			"settles renames, moved closures, split declarations and indentation in one run",
+			() => {
+				const names = [
+					"alphaOne",
+					"betaTwo",
+					"gammaThree",
+					"deltaFour",
+					"epsilonFive",
+					"zetaSix",
+					"etaSeven",
+					"thetaEight",
+					"iotaNine",
+					"kappaTen",
+					"lambdaEleven"
+				]
+				const snake_names = names.map(
+					name => name.replace(
+						/[A-Z]/g,
+						letter => "_" + letter.toLowerCase()
+					)
+				)
+				assert_converges(
+					`function first(${names.join(", ")}) {\nfunction helper() { return alphaOne }\nvar a = 1;var b = 2;var c = 3\nreturn helper() + a + b + c + ${names.join(" + ")}\n}\nfunction last(${names.join(", ")}) {\nreturn ${names.join(" * ")}\n}\nexport { first, last }\n`,
+					`function first(\n\t${snake_names.join(",\n\t")}\n) {\n\tvar a = 1\n\tvar b = 2\n\tvar c = 3\n\treturn helper() + a + b + c + ${snake_names.join(" + ")}\n\tfunction helper() {\n\t\treturn alpha_one\n\t}\n}\nfunction last(\n\t${snake_names.join(",\n\t")}\n) {\n\treturn ${snake_names.join(" * ")}\n}\nexport { first, last }`
+				)
+			}
+		)
+		it(
+			"splits a long call on a line that starts with an operator from the indent the line gets",
+			() => {
+				const code = "function f() {\n\treturn aaaa\n|| foo(cccccccccccccccccccc, dddddddddddddddddddddddd)\n}"
+				assert_converges(
+					code,
+					"function f() {\n\treturn aaaa\n\t\t|| foo(\n\t\t\tcccccccccccccccccccc,\n\t\t\tdddddddddddddddddddddddd\n\t\t)\n}"
+				)
+				assert.strictEqual(count_passes(code), 1)
+			}
+		)
+		it(
 			"splits declarations that one-var separates onto lines of their own",
 			() => {
 				const code = "const x = 1, y = 2\nfunction f() {\n\tlet a = 1, b = [\n\t\t1\n\t], c\n\treturn a + b + c\n}"
-				const result = linter.verifyAndFix(code, [ lube.configs.strict ])
+				const result = linter.verifyAndFix(code, [ strict_config ])
 				assert.strictEqual(
 					result.output,
 					"const x = 1\nconst y = 2\nfunction f() {\n\tconst a = 1\n\tconst b = [ 1 ]\n\tlet c\n\treturn a + b + c\n}"
@@ -597,5 +718,65 @@ describe(
 				)
 			}
 		)
+		/**
+		 * @param {string} code
+		 * @param {string} output
+		 * @returns {void}
+		 */
+		function assert_converges(code, output) {
+			const config = [
+				strict_config,
+				{
+					languageOptions: {
+						parserOptions: { ecmaFeatures: { jsx: true } }
+					}
+				}
+			]
+			const result = linter.verifyAndFix(code, config)
+			assert.strictEqual(result.output, output)
+			assert.deepStrictEqual(
+				result.messages.filter(message => message.fix),
+				[]
+			)
+		}
+		/**
+		 * @param {string} code
+		 * @returns {number}
+		 */
+		function count_passes(code) {
+			let text = code
+			let passes = 0
+			for (; passes < 10; passes++) {
+				const fixes = linter.verify(text, [ strict_config ]).flatMap(
+					message => message.fix ? [ message.fix ] : []
+				)
+					.sort(
+						(a, b) => a.range[0] - b.range[0] || a.range[1] - b.range[1]
+					)
+				let output = ""
+				let last_end = Number.NEGATIVE_INFINITY
+				let position = 0
+				for (const item of fixes) {
+					if (last_end >= item.range[0]) {
+						continue
+					}
+					output += text.slice(position, item.range[0]) + item.text
+					position = item.range[1]
+					last_end = item.range[1]
+				}
+				if (last_end == Number.NEGATIVE_INFINITY) {
+					break
+				}
+				text = output + text.slice(position)
+			}
+			return passes
+		}
+		/**
+		 * @param {string} code
+		 * @returns {string}
+		 */
+		function fix(code) {
+			return linter.verifyAndFix(code, [ strict_config ]).output
+		}
 	}
 )

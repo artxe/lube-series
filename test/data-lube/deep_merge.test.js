@@ -40,20 +40,6 @@ describe(
 				const merged = deepMerge(a, b)
 				assert.equal(merged.self, merged)
 				assert.deepEqual(merged.value, { a: 1, b: 1 })
-				/**
-				 * @param {string} name
-				 * @returns {{ a?: number, b?: number, next: ReturnType<typeof chain> }}
-				 */
-				function chain(name) {
-					/** @type {{ a?: number, b?: number, next?: typeof top }} */
-					const top = { [name]: 1 }
-					let node = top
-					for (let i = 0; i < 100; i++) {
-						node = node.next = { [name]: i }
-					}
-					node.next = top
-					return /** @type {ReturnType<typeof chain>} */(top)/**/
-				}
 				const deep = deepMerge(chain("a"), chain("b"))
 				let node = deep
 				for (let i = 0; i < 101; i++) {
@@ -70,18 +56,6 @@ describe(
 					left = { child: left, left: i }
 					right = { child: right, right: i }
 				}
-				/**
-				 * @param {string} name
-				 * @returns {{ a?: number, b?: number, left?: ReturnType<typeof diamond>, right?: ReturnType<typeof diamond> }}
-				 */
-				function diamond(name) {
-					/** @type {ReturnType<typeof diamond>} */
-					let tip = { [name]: 1 }
-					for (let i = 0; i < 40; i++) {
-						tip = { left: tip, right: tip }
-					}
-					return tip
-				}
 				/** @type {ReturnType<typeof diamond>} */
 				let merged_diamond = deepMerge(diamond("a"), diamond("b"))
 				for (let i = 0; i < 40; i++) {
@@ -97,6 +71,32 @@ describe(
 					/** @type {{ child: { left: number, right: number } }} */(long)/**/.child.right,
 					98
 				)
+				/**
+				 * @param {string} name
+				 * @returns {{ a?: number, b?: number, next: ReturnType<typeof chain> }}
+				 */
+				function chain(name) {
+					/** @type {{ a?: number, b?: number, next?: typeof top }} */
+					const top = { [name]: 1 }
+					let tail = top
+					for (let i = 0; i < 100; i++) {
+						tail = tail.next = { [name]: i }
+					}
+					tail.next = top
+					return /** @type {ReturnType<typeof chain>} */(top)/**/
+				}
+				/**
+				 * @param {string} name
+				 * @returns {{ a?: number, b?: number, left?: ReturnType<typeof diamond>, right?: ReturnType<typeof diamond> }}
+				 */
+				function diamond(name) {
+					/** @type {ReturnType<typeof diamond>} */
+					let tip = { [name]: 1 }
+					for (let i = 0; i < 40; i++) {
+						tip = { left: tip, right: tip }
+					}
+					return tip
+				}
 			}
 		)
 		it(

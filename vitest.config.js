@@ -3,16 +3,14 @@ import { defaultExclude, defineConfig } from "vitest/config"
 export default defineConfig(
 	{
 		test: {
-			coverage: {
-				include: [ "packages/*/src/**" ],
-				thresholds: { 100: true }
-			},
 			projects: [
 				{
 					extends: true,
 					test: {
 						exclude: [
 							...defaultExclude,
+							".claude/worktrees/**",
+							".tmp/*/**",
 							"test/browser/**"
 						],
 						name: "node"

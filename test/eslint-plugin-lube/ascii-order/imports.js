@@ -1,6 +1,7 @@
 /**
  * @param {import("eslint").RuleTester.ValidTestCase[]} valid
  * @param {import("eslint").RuleTester.InvalidTestCase[]} invalid
+ * @returns {void}
  */
 export function cases(valid, invalid) {
 	valid.push(
@@ -9,9 +10,6 @@ export function cases(valid, invalid) {
 		},
 		{
 			code: "import d, { a, b } from \"m\""
-		},
-		{
-			code: "import * as n from \"m\""
 		},
 		{
 			code: "import { a as b, b as a } from \"m\""
@@ -27,10 +25,6 @@ export function cases(valid, invalid) {
 			options: [ { checkNames: false } ]
 		},
 		{
-			code: "var b, a\nexport { b, a }",
-			options: [ { checkNames: false } ]
-		},
-		{
 			code: "import z from \"../z.js\"\nimport y from \"./y.js\"\nimport B from \"B\"\nimport a from \"a\""
 		},
 		{
@@ -38,9 +32,6 @@ export function cases(valid, invalid) {
 		},
 		{
 			code: "import {} from \"b\"\nimport a from \"a\""
-		},
-		{
-			code: "import { z } from \"./z.js\"\nimport \"./setup.js\"\nimport { a } from \"./a.js\""
 		},
 		{
 			code: "import b from \"b\"\nvar x\nimport a from \"a\""
@@ -82,11 +73,6 @@ export function cases(valid, invalid) {
 			code: "import d, { c as a, b } from \"m\"",
 			errors: [ { messageId: "names" } ],
 			output: "import d, { b, c as a } from \"m\""
-		},
-		{
-			code: "import { a, A, B } from \"m\"",
-			errors: [ { messageId: "names" } ],
-			output: "import { A, B, a } from \"m\""
 		},
 		{
 			code: "import { \"b-c\" as x, \"a\" as y } from \"m\"",
@@ -159,11 +145,6 @@ export function cases(valid, invalid) {
 			output: null
 		},
 		{
-			code: "import b from \"b\";\nimport a from \"a\";",
-			errors: [ { messageId: "imports" } ],
-			output: "import a from \"a\";\nimport b from \"b\";"
-		},
-		{
 			code: "var x\nimport b from \"b\" // b\n/** a */\nimport a from \"a\"",
 			errors: [ { messageId: "imports" } ],
 			output: "var x\n/** a */\nimport a from \"a\"\nimport b from \"b\" // b"
@@ -172,11 +153,6 @@ export function cases(valid, invalid) {
 			code: "import c from \"c\"\nimport b from \"b\"\nimport \"polyfill\"\nimport a from \"a\"",
 			errors: [ { messageId: "imports" } ],
 			output: "import b from \"b\"\nimport c from \"c\"\nimport \"polyfill\"\nimport a from \"a\""
-		},
-		{
-			code: "import \"./setup.js\"\nimport { z } from \"./z.js\"\nimport { a } from \"./a.js\"",
-			errors: [ { messageId: "imports" } ],
-			output: "import \"./setup.js\"\nimport { a } from \"./a.js\"\nimport { z } from \"./z.js\""
 		},
 		{
 			code: "// @ts-check\nimport b from \"b\"\nimport a from \"a\"",

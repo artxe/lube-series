@@ -19,9 +19,9 @@ function skip_unchanged_fixes(rule) {
 								const fixes = get_fixes(descriptor)
 								if (
 									fixes.length
-									&& fixes.every(
-										item => text.slice(item.range[0], item.range[1]) == item.text
-									)
+										&& fixes.every(
+											item => text.slice(item.range[0], item.range[1]) == item.text
+										)
 								) {
 									return
 								}

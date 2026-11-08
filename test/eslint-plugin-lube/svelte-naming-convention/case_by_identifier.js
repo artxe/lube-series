@@ -3,6 +3,7 @@ const snake_regex = /([\da-z]?)([A-Z][\dA-Z]*)/g
 /**
  * @param {import("eslint").RuleTester.ValidTestCase[]} _valid
  * @param {import("eslint").RuleTester.InvalidTestCase[]} invalid
+ * @returns {void}
  */
 export function cases(_valid, invalid) {
 	invalid.push(
@@ -13,8 +14,7 @@ export function cases(_valid, invalid) {
 			var pendingA
 			var value = [ pendingA ]
 			`,
-			[ "pendingA" ],
-			{ declared: [ 4 ] }
+			[ "pendingA" ]
 		),
 		invalid_case(
 			"var [ camelCase ] = value",
@@ -31,15 +31,7 @@ export function cases(_valid, invalid) {
 			var pendingA, pendingB
 			pendingA = pendingB
 			`,
-			[ "pendingA", "pendingB" ],
-			{
-				output: `
-			deferA = deferB
-			pending_a = pendingB
-			var pending_a, pendingB
-			pending_a = pending_b
-			`
-			}
+			[ "pendingA", "pendingB" ]
 		),
 		invalid_case(
 			`
@@ -48,8 +40,7 @@ export function cases(_valid, invalid) {
 			var pendingA
 			(snake_case = pendingA) => {}
 			`,
-			[ "camelCase", "pendingA" ],
-			{ declared: [ 4 ] }
+			[ "camelCase", "pendingA" ]
 		),
 		invalid_case(
 			`
@@ -58,8 +49,7 @@ export function cases(_valid, invalid) {
 			var pendingA
 			await pendingA
 			`,
-			[ "pendingA" ],
-			{ declared: [ 4 ] }
+			[ "pendingA" ]
 		),
 		invalid_case(
 			`
@@ -68,8 +58,7 @@ export function cases(_valid, invalid) {
 			var pendingA, pendingB
 			pendingA / pendingB
 			`,
-			[ "pendingA", "pendingB" ],
-			{ declared: [ 4 ] }
+			[ "pendingA", "pendingB" ]
 		),
 		invalid_case(
 			`
@@ -78,8 +67,7 @@ export function cases(_valid, invalid) {
 			var pendingA
 			pendingA()
 			`,
-			[ "pendingA" ],
-			{ declared: [ 4 ] }
+			[ "pendingA" ]
 		),
 		invalid_case(
 			"class camelCase {}",
@@ -92,8 +80,7 @@ export function cases(_valid, invalid) {
 			var pendingA, pendingB
 			test ? pendingA : pendingB
 			`,
-			[ "pendingA", "pendingB" ],
-			{ declared: [ 4 ] }
+			[ "pendingA", "pendingB" ]
 		),
 		invalid_case(
 			`
@@ -140,8 +127,7 @@ export function cases(_valid, invalid) {
 			var pendingA
 			pendingA
 			`,
-			[ "pendingA" ],
-			{ declared: [ 4 ] }
+			[ "pendingA" ]
 		),
 		invalid_case(
 			`
@@ -150,15 +136,7 @@ export function cases(_valid, invalid) {
 			var pendingA, pendingB
 			for (pendingB of pendingA) {}
 			`,
-			[ "pendingA", "pendingB" ],
-			{
-				output: `
-			for (camelCase in deferA) {}
-			for (pending_b in pendingA) {}
-			var pendingA, pending_b
-			for (pending_b of pending_a) {}
-			`
-			}
+			[ "pendingA", "pendingB" ]
 		),
 		invalid_case(
 			`
@@ -167,8 +145,7 @@ export function cases(_valid, invalid) {
 			var pendingA, pendingB, pendingC
 			for (pendingA; pendingB; pendingC) {}
 			`,
-			[ "pendingA", "pendingB", "pendingC" ],
-			{ declared: [ 4 ] }
+			[ "pendingA", "pendingB", "pendingC" ]
 		),
 		invalid_case(
 			`
@@ -185,8 +162,7 @@ export function cases(_valid, invalid) {
 			var pendingA
 			if (pendingA) {}
 			`,
-			[ "pendingA" ],
-			{ declared: [ 4 ] }
+			[ "pendingA" ]
 		),
 		invalid_case(
 			"import camelCase from 'module'",
@@ -202,8 +178,7 @@ export function cases(_valid, invalid) {
 			camelCase
 			camelCase2
 			`,
-			[ "camelCase" ],
-			{ declared: [ 2 ] }
+			[ "camelCase" ]
 		),
 		invalid_case(
 			`
@@ -212,8 +187,7 @@ export function cases(_valid, invalid) {
 			var pendingA, pendingB
 			pendingA ?? pendingB
 			`,
-			[ "pendingA", "pendingB" ],
-			{ declared: [ 4 ] }
+			[ "pendingA", "pendingB" ]
 		),
 		invalid_case(
 			`
@@ -226,8 +200,7 @@ export function cases(_valid, invalid) {
 			var pendingB
 			object[pendingB]
 			`,
-			[ "pendingA", "pendingB" ],
-			{ declared: [ 4, 8 ] }
+			[ "pendingA", "pendingB" ]
 		),
 		invalid_case(
 			`
@@ -244,8 +217,7 @@ export function cases(_valid, invalid) {
 			var pendingA
 			new pendingA
 			`,
-			[ "pendingA" ],
-			{ declared: [ 4 ] }
+			[ "pendingA" ]
 		),
 		invalid_case(
 			`
@@ -260,7 +232,7 @@ export function cases(_valid, invalid) {
 				output: `
 			var value = { camelCase: deferA }
 			var value = { key: pending_a }
-			var pendingA
+			var pending_a
 			var value = { key: pending_a }
 			var value = { pendingA: pending_a }
 			`
@@ -278,7 +250,7 @@ export function cases(_valid, invalid) {
 				"camelCase2",
 				"camelCase3"
 			],
-			{ declared: [ 5 ], skip: [ 2 ] }
+			{ skip: [ 2 ] }
 		),
 		invalid_case(
 			`
@@ -294,8 +266,7 @@ export function cases(_valid, invalid) {
 			var pendingA
 			function func_c() { return pendingA }
 			`,
-			[ "pendingA" ],
-			{ declared: [ 4 ] }
+			[ "pendingA" ]
 		),
 		invalid_case(
 			`
@@ -304,8 +275,7 @@ export function cases(_valid, invalid) {
 			var pendingA
 			a, b, pendingA
 			`,
-			[ "pendingA" ],
-			{ declared: [ 4 ] }
+			[ "pendingA" ]
 		),
 		invalid_case(
 			`
@@ -314,8 +284,7 @@ export function cases(_valid, invalid) {
 			var pendingA, pendingB
 			var value = [ ...pendingA, pendingB ]
 			`,
-			[ "pendingA", "pendingB" ],
-			{ declared: [ 4 ] }
+			[ "pendingA", "pendingB" ]
 		),
 		invalid_case(
 			`
@@ -324,8 +293,7 @@ export function cases(_valid, invalid) {
 			var pendingA
 			switch (pendingA) {}
 			`,
-			[ "pendingA" ],
-			{ declared: [ 4 ] }
+			[ "pendingA" ]
 		),
 		invalid_case(
 			`
@@ -334,8 +302,7 @@ export function cases(_valid, invalid) {
 			var pendingA
 			switch (cond) { case pendingA: break }
 			`,
-			[ "pendingA" ],
-			{ declared: [ 4 ] }
+			[ "pendingA" ]
 		),
 		invalid_case(
 			`
@@ -344,8 +311,7 @@ export function cases(_valid, invalid) {
 			var pendingA, pendingB
 			pendingA\`quasis\${pendingB}quasis\`
 			`,
-			[ "pendingA", "pendingB" ],
-			{ declared: [ 4 ] }
+			[ "pendingA", "pendingB" ]
 		),
 		invalid_case(
 			`
@@ -354,8 +320,7 @@ export function cases(_valid, invalid) {
 			var pendingA
 			throw pendingA
 			`,
-			[ "pendingA" ],
-			{ declared: [ 4 ] }
+			[ "pendingA" ]
 		),
 		invalid_case(
 			`
@@ -364,8 +329,7 @@ export function cases(_valid, invalid) {
 			var pendingA
 			~pendingA
 			`,
-			[ "pendingA" ],
-			{ declared: [ 4 ] }
+			[ "pendingA" ]
 		),
 		invalid_case(
 			`
@@ -397,8 +361,7 @@ export function cases(_valid, invalid) {
 				"camelCase",
 				"camelCase$",
 				"pendingA"
-			],
-			{ declared: [ 4 ] }
+			]
 		),
 		invalid_case(
 			`
@@ -407,8 +370,7 @@ export function cases(_valid, invalid) {
 			var pendingA
 			while (pendingA) {}
 			`,
-			[ "pendingA" ],
-			{ declared: [ 4 ] }
+			[ "pendingA" ]
 		),
 		invalid_case(
 			`
@@ -417,19 +379,17 @@ export function cases(_valid, invalid) {
 			var pendingA
 			function* func_c() { yield pendingA }
 			`,
-			[ "pendingA" ],
-			{ declared: [ 4 ] }
+			[ "pendingA" ]
 		)
 	)
 }
 /**
  * @param {string} code
  * @param {string[]} names
- * @param {{ declared?: number[], options?: unknown[], output?: string, skip?: number[] }} [extra]
+ * @param {{ options?: unknown[], output?: string, skip?: number[] }} [extra]
  * @returns {import("eslint").RuleTester.InvalidTestCase}
  */
 function invalid_case(code, names, extra) {
-	const declared = new Set(extra?.declared)
 	/** @type {import("eslint").RuleTester.TestCaseError[]} */
 	const errors = []
 	const reported = new Set(names)
@@ -451,7 +411,7 @@ function invalid_case(code, names, extra) {
 								messageId: "rename"
 							}
 						)
-						return declared.has(index + 1) ? name : name.replace(snake_regex, snake_handler)
+						return name.replace(snake_regex, snake_handler)
 					}
 				)
 		)

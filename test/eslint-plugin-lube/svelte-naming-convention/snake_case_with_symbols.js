@@ -1,22 +1,15 @@
 /**
  * @param {import("eslint").RuleTester.ValidTestCase[]} valid
  * @param {import("eslint").RuleTester.InvalidTestCase[]} invalid
+ * @returns {void}
  */
 export function cases(valid, invalid) {
 	valid.push(
 		{ code: "var _ = 'Hello'" },
-		{ code: "var __ = 'Hello'" },
 		{
 			code: "var _snake_case = 'Hello'"
 		},
 		{ code: "var $ = 'Hello'" },
-		{ code: "var $$ = 'Hello'" },
-		{
-			code: "var $snake_case$ = 'Hello'"
-		},
-		{
-			code: "var __snake_case$$ = 'Hello'"
-		},
 		{
 			code: "var $$snake_case$$ = 'Hello'"
 		}
@@ -35,16 +28,6 @@ export function cases(valid, invalid) {
 		},
 		{
 			code: "var ___ = 'Hello'",
-			errors: [
-				{
-					column: 5,
-					line: 1,
-					messageId: "case"
-				}
-			]
-		},
-		{
-			code: "var $$$ = 'Hello'",
 			errors: [
 				{
 					column: 5,

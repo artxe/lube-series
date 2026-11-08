@@ -7,15 +7,16 @@ description: Run the checks a lube-series change has to pass before it is done -
 `pnpm lint`, `pnpm test` and `pnpm dts` don't run the steps below. Run each step from the repo root unless it
 says otherwise, and keep going only while the step is clean.
 
+In a worktree, a package imported by name (`"async-lube"`) still resolves to the main tree's `node_modules` link, its source and `types/`, and `pnpm dts` finds no `tsc`: there a subagent checks only its own tests importing `src` and the linter, and steps 1, 5 and 6 run in the main tree after the merge, `pnpm dts` first, since the root `tsc` reads the generated `types/`.
+
 Environment variables (`TZ`, `SIM_*`, `DATA_LUBE_*`) go in `.tmp/*.env` files as `shell.md` says; rewrite the file for the next setting.
 
-1. **Tests.** `pnpm test` (vitest with coverage). Aim at full coverage of the lines you touched; the gaps
-   the report prints are usually real paths, not noise. For datetime-lube also run the tests with
+1. **Tests.** `pnpm test`. For datetime-lube also run the tests with
    `TZ` set to `America/New_York`, `Australia/Lord_Howe` and `America/Santiago` (a DST zone finds what
    the local zone hides): `.tmp/tz.env` holds `TZ=America/New_York`, and the run is
    `node --env-file=.tmp/tz.env node_modules/vitest/vitest.mjs run test/datetime-lube`.
 2. **Browser tests.** `pnpm test` also runs the `browser` project of `vitest.config.js` (Playwright
-   Chromium, `test/browser/`), whose coverage merges with the `node` project's; it matters for anything in
+   Chromium, `test/browser/`); it matters for anything in
    `src/http/xhr.js`, `src/http/socket.js`, upload or download progress, `as: "file"` or CORS. They are
    the only run with a real `XMLHttpRequest`, `WebSocket` and cross-origin `fetch`. `test/browser/server.js` starts `test/async-lube/server.js` in Node and hands the tests
    its URL with `provide`/`inject`; that server sends CORS headers, and `/no-cors` deliberately does not.
@@ -59,6 +60,6 @@ Environment variables (`TZ`, `SIM_*`, `DATA_LUBE_*`) go in `.tmp/*.env` files as
    empty directory as `node_modules/<name>`, and from there check an ESM `import` and a CommonJS
    `require` (Node.js `require(esm)`), and the types: a `.mts` file importing the package and its
    subpaths (`./durable`), values and types, compiled with
-   `npx --prefix <repo> tsc --noEmit --strict --skipLibCheck false --module nodenext --moduleResolution nodenext`
+   `npx --prefix <repo> tsc --noEmit --strict --skipLibCheck false --module nodenext --moduleResolution nodenext --ignoreConfig`
    The workspace resolves types differently from an installed package, so this
    catches broken `exports`, missing files and d.ts paths that only work in the repo.
