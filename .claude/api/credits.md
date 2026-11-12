@@ -2,7 +2,7 @@
 
 This session is billed to API credits: every token is paid from a fixed monthly credit, so cost decides what a Claude plan's limits decided before.
 
-Prices per million input/output tokens (2026-10, platform.claude.com/docs/en/about-claude/pricing): Fable $10/$50, Opus $4/$20, Sonnet $2/$10, Haiku $0.10/$0.50 (five times that for a prompt over 100K tokens). A cache read costs $0.25 on Fable, $0.20 on Opus and Sonnet, $0.01 on Haiku; a cache write 1.25 times the input price (twice it for the one-hour cache); fast mode doubles Opus; WebSearch adds $10 per 1,000 searches, WebFetch only its tokens.
+Prices per million input/output tokens (2026-11, platform.claude.com/docs/en/about-claude/pricing): Fable 5.2 $8/$40, Opus $4/$20, Sonnet $2/$10, Haiku $0.10/$0.50 (five times that for a prompt over 100K tokens). A cache read costs $0.20 on Fable and Opus, $0.10 on Sonnet, $0.01 on Haiku; a cache write 1.25 times the input price (twice it for the one-hour cache); fast mode doubles Opus and Fable; WebSearch adds $10 per 1,000 searches, WebFetch only its tokens.
 
 - `models.md` holds with cost as the measure: `fable` only where Opus failed, `opus` only for design or a root cause across systems, the rest on `sonnet` or `haiku`. No Workflow, agent fan-out or fast mode unless the owner asks for it.
 - After a pause longer than the prompt cache lasts (five minutes by default), the next turn writes the whole context to the cache again.
