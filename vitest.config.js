@@ -10,7 +10,7 @@ export default defineConfig(
 						exclude: [
 							...defaultExclude,
 							".claude/worktrees/**",
-							".tmp/*/**",
+							".tmp/**",
 							"test/browser/**"
 						],
 						name: "node"
@@ -25,6 +25,7 @@ export default defineConfig(
 							instances: [ { browser: "chromium" } ],
 							provider: playwright()
 						},
+						exclude: [ ...defaultExclude, ".tmp/**" ],
 						globalSetup: [ "./test/browser/server.js" ],
 						include: [ "test/browser/**/*.test.js" ],
 						name: "browser",

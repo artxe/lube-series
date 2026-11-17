@@ -158,15 +158,6 @@ describe(
 			}
 		)
 		it(
-			"breaks an object of a statement that starts after the end of a deeper line",
-			() => {
-				assert_converges(
-					"function f() {\n\tconst o = a\n\t\t? s\n\t\t: {\n\t\t\tllllllllllllllllll: 2,\n\t\t\tssssssssssss: 1\n\t\t}; u = { mmmmmmmmmmmmmm: 1, rrrrrrrrrrrrrrrrr: 2 }\n}",
-					"function f() {\n\tconst o = a\n\t\t? s\n\t\t: {\n\t\t\tllllllllllllllllll: 2,\n\t\t\tssssssssssss: 1\n\t\t}; u = {\n\t\t\tmmmmmmmmmmmmmm: 1,\n\t\t\trrrrrrrrrrrrrrrrr: 2\n\t\t}\n}"
-				)
-			}
-		)
-		it(
 			"breaks arguments in a JSX child on its own line",
 			() => {
 				assert_converges(
@@ -326,15 +317,6 @@ describe(
 			}
 		)
 		it(
-			"indents a statement that starts after a multiline statement like that statement",
-			() => {
-				assert_converges(
-					"{ const e = 1; const n = new i([ [ \"ac\", \"align-content\" ], [ \"column-reverse\", \"flex-direction:column-reverse\" ] ]); const a = new i([ [ \"block\", \"display:block\" ], [ \"column-reverse\", \"flex-direction:column-reverse\" ] ]) }",
-					"{ const e = 1; const n = new i(\n\t[\n\t\t[ \"ac\", \"align-content\" ],\n\t\t[\n\t\t\t\"column-reverse\",\n\t\t\t\"flex-direction:column-reverse\"\n\t\t]\n\t]\n); const a = new i(\n\t[\n\t\t[ \"block\", \"display:block\" ],\n\t\t[\n\t\t\t\"column-reverse\",\n\t\t\t\"flex-direction:column-reverse\"\n\t\t]\n\t]\n) }"
-				)
-			}
-		)
-		it(
 			"indents arguments after a spaced callee on a line that starts inside a block comment",
 			() => {
 				assert_converges(
@@ -405,6 +387,15 @@ describe(
 			}
 		)
 		it(
+			"keeps a comment between statements",
+			() => {
+				assert.strictEqual(
+					fix("a(); /* c */ b(); c()"),
+					"a()\n/* c */ b()\nc()"
+				)
+			}
+		)
+		it(
 			"keeps a comment in front of a body inside the braces it adds",
 			() => {
 				assert_converges(
@@ -465,7 +456,7 @@ describe(
 					fix(
 						"var x = a &&\n\t/** @type {A} */(b)/**/.c\nvar y = d ||\n\t/* note */ e"
 					),
-					"var x = a &&\n/** @type {A} */(b)/**/.c\nvar y = d ||\n/* note */ e"
+					"var x = a\n\t&& /** @type {A} */(b)/**/.c\nvar y = d\n\t|| /* note */ e"
 				)
 				assert.strictEqual(
 					fix(
@@ -479,7 +470,10 @@ describe(
 			"keeps comments in spaces that stylistic rules remove",
 			() => {
 				const code = "function* g() {\n\tyield/* a */ * f(.../* b */ c)\n}\nfor (let i = 0 /* d */ ; i < 1; i++) {}\nvar h = function/* e */ * () {}"
-				assert.strictEqual(fix(code), code)
+				assert.strictEqual(
+					fix(code),
+					"function* g() {\n\tyield/* a */ * f(.../* b */ c)\n}\nfor (let i = 0 /* d */ ; i < 1; i++) {}\nvar h = function/* e */* () {}"
+				)
 			}
 		)
 		it(
@@ -488,6 +482,26 @@ describe(
 				assert_converges(
 					"var value = [aaaaaaaaaaaaaaaaaaaa, // a\n,bbbbbbbbbbbbbbbbbbbb,,]",
 					"var value = [\n\taaaaaaaaaaaaaaaaaaaa, // a\n\t,\n\tbbbbbbbbbbbbbbbbbbbb,\n\t,\n]"
+				)
+			}
+		)
+		it(
+			"keeps the allowed number of statements on a line",
+			() => {
+				const result = linter.verifyAndFix(
+					"a(); b(); c(); d(); e()",
+					[
+						strict_config,
+						{
+							rules: {
+								"@stylistic/max-statements-per-line": [ "error", { max: 2 } ]
+							}
+						}
+					]
+				)
+				assert.strictEqual(
+					result.output,
+					"a(); b()\nc(); d()\ne()"
 				)
 			}
 		)
@@ -513,6 +527,24 @@ describe(
 				assert.deepStrictEqual(
 					result.messages.filter(message => message.fix),
 					[]
+				)
+			}
+		)
+		it(
+			"moves a statement that starts after a multiline statement to its own line",
+			() => {
+				assert_converges(
+					"{ const e = 1; const n = new i([ [ \"ac\", \"align-content\" ], [ \"column-reverse\", \"flex-direction:column-reverse\" ] ]); const a = new i([ [ \"block\", \"display:block\" ], [ \"column-reverse\", \"flex-direction:column-reverse\" ] ]) }",
+					"{ const e = 1; const n = new i(\n\t[\n\t\t[ \"ac\", \"align-content\" ],\n\t\t[\n\t\t\t\"column-reverse\",\n\t\t\t\"flex-direction:column-reverse\"\n\t\t]\n\t]\n)\nconst a = new i(\n\t[\n\t\t[ \"block\", \"display:block\" ],\n\t\t[\n\t\t\t\"column-reverse\",\n\t\t\t\"flex-direction:column-reverse\"\n\t\t]\n\t]\n) }"
+				)
+			}
+		)
+		it(
+			"moves a statement that starts after the end of a deeper line to its own line and breaks its object",
+			() => {
+				assert_converges(
+					"function f() {\n\tconst o = a\n\t\t? s\n\t\t: {\n\t\t\tllllllllllllllllll: 2,\n\t\t\tssssssssssss: 1\n\t\t}; u = { mmmmmmmmmmmmmm: 1, rrrrrrrrrrrrrrrrr: 2 }\n}",
+					"function f() {\n\tconst o = a\n\t\t? s\n\t\t: {\n\t\t\tllllllllllllllllll: 2,\n\t\t\tssssssssssss: 1\n\t\t}\n\tu = {\n\t\tmmmmmmmmmmmmmm: 1,\n\t\trrrrrrrrrrrrrrrrr: 2\n\t}\n}"
 				)
 			}
 		)
@@ -683,6 +715,17 @@ describe(
 			}
 		)
 		it(
+			"splits a line of many statements in few passes",
+			() => {
+				const code = "a(); b(); c(); d(); e(); f(); g(); h(); i(); j(); k(); l()"
+				assert_converges(
+					code,
+					"a()\nb()\nc()\nd()\ne()\nf()\ng()\nh()\ni()\nj()\nk()\nl()"
+				)
+				assert.ok(count_passes(code) <= 2)
+			}
+		)
+		it(
 			"splits a long call on a line that starts with an operator from the indent the line gets",
 			() => {
 				const code = "function f() {\n\treturn aaaa\n|| foo(cccccccccccccccccccc, dddddddddddddddddddddddd)\n}"
@@ -691,6 +734,29 @@ describe(
 					"function f() {\n\treturn aaaa\n\t\t|| foo(\n\t\t\tcccccccccccccccccccc,\n\t\t\tdddddddddddddddddddddddd\n\t\t)\n}"
 				)
 				assert.strictEqual(count_passes(code), 1)
+			}
+		)
+		it(
+			"splits blocks nested between statements of a line in as many passes at any depth",
+			() => {
+				assert_converges(
+					nest(3),
+					"p1()\nif (x1) {\n\tp2()\n\tif (x2) {\n\t\tp3()\n\t\tif (x3) {\n\t\t\ta()\n\t\t\tb()\n\t\t}\n\t\tq3()\n\t}\n\tq2()\n}\nq1()"
+				)
+				assert.ok(
+					count_passes(nest(6)) <= count_passes(nest(1))
+				)
+				/**
+				 * @param {number} depth
+				 * @returns {string}
+				 */
+				function nest(depth) {
+					let code = "a();b()"
+					for (let level = depth; level > 0; level--) {
+						code = `p${level}();if(x${level}){${code}}q${level}()`
+					}
+					return code
+				}
 			}
 		)
 		it(
@@ -706,6 +772,17 @@ describe(
 				assert.strictEqual(
 					fix("const x = 1, y = 2\r\nf()"),
 					"const x = 1\r\nconst y = 2\r\nf()"
+				)
+			}
+		)
+		it(
+			"splits mixed statements and keeps the indent",
+			() => {
+				assert.strictEqual(
+					fix(
+						"function f() {\n\tlet a = 1; if (a) {} g(a); return a\n}"
+					),
+					"function f() {\n\tconst a = 1\n\tif (a) {}\n\tg(a)\n\treturn a\n}"
 				)
 			}
 		)

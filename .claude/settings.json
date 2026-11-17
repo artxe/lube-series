@@ -21,6 +21,7 @@
       "Bash(curl *://127.0.0.1*)",
       "Bash(curl *://localhost*)",
       "Bash(cut *)",
+      "Bash(date +*)",
       "Bash(date)",
       "Bash(diff *)",
       "Bash(du *)",

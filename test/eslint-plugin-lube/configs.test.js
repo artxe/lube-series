@@ -209,5 +209,18 @@ describe(
 				}
 			}
 		)
+		it(
+			"uses no deprecated rule",
+			() => {
+				for (const name of Object.keys(strict_rules)) {
+					const rule = rule_of(name) ?? builtinRules.get(name)
+					assert.ok(rule, name)
+					assert.notOk(
+						rule.meta?.deprecated,
+						`${name} is deprecated`
+					)
+				}
+			}
+		)
 	}
 )

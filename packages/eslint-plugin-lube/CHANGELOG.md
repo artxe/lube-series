@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.10.0
+
+### Breaking
+
+- **Requires Node.js 20.19+, 22.13+ or 24+**, the versions `@stylistic/eslint-plugin` 6 supports; all of them
+  `require` the plugin from a CommonJS `eslint.config.cjs`.
+- **The `@stylistic/*` rules come from `@stylistic/eslint-plugin` 6** and follow its changes. In the strict config,
+  `@stylistic/max-statements-per-line` now moves statements that share a line onto lines of their own, after a `;`
+  or `}` when the block holding them starts on an earlier line; with a `max` above 1 each new line holds `max`
+  statements. Each statement moves in a fix of its own, so blocks nested between them split in the same pass and a
+  minified file settles in one `eslint --fix` run. `@stylistic/operator-linebreak` now moves an operator across a
+  block comment after it (`a &&\n/* c */ b` becomes `a\n&& /* c */ b`), and `@stylistic/generator-star-spacing`
+  removes the space between a comment and `*`.
+- **Both configs use `@stylistic/list-style` in place of `@stylistic/array-bracket-newline`,
+  `array-element-newline`, `function-call-argument-newline`, `object-curly-newline` and `object-curly-spacing`**,
+  so ESLint no longer prints a deprecation warning for them. A config that set one of those five rules sets
+  `@stylistic/list-style` instead. JavaScript is formatted as before, except that the arguments of a call or the
+  properties of an object inside a template literal follow the first one: all on its line when it stays beside the
+  opening bracket, each on a line of its own when it starts a new line. TypeScript interfaces, type literals and enums
+  follow the same rule for their members, and the spacing inside a mapped type's braces
+  (`{ [K in keyof T]: T[K] }`) is no longer checked.
+
 ## 0.9.1
 
 ### Fixed

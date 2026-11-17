@@ -7,7 +7,7 @@ Instead of Prettier next to ESLint, with a second config and a plugin to keep th
 ```bash
 npm i -D eslint eslint-plugin-lube
 ```
-Requires ESLint 9 or later and Node.js 18.18+, 20.9+ or 21.1+; a CommonJS `eslint.config.cjs` needs Node.js 20.19+ or 22.12+ to `require` it. `@stylistic/eslint-plugin` is installed with the plugin.
+Requires ESLint 9 or later and Node.js 20.19+, 22.13+ or 24+, which also `require` it from a CommonJS `eslint.config.cjs`. `@stylistic/eslint-plugin` is installed with the plugin.
 
 ## Usage
 ```js

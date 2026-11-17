@@ -25,7 +25,7 @@ import { record_options } from "./utils/rule_options.js"
 import { skip_hole_commas } from "./utils/skip_hole_commas.js"
 import { skip_optional_patterns } from "./utils/skip_optional_patterns.js"
 import { skip_unchanged_fixes } from "./utils/skip_unchanged_fixes.js"
-import { split_declarations } from "./utils/split_declarations.js"
+import { split_statements } from "./utils/split_statements.js"
 import { trim_fixes } from "./utils/trim_fixes.js"
 import stylistic_plugin from "@stylistic/eslint-plugin"
 import { builtinRules } from "eslint/use-at-your-own-risk"
@@ -48,10 +48,6 @@ const whole_comment_rules = new Set(
 		"require-returns"
 	]
 )
-const brace_rules = /** @type {const} */([
-	"object-curly-newline",
-	"object-curly-spacing"
-])/**/
 const spacing_rules = /** @type {const} */([
 	"generator-star-spacing",
 	"key-spacing",
@@ -62,8 +58,6 @@ const spacing_rules = /** @type {const} */([
 ])/**/
 /** @type {import("eslint").Linter.RulesRecord} */
 const strict_rules = {
-	"@stylistic/array-bracket-newline": [ "error", "consistent" ],
-	"@stylistic/array-element-newline": [ "error", "consistent" ],
 	"@stylistic/arrow-parens": [ "error", "as-needed" ],
 	"@stylistic/arrow-spacing": [
 		"error",
@@ -80,7 +74,6 @@ const strict_rules = {
 	"@stylistic/computed-property-spacing": [ "error", "never" ],
 	"@stylistic/dot-location": [ "error", "property" ],
 	"@stylistic/eol-last": [ "error", "never" ],
-	"@stylistic/function-call-argument-newline": [ "error", "consistent" ],
 	"@stylistic/function-call-spacing": [ "error", "never" ],
 	"@stylistic/generator-star-spacing": [ "error", "after" ],
 	"@stylistic/jsx-quotes": [ "error", "prefer-double" ],
@@ -94,6 +87,25 @@ const strict_rules = {
 	"@stylistic/keyword-spacing": [
 		"error",
 		{ "after": true, "before": true }
+	],
+	"@stylistic/list-style": [
+		"error",
+		{
+			"overrides": {
+				"()": "off",
+				"<>": "off",
+				"CallExpression": {
+					"singleLine": { "spacing": "never" }
+				},
+				"NewExpression": {
+					"singleLine": { "spacing": "never" }
+				},
+				"[]": "off",
+				"{}": {
+					"singleLine": { "spacing": "always" }
+				}
+			}
+		}
 	],
 	"@stylistic/max-statements-per-line": [ "error", { "max": 1 } ],
 	"@stylistic/multiline-ternary": [ "error", "always-multiline" ],
@@ -115,8 +127,6 @@ const strict_rules = {
 			"skipBlankLines": false
 		}
 	],
-	"@stylistic/object-curly-newline": [ "error", { "consistent": true } ],
-	"@stylistic/object-curly-spacing": [ "error", "always" ],
 	"@stylistic/operator-linebreak": [
 		"error",
 		"before",
@@ -320,21 +330,14 @@ const stylistic_rules = {
 	"eol-last": accept_cr_eol(
 		/** @type {import("eslint").Rule.RuleModule} */(stylistic.rules?.["eol-last"])/**/
 	),
-	"max-statements-per-line": split_declarations(
+	"list-style": skip_optional_patterns(
+		/** @type {import("eslint").Rule.RuleModule} */(stylistic.rules?.["list-style"])/**/
+	),
+	"max-statements-per-line": split_statements(
 		/** @type {import("eslint").Rule.RuleModule} */(stylistic.rules?.["max-statements-per-line"])/**/
 	),
 	"operator-linebreak": keep_comment_order(
 		/** @type {import("eslint").Rule.RuleModule} */(stylistic.rules?.["operator-linebreak"])/**/
-	),
-	...Object.fromEntries(
-		brace_rules.map(
-			name => [
-				name,
-				skip_optional_patterns(
-					/** @type {Record<typeof brace_rules[number], import("eslint").Rule.RuleModule>} */(stylistic.rules)/**/[name]
-				)
-			]
-		)
 	),
 	...Object.fromEntries(
 		spacing_rules.map(

@@ -4,11 +4,11 @@
 		"url": "https://github.com/artxe/lube-series/issues"
 	},
 	"dependencies": {
-		"@stylistic/eslint-plugin": "^5.10.0"
+		"@stylistic/eslint-plugin": "^6.0.1"
 	},
 	"description": "Fixable ESLint rules that format code without Prettier",
 	"engines": {
-		"node": "^18.18.0 || ^20.9.0 || >=21.1.0"
+		"node": "^20.19.0 || ^22.13.0 || >=24"
 	},
 	"exports": {
 		".": {
@@ -53,5 +53,5 @@
 	},
 	"type": "module",
 	"types": "types/index.d.ts",
-	"version": "0.9.1"
+	"version": "0.10.0"
 }

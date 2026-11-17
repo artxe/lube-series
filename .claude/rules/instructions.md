@@ -4,4 +4,4 @@
 
 `.claude/api/` holds what only sessions billed to API credits follow: a client on the API or the Agent SDK, attended or not, appends its files to its system prompt, and Claude Code never loads them.
 
-What later sessions need to know goes briefly into these files, never into Claude's local memory (a `memory/` directory, `MEMORY.md`), which no other PC or cloud session sees.
+What later sessions need to know goes briefly into these files, never into Claude's local memory (a `memory/` directory, `MEMORY.md`), which no other PC or cloud session sees. They state the rule as it stands, never how it was reached: no dates, tries, measurements or tuning results behind it (a failed try lives in its `TODO.md` item, `verify.md`): every session reads them and is drawn back into that work.
