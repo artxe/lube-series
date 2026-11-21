@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.0
+
+- Add `pretty-click-css`, which lays out click-css class tokens (base tokens first, one selector per line, tokens and declarations in ASCII order, the shorthands click-css has) and reports unknown and repeated properties; it is in no config.
+
 ## 0.10.0
 
 ### Breaking

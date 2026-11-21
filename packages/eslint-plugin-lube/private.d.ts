@@ -138,6 +138,40 @@ export type BaseAstNode = {
 	typeArguments?: AstNode
 	typeParameters?: AstNode
 }
+export type ClickClassReport = {
+	changes: string[]
+	duplicates: string[]
+	formatted: string
+	reordered: boolean
+	unknown: string[]
+}
+export type ClickJsxAttribute = {
+	name: {
+		name: unknown
+		type: string
+	}
+	value: {
+		expression?: unknown
+		raw: string
+		type: string
+		value?: unknown
+	} | null
+}
+export type ClickDeclaration = {
+	change: string | null
+	property: string
+	text: string
+	unknown: boolean
+}
+export type ClickToken = {
+	changes: string[]
+	context: string
+	kind: "base" | "media" | "plain" | "selector"
+	properties: string[]
+	reordered: boolean
+	text: string
+	unknown: string[]
+}
 export type CastingLevel = {
 	close: number
 	close_end: number
@@ -326,6 +360,12 @@ export type RuleOptions = {
 		checkTests?: boolean
 	}
 	"prefer-type-tag": never
+	"pretty-click-css"?: {
+		attributes?: string[]
+		functions?: string[]
+		indent?: string
+		properties?: string[]
+	}
 	"pretty-imports"?: {
 		checkExports?: boolean
 		checkImports?: boolean

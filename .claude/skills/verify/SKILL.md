@@ -7,7 +7,7 @@ description: Run the checks a lube-series change has to pass before it is done -
 `pnpm lint`, `pnpm test` and `pnpm dts` don't run the steps below. Run each step from the repo root unless it
 says otherwise, and keep going only while the step is clean.
 
-In a worktree, a package imported by name (`"async-lube"`) still resolves to the main tree's `node_modules` link, its source and `types/`, and `pnpm dts` finds no `tsc`: there a subagent checks only its own tests importing `src` and the linter, and steps 1, 5 and 6 run in the main tree after the merge, `pnpm dts` first, since the root `tsc` reads the generated `types/`.
+In a worktree, a package imported by name (`"async-lube"`) still resolves to the main tree's `node_modules` link, its source and `types/`, and `pnpm dts` finds no `tsc`: there a subagent checks only its own tests importing `src` and the linter, and steps 1, 5 and 6 run in the main tree with the full check after the last merge, `pnpm dts` first, since the root `tsc` reads the generated `types/`.
 
 Environment variables (`TZ`, `SIM_*`, `DATA_LUBE_*`) go in `.tmp/*.env` files as `shell.md` says; rewrite the file for the next setting.
 
