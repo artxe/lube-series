@@ -6,6 +6,7 @@ import no_loose_types from "./rules/no-loose-types.js"
 import no_typedef from "./rules/no-typedef.js"
 import prefer_param_tag from "./rules/prefer-param-tag.js"
 import prefer_type_tag from "./rules/prefer-type-tag.js"
+import pretty_click_css from "./rules/pretty-click-css.js"
 import pretty_imports from "./rules/pretty-imports.js"
 import pretty_jsdoc_casting from "./rules/pretty-jsdoc-casting.js"
 import pretty_jsdoc_lines from "./rules/pretty-jsdoc-lines.js"
@@ -301,6 +302,7 @@ const plugin = {
 				"no-typedef": no_typedef,
 				"prefer-param-tag": prefer_param_tag,
 				"prefer-type-tag": prefer_type_tag,
+				"pretty-click-css": pretty_click_css,
 				"pretty-imports": pretty_imports,
 				"pretty-jsdoc-casting": pretty_jsdoc_casting,
 				"pretty-jsdoc-lines": pretty_jsdoc_lines,

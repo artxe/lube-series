@@ -8,6 +8,48 @@
   "env": {
     "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "200000"
   },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/scripts/read_guard.js"
+            ],
+            "command": "node",
+            "type": "command"
+          }
+        ],
+        "matcher": "Read"
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/scripts/reflect.js"
+            ],
+            "command": "node",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/scripts/reflect.js"
+            ],
+            "command": "node",
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  },
   "worktree": {
     "baseRef": "head"
   },
@@ -136,12 +178,14 @@
       "PowerShell(gh run view *)",
       "PowerShell(gh search *)",
       "PowerShell(git *)",
+      "PowerShell(ls *)",
       "PowerShell(node *)",
       "PowerShell(node .tmp/*)",
       "PowerShell(npm *)",
       "PowerShell(npx *)",
       "PowerShell(pip *)",
       "PowerShell(pnpm *)",
+      "PowerShell(pwd)",
       "PowerShell(py *)",
       "PowerShell(python *)",
       "PowerShell(python3 *)",
