@@ -3,7 +3,8 @@ import { basename, extname } from "node:path"
 import { pathToFileURL } from "node:url"
 const BIG_READ = 300
 const BIG_CHARACTERS = 16000
-const NEW_LINE = 10
+const BIG_TODO_RANGE = 4000
+const DEFAULT_LIMIT = 2000
 const TODO_FILE = /^TODO.*\.md$/i
 const WHOLE = new Set(
 	[
@@ -30,29 +31,42 @@ export function answer(input) {
 		return ""
 	}
 	const { file_path: path, limit, offset } = hook.tool_input ?? {}
-	if (typeof path != "string" || limit != null || offset != null || WHOLE.has(extname(path).toLowerCase())) {
+	if (typeof path != "string" || WHOLE.has(extname(path).toLowerCase())) {
 		return ""
 	}
+	const ranged = limit != null || offset != null
 	let lines = 1
 	let characters = 0
+	let rangeLines = 0
+	let rangeCharacters = 0
 	try {
 		const text = readFileSync(path, "utf8")
 		characters = text.length
-		for (let index = 0; index < text.length; index += 1) {
-			if (text.charCodeAt(index) == NEW_LINE) {
-				lines += 1
-			}
-		}
+		const all = text.split("\n")
+		lines = all.length
+		const start = typeof offset == "number" && offset > 1 ? offset - 1 : 0
+		const count = typeof limit == "number" && limit > 0 ? limit : DEFAULT_LIMIT
+		const range = all.slice(start, start + count)
+		rangeLines = range.length
+		rangeCharacters = range.join("\n").length
 	} catch {
 		return ""
 	}
-	if (lines <= BIG_READ && characters <= BIG_CHARACTERS) {
+	const todo = TODO_FILE.test(basename(path))
+	if (todo) {
+		if (rangeCharacters <= BIG_TODO_RANGE) {
+			return ""
+		}
+	} else if (ranged) {
+		if (rangeCharacters <= BIG_CHARACTERS) {
+			return ""
+		}
+	} else if (lines <= BIG_READ && characters <= BIG_CHARACTERS) {
 		return ""
 	}
 	const size = `${path} has ${lines} lines, ${characters} characters.`
-	const todo = TODO_FILE.test(basename(path))
 	const reason = todo
-		? `${size} Run the level check its head names, if any, for the ready items; otherwise Grep its headings and the ids you need. Then Read only those lines with offset and limit.`
+		? `${size} Run the level check its head names, if any; otherwise \`node .claude/scripts/todo_ready.js\` for the ready items, and Grep for the ids you need. Then Read only those lines with offset and limit. This range is ${rangeLines} lines, ${rangeCharacters} characters (limit ${BIG_TODO_RANGE}): one item is one line, so Grep \`-n\` its id, then Read with offset at its line and limit: 1.`
 		: `${size} Grep first, then Read only the lines you need with offset and limit.`
 	return JSON.stringify(
 		{

@@ -1,5 +1,17 @@
-import { readFileSync } from "node:fs"
+import { readFileSync, statSync } from "node:fs"
 import { pathToFileURL } from "node:url"
+
+/**
+ * @param {string} path
+ * @param {number} since
+ */
+function changed_since(path, since) {
+	try {
+		return statSync(path).mtimeMs > since
+	} catch {
+		return false
+	}
+}
 // shipped alone into projects, so the types are declared here, not in a .d.ts
 // eslint-disable-next-line lube/no-typedef
 /** @typedef {{ [key: string]: any }} Entry */
@@ -51,7 +63,7 @@ export function answer(input) {
 	const where = subagent
 		? "in your final message: repeat your whole report, since only your last message reaches the main session, and add the reflection at its end"
 		: "in your reply to the owner"
-	const reason = `Token waste in this turn:\n${listed.join("\n")}\nBefore you stop, reflect briefly ${where}, at most three sentences: what was wasted, why, and what you do differently from here on, naming the rule it broke (models.md, shell.md, verify.md) or, when none covers it, the rule you propose. Do not redo or undo work for this and do not read files to answer it.`
+	const reason = `Token waste in this turn:\n${listed.join("\n")}\nBefore you stop, ${where}, at most one sentence: the rule this broke (models.md, shell.md, verify.md, todo.md). A reflection is lost when the session ends, so when you did it by following a rule, or no rule covers it, add under \`## Notes for .claude/\` in TODO.md (create the section at its end if missing) the change to a rule or guard script that would prevent it next time: the file and the text, committed with this turn's work. Do not redo or undo work for this, and read nothing for it beyond a Grep for that section.`
 	return JSON.stringify({ decision: "block", reason })
 }
 /**
@@ -93,7 +105,7 @@ export function findings(entries, subagent) {
 	}
 	/** @type {string[]} */
 	const found = []
-	/** @type {Map<string, Set<string>>} */
+	/** @type {Map<string, Map<string, number>>} */
 	const reads = new Map()
 	/** @type {Map<string, { count: number, edits: number, first: number }>} */
 	const errored = new Map()
@@ -136,13 +148,14 @@ export function findings(entries, subagent) {
 						? result.entry.toolUseResult.file
 						: null
 					if (file) {
-						const seen = reads.get(path) ?? new Set()
-						if (in_turn && seen.has(range)) {
+						const seen = reads.get(path) ?? new Map()
+						const earlier = seen.get(range)
+						if (in_turn && earlier !== undefined && !changed_since(path, earlier)) {
 							found.push(
 								`Read of ${input.file_path} (${range == ":" ? "whole file" : `offset:limit ${range}`}) repeats an earlier read with no change in between: keep what you read in mind, or Grep then read with offset and limit.`
 							)
 						}
-						seen.add(range)
+						seen.set(range, Date.parse(entry.timestamp ?? ""))
 						reads.set(path, seen)
 						if (in_turn && range == ":" && file.totalLines > BIG_READ) {
 							big_reads.add(id)
@@ -159,7 +172,7 @@ export function findings(entries, subagent) {
 					const path = normal(input.file_path)
 					const earlier = edited.get(path) ?? []
 					if (
-						!reported.has(`undo ${path}`) && earlier.some(
+						!reported.has(`undo ${path}`) && !/[\\/]\.tmp[\\/]/.test(path) && earlier.some(
 							before => before.new_string == input.old_string && before.old_string == input.new_string
 						)
 					) {

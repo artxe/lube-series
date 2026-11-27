@@ -119,6 +119,7 @@
       "Bash(unzip -l *)",
       "Bash(unzip -p *)",
       "Bash(wc *)",
+      "Bash(where *)",
       "Bash(which *)",
       "Bash(xargs *)",
       "Edit(/**)",

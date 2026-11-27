@@ -4,3 +4,4 @@
 node_modules
 packages/*/types
 .tmp/
+CLAUDE.local.md

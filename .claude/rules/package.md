@@ -1,0 +1,10 @@
+# Packages
+
+- `tsc` is TypeScript 7 (`@typescript/native`) and must pass. The `typescript` dependency stays 6 because the tooling (typescript-eslint, tests using the compiler API) needs that API, not to check with it.
+- Comments: only JSDoc type tags, casts and `// eslint-` or `// @ts-` directives, no prose, in source, tests, scripts and configs. Exception: the exported API whose JSDoc becomes `types/*.d.ts`, and a handwritten `public.d.ts`, keep user-facing docs (what it does, how to call it, `@example`), never implementation notes.
+- Unreachable code is deleted, never ignored.
+- Record user-facing changes in `CHANGELOG.md` (the package's own, in a monorepo): breaking changes first, each with its migration; entries describe the resulting behavior, not the history.
+- A package that publishes types: `public.d.ts` holds the types its users name and imports nothing from `src` or `private.d.ts` (consumers would get `any`); `private.d.ts` holds the internal ones and is not published, so `files` lists the declarations the entries reach instead of all of `types/`. `pnpm dts` appends the `public.d.ts` re-export to the generated declarations; `types/` is the only build output, gitignored and never edited. Any other hand-written `.d.ts` outside `types/` is stale tsc output to delete.
+- Seeded harnesses (fuzz and simulation tests): `pnpm test` runs a few seeds; a real check writes `NAME=value` lines to `.tmp/sim.env` and runs `node --env-file=.tmp/sim.env node_modules/vitest/vitest.mjs run <files> --reporter=dot`. `SIM_SEEDS` is the count, `SIM_FROM` the first seed (default 1; move it to reach new seeds), `SIM_SEED` replays one seed, `SIM_MODE` runs one mode. A failure prints its `SIM_MODE=… SIM_SEED=…` line. A seed past the harness's time budget (`0` turns it off) fails the same way, so a run that prints nothing for minutes is a hang, not slow progress.
+- A README's top-level ```ts and ```js blocks are type checked by a test that counts the blocks it checked against the fences, so one can never drop out unnoticed.
+- A package published as ES module only has no CommonJS build; its `exports` entries put `types` first.

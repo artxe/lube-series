@@ -20,16 +20,11 @@ Environment variables (`TZ`, `SIM_*`, `DATA_LUBE_*`) go in `.tmp/*.env` files as
    `src/http/xhr.js`, `src/http/socket.js`, upload or download progress, `as: "file"` or CORS. They are
    the only run with a real `XMLHttpRequest`, `WebSocket` and cross-origin `fetch`. `test/browser/server.js` starts `test/async-lube/server.js` in Node and hands the tests
    its URL with `provide`/`inject`; that server sends CORS headers, and `/no-cors` deliberately does not.
-3. **Large seeds.** The seeded harnesses run few seeds in `pnpm test`; for every changed package run
-   its harnesses with the counts below, one file per command, each count in `.tmp/sim.env`
-   (`SIM_SEEDS=2000`). `SIM_SEEDS` is the count, `SIM_FROM` the first seed
-   (default 1; move it to reach new seeds), `SIM_SEED` replays one seed and `SIM_MODE` runs one mode.
-   Extend the harness for new behavior. A seed of the simulations (`flow_sim`, `queue_sim`,
-   `durable_sim`, `stream_fuzz`) that takes longer than `SIM_TIMEOUT` (60000 ms, `0` turns the budget
-   off) fails with its own `SIM_MODE=... SIM_SEED=...` line: on a simulated clock a missed advance
-   hangs forever and no vitest timeout is near, so never wait out a run that prints nothing. Check
-   within two or three minutes that a long run is still moving, and treat silence past the budget as
-   the harness itself hanging, not as slow progress.
+3. **Large seeds.** For every changed package run its seeded harnesses (`package.md`) with the counts
+   below, one file per command. Extend the harness for new behavior. The budget of a seed of the
+   simulations (`flow_sim`, `queue_sim`, `durable_sim`, `stream_fuzz`) is `SIM_TIMEOUT` (60000 ms): on a
+   simulated clock a missed advance hangs forever and no vitest timeout is near. Check
+   within two or three minutes that a long run is still moving.
    - async-lube: `stream_fuzz` 200000, `http_fuzz` 2000, `socket_fuzz` 1000, `flow_sim` and
      `queue_sim` 10000, `durable_sim` 3000 per mode, about 5 minutes a mode (all `test/async-lube/*.test.js`), e.g.
      `node --env-file=.tmp/sim.env node_modules/vitest/vitest.mjs run test/async-lube/http_fuzz.test.js`. Modes: `stream`,
@@ -52,9 +47,7 @@ Environment variables (`TZ`, `SIM_*`, `DATA_LUBE_*`) go in `.tmp/*.env` files as
    checks each handwritten `public.d.ts` on its own with `--skipLibCheck false`, since the root config skips
    lib checks and errors inside those files show up no other way. The flag is not used repo-wide because a
    third-party `.d.ts` then fails the run. `syntax/<package>.ts` holds the type tests: add cases there for
-   every new public type, including `@ts-expect-error` ones, and `test/readme.test.js` type checks every top
-   level ```ts and ```js block of every README, counting the blocks it checked against the fences so one
-   can never drop out unnoticed.
+   every new public type, including `@ts-expect-error` ones, and `test/readme.test.js` type checks every README's code blocks.
 6. **Published tarball.** `prepack` rebuilds the gitignored `types/`.
    `pnpm pack --pack-destination .tmp` inside the package, extract the tarball into an
    empty directory as `node_modules/<name>`, and from there check an ESM `import` and a CommonJS

@@ -5,3 +5,5 @@
 `.claude/api/` holds what only sessions billed to API credits follow: a client on the API or the Agent SDK, attended or not, appends its files to its system prompt, and Claude Code never loads them.
 
 What later sessions need to know goes briefly into these files, never into Claude's local memory (a `memory/` directory, `MEMORY.md`), which no other PC or cloud session sees. They state the rule as it stands, never how it was reached: no dates, tries, measurements or tuning results behind it (a failed try lives in its `TODO.md` item, `verify.md`): every session reads them and is drawn back into that work.
+
+Knowledge (what the project learned from outside material or its own measurements) lives in the folders its `CLAUDE.md` names, each with a `README.md` index. A knowledge file states the current understanding with each claim's source, never raw pasted text, a timeline or history; a code library keeps only its own features' specs. Related knowledge in another project on this PC is listed in `CLAUDE.local.md`, read-only.

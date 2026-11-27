@@ -7,7 +7,6 @@ import { pathToFileURL } from "node:url"
 /** @typedef {{ key: string, lines: string[] }} TodoUnit */
 const BARE = /^- /
 const BLANK = /^\s*$/
-const CONTINUED = /^\s/
 const CRLF = /\r\n/
 const HEADING = /^#{2,3} (.+)$/
 const ITEM = /^- \[([^\]]+)\] ?(.*)$/
@@ -138,12 +137,36 @@ export function merge_todo(base, ours_text, theirs_text) {
 	const ours_keys = new Set(
 		from_ours.map(unit => unit.key)
 	)
+	const base_sections = sections(parse_units(base))
+	const ours_sections = sections(from_ours)
+	const theirs_sections = sections(from_theirs)
+	/** @type {Map<string, TodoUnit>} */
+	const relocated = new Map()
 	/** @type {TodoUnit[]} */
 	const result = []
 	let conflicts = 0
 	for (const unit of from_ours) {
 		const old = from_base.get(unit.key)
 		const other = theirs_by_key.get(unit.key)
+		if (
+			old !== undefined && other
+				&& ours_sections.get(unit.key) === base_sections.get(unit.key)
+				&& theirs_sections.get(unit.key) !== base_sections.get(unit.key)
+				&& !unit.key.startsWith("h:")
+		) {
+			if (flat(unit) === flat(old) || flat(other) === flat(unit)) {
+				relocated.set(unit.key, other)
+			} else if (flat(other) === flat(old)) {
+				relocated.set(unit.key, unit)
+			} else {
+				relocated.set(
+					unit.key,
+					conflict(unit, other, unit.key)
+				)
+				conflicts++
+			}
+			continue
+		}
 		if (old === undefined) {
 			if (other && flat(other) !== flat(unit)) {
 				result.push(
@@ -154,11 +177,7 @@ export function merge_todo(base, ours_text, theirs_text) {
 				result.push(unit)
 			}
 		} else if (!other) {
-			if (flat(unit) === flat(old)) {
-				continue
-			}
-			result.push(conflict(unit, null, unit.key))
-			conflicts++
+			continue
 		} else if (flat(unit) === flat(old)) {
 			result.push(other)
 		} else if (flat(other) === flat(old) || flat(other) === flat(unit)) {
@@ -184,9 +203,11 @@ export function merge_todo(base, ours_text, theirs_text) {
 			continue
 		}
 		let entry = unit
-		if (old !== undefined) {
-			entry = conflict(null, unit, unit.key)
-			conflicts++
+		const moved = relocated.get(unit.key)
+		if (moved) {
+			entry = moved
+		} else if (old !== undefined) {
+			continue
 		}
 		const at = previous === null
 			? 0
@@ -224,7 +245,7 @@ function parse_units(text) {
 			|| ITEM.test(line)
 			|| BARE.test(line)
 			|| !last
-			|| !BLANK.test(line) && (notes || !CONTINUED.test(line))
+			|| notes && !BLANK.test(line)
 		if (!starts) {
 			last?.lines.push(line)
 			continue
@@ -251,6 +272,22 @@ function parse_units(text) {
 		)
 	}
 	return units
+}
+/**
+ * @param {TodoUnit[]} units
+ * @returns {Map<string, string>}
+ */
+function sections(units) {
+	/** @type {Map<string, string>} */
+	const found = new Map()
+	let heading = ""
+	for (const unit of units) {
+		if (unit.key.startsWith("h:")) {
+			heading = unit.key
+		}
+		found.set(unit.key, heading)
+	}
+	return found
 }
 /**
  * @param {string[]} lines
